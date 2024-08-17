@@ -23,10 +23,13 @@
             // }
             // ],
             "miDebuggerPath": "C:\\mingw64\\bin\\gdb.exe",
-            // "logging": {
-            // "moduleLoad": true,
-            // "trace": true
-            // }
+            "logging": {
+                "moduleLoad": true,
+                "trace": false,
+                "traceResponse": false,
+                "engineLogging": false
+       
+            },
         },
         {
             "name": "(Linux) Launch",

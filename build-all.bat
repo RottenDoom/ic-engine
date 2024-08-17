@@ -10,6 +10,6 @@ PUSHD build
 cmake -G "MinGW Makefiles" ..
 make
 POPD
-IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && PAUSE)
+IF %ERRORLEVEL% NEQ 0 (echo Error:%ERRORLEVEL% && exit)
 
 ECHO "All assemblies built successfully."

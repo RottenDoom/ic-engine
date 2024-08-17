@@ -3,9 +3,14 @@
 # -------------------------------------------------------
 
 set(IC_SOURCES
-    src/test.cpp
+    src/core/logger.cpp
+    
+    src/platform/win32_platform.cpp
 
-    src/test.h
+    src/core/logger.h
+    src/core/assertions.h
+
+    src/platform/platform.h
     src/defines.h
 )
 
