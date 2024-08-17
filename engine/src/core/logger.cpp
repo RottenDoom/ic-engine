@@ -16,6 +16,10 @@ void Logger::shutdown_logging() {
     // TODO: cleanup logging/write queued entries.
 }
 
+Logger::Logger() {
+    
+}
+
 Logger::~Logger() {
 
 }

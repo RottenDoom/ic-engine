@@ -43,7 +43,7 @@ public:
     ~platform();
 };
 
-IC_API b8 platform_startup(
+b8 platform_startup(
     platform::platform_state* plat_state,
     const char* application_name,
     i32 x,
@@ -51,6 +51,6 @@ IC_API b8 platform_startup(
     i32 width,
     i32 height);
 
-IC_API void platform_shutdown(platform::platform_state* plat_state);
+void platform_shutdown(platform::platform_state* plat_state);
 
-IC_API b8 platform_pump_messages(platform::platform_state* plat_state);
+b8 platform_pump_messages(platform::platform_state* plat_state);

@@ -3,7 +3,10 @@
 # -------------------------------------------------------
 
 set(TEST_SOURCES
-    src/main.cpp
+    src/entry.cpp
+    src/game.cpp
+
+    src/game.h
 )
 
 set(OBJ_DIR ${PROJECT_BINARY_DIR}/${PROJECT_BINARY_DIR}/bin)

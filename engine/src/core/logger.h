@@ -26,8 +26,7 @@ class Logger {
     public:
         b8 initialize_logging();
         void shutdown_logging();
-
-    private:
+        
         Logger();
         ~Logger();
 };
