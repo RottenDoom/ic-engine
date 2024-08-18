@@ -3,13 +3,7 @@
 
 #include "logger.h"
 
-#include "platform/platform.h"
-#include "core/ic_memory.h"
-
-// static variables only stay inside this file
-static b8 initialized = FALSE;
 static application app;
-static memory mem;
 
 b8 application::application_create(game* game_inst) {
     if (initialized) {
@@ -20,7 +14,6 @@ b8 application::application_create(game* game_inst) {
     app.game_inst = game_inst;
 
     // Initialize Subsystems
-    Logger log;
     log.initialize_logging();
 
     IC_FATAL("A test message: %f", 3.14f);
@@ -32,6 +25,11 @@ b8 application::application_create(game* game_inst) {
 
     app.is_running = TRUE;
     app.is_suspended = FALSE;
+
+    if (!ev.event_initialize()) {
+        IC_ERROR("Event System failed to initialize! Shutting down!");
+        return FALSE;
+    }
 
     if (!platform_startup(
         &app.state,
@@ -78,7 +76,8 @@ b8 application::run() {
     }
 
     app.is_running = FALSE;
-
+    
+    ev.event_shutdown();
     platform_shutdown(&app.state);
 
     return TRUE;

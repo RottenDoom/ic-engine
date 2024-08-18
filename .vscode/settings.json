@@ -64,7 +64,10 @@
         "system_error": "c",
         "xlocale": "c",
         "tuple": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "array": "cpp",
+        "compare": "cpp",
+        "functional": "cpp"
     },
     
    

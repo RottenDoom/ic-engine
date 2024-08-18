@@ -5,6 +5,8 @@
 #include "logger.h"
 
 #include "platform/platform.h"
+#include "core/ic_memory.h"
+#include "core/event.h"
 
 struct game;
 
@@ -21,6 +23,12 @@ typedef struct application_config {
 class application 
 {
 private:
+    // static variables only stay inside this file
+    b8 initialized = FALSE;
+    memory mem;
+    event ev;
+    Logger log;
+
     // application state
     game* game_inst;
     b8 is_running;

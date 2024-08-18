@@ -6,15 +6,21 @@ set(IC_SOURCES
     src/core/logger.cpp
     src/core/application.cpp
     src/core/ic_memory.cpp
+    src/core/event.cpp
     
     src/platform/win32_platform.cpp
+
+    src/containers/darray.cpp
 
     src/core/logger.h
     src/core/assertions.h
     src/core/application.h
     src/core/ic_memory.h
+    src/core/event.h
 
     src/platform/platform.h
+
+    src/containers/darray.h
 
     src/defines.h
     src/game_inst.h
