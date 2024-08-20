@@ -6,7 +6,7 @@
 
 #include "platform/platform.h"
 #include "core/ic_memory.h"
-#include "core/event.h"
+#include "core/input.h"
 
 struct game;
 
@@ -26,8 +26,11 @@ private:
     // static variables only stay inside this file
     b8 initialized = FALSE;
     memory mem;
-    event ev;
     Logger log;
+    input m_input;
+
+    PFN_on_event pfn_on_key;
+    PFN_on_event pfn_on_event;
 
     // application state
     game* game_inst;
@@ -37,8 +40,16 @@ private:
     i16 width;
     i16 height;
     f64 last_time;
-    
+
+
 public:
+    // Event handlers
+    b8 application_on_event(u16 code, void* sender, void* listener_inst, event_context context);
+    b8 application_on_key(u16 code, void* sender, void* listener_inst, event_context context);
+
     b8 application_create(struct game* game_inst);
     b8 run();
+
+    application();
+    ~application();
 };

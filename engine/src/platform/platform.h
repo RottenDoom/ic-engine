@@ -2,6 +2,7 @@
 
 #include "defines.h"
 
+
 class platform 
 {
 private:
@@ -12,6 +13,7 @@ private:
     i32 height;
 
     
+
 public:
     typedef struct platform_state {
         void* internal_state;

@@ -9,7 +9,7 @@ extern b8 create_game(game* out_game);
 
 // main entrypoint for the engine application
 int main(void) {
-    // game intance
+    // game instance sets up function pointers and state of the game
     game game_inst;
     if (!create_game(&game_inst)) {
         IC_FATAL("Could not create game!");

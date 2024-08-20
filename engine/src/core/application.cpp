@@ -2,8 +2,10 @@
 #include "game_inst.h"
 
 #include "logger.h"
+#include "core/event.h"
 
-static application app;
+static event m_event;
+static application* app = nullptr;
 
 b8 application::application_create(game* game_inst) {
     if (initialized) {
@@ -11,10 +13,11 @@ b8 application::application_create(game* game_inst) {
         return FALSE;
     }
 
-    app.game_inst = game_inst;
+    this->game_inst = game_inst; // maybe problem is here
 
     // Initialize Subsystems
     log.initialize_logging();
+    m_input.input_initialoize();
 
     IC_FATAL("A test message: %f", 3.14f);
     IC_ERROR("A test message: %f", 3.14f);
@@ -23,16 +26,20 @@ b8 application::application_create(game* game_inst) {
     IC_DEBUG("A test message: %f", 3.14f);
     IC_TRACE("A test message: %f", 3.14f);
 
-    app.is_running = TRUE;
-    app.is_suspended = FALSE;
+    this->is_running = TRUE;
+    this->is_suspended = FALSE;
 
-    if (!ev.event_initialize()) {
+    if (!m_event.event_initialize()) {
         IC_ERROR("Event System failed to initialize! Shutting down!");
         return FALSE;
     }
 
+    m_event.event_register(EVENT_CODE_APPLICATION_QUIT, 0, pfn_on_event);
+    m_event.event_register(EVENT_CODE_KEY_PRESSED, 0, pfn_on_key);
+    m_event.event_register(EVENT_CODE_KEY_RELEASED, 0, pfn_on_key);
+
     if (!platform_startup(
-        &app.state,
+        &this->state,
         game_inst->app_config.name,
         game_inst->app_config.start_position_x,
         game_inst->app_config.start_position_y,
@@ -41,44 +48,114 @@ b8 application::application_create(game* game_inst) {
     )) { return FALSE; }
 
     // Initialize game
-    if (!app.game_inst->initialize(app.game_inst)) {
+    if (!this->game_inst->initialize(this->game_inst)) {
         IC_FATAL("Game failed to initialize");
         return FALSE;
     }
 
-    app.game_inst->on_resize(app.game_inst, app.width, app.height);
+    this->game_inst->on_resize(this->game_inst, this->width, this->height);
 
     initialized = TRUE;
 
     return TRUE;
 }
+
 b8 application::run() {
     IC_INFO(mem.get_memory_usage_str())
-    while (app.is_running) {
-        if (!platform_pump_messages(&app.state)) {
-            app.is_running = FALSE;
+    
+    i32 i = 0;
+    while (this->is_running) {
+        if (!platform_pump_messages(&this->state)) {
+            this->is_running = FALSE;
         }
 
-        if (!app.is_suspended) {
-            if (!app.game_inst->update(app.game_inst, (f32)0)) {
+        if (!this->is_suspended) {
+            if (!this->game_inst->update(this->game_inst, (f32)0)) {
                 IC_FATAL("Game update failed. Shutting down!");
-                app.is_running = FALSE;
+                this->is_running = FALSE;
                 break;
             }
 
             // game's rendering
-            if (!app.game_inst->render(app.game_inst, (f32)0)) {
+            if (!this->game_inst->render(this->game_inst, (f32)0)) {
                 IC_FATAL("Game rendering failed. Shutting down!");
-                app.is_running = FALSE;
+                this->is_running = FALSE;
                 break;
             }
+
+            // NOTE: Input update/state copying should always be handled
+            // after any input should be recorded; I.E. before this line.
+            // As a safety, input is the last thing to be updated before
+            // this frame ends.
+            m_input.input_update(0);
         }
     }
 
-    app.is_running = FALSE;
+    this->is_running = FALSE;
+
+    // Shutdown event system.
+    m_event.event_unregister(EVENT_CODE_APPLICATION_QUIT, 0, pfn_on_event);
+    m_event.event_unregister(EVENT_CODE_KEY_PRESSED, 0, pfn_on_key);
+    m_event.event_unregister(EVENT_CODE_KEY_RELEASED, 0, pfn_on_key);
     
-    ev.event_shutdown();
-    platform_shutdown(&app.state);
+    m_event.event_shutdown();
+    m_input.input_shutdown();
+
+    platform_shutdown(&this->state);
 
     return TRUE;
+}
+
+application::application() {
+    app = this;
+    PFN_on_event pfn_on_event = [](u16 code, void* sender, void* listener_inst, event_context context) -> b8 {
+        return app.application_on_event(code, sender, listener_inst, context);
+    };
+
+    PFN_on_event pfn_on_key = [](u16 code, void* sender, void* listener_inst, event_context context) -> b8 {
+        return app.application_on_key(code, sender, listener_inst, context);
+    };
+}
+
+application::~application() {
+}
+
+b8 application::application_on_event(u16 code, void* sender, void* listener_inst, event_context context) {
+    switch (code) {
+        case EVENT_CODE_APPLICATION_QUIT: {
+            IC_INFO("Application quit event recieved, shutting down.\n");
+            this->is_running = FALSE;
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+b8 application::application_on_key(u16 code, void* sender, void* listener_inst, event_context context) {
+    if (code == EVENT_CODE_KEY_PRESSED) {
+        u16 key_code = context.data.u16[0];
+        if (key_code == KEY_SPACE) {
+            event_context data {};
+            m_event.event_fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
+
+            return TRUE;
+        } else if (key_code == KEY_A) {
+            // Example on checking for a key
+            IC_DEBUG("Explicit - A key pressed!");
+        } else {
+            IC_DEBUG("'%c' key pressed in window.", key_code);
+        }
+
+    } else if (code == EVENT_CODE_KEY_RELEASED) {
+        u16 key_code = context.data.u16[0];
+        if (key_code == KEY_B) {
+            // Example on checking for a key
+            IC_DEBUG("Explicit - B key released!");
+        } else {
+            IC_DEBUG("'%c' key released in window.", key_code);
+        }
+    }
+    return FALSE;
+    
 }

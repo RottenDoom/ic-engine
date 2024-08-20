@@ -7,6 +7,7 @@ set(IC_SOURCES
     src/core/application.cpp
     src/core/ic_memory.cpp
     src/core/event.cpp
+    src/core/input.cpp
     
     src/platform/win32_platform.cpp
 
@@ -17,6 +18,7 @@ set(IC_SOURCES
     src/core/application.h
     src/core/ic_memory.h
     src/core/event.h
+    src/core/input.h
 
     src/platform/platform.h
 

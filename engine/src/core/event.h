@@ -59,7 +59,7 @@ public:
 
     b8 event_register(u16 code, void* listener, PFN_on_event on_event);
     b8 event_unregister(u16 code, void* listener, PFN_on_event on_event);
-    IC_API b8 event_fire(u16 code, void* sender, event_context context);
+    b8 event_fire(u16 code, void* sender, event_context context);
 
     event();
     ~event();
