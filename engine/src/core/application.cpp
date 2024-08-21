@@ -1,11 +1,10 @@
 #include "application.h"
 #include "game_inst.h"
+#include <functional>
 
 #include "logger.h"
-#include "core/event.h"
 
-static event m_event;
-static application* app = nullptr;
+#define BIND_EVENT_FN(x) std::bind(&application::x, this, std::placeholders::_1)
 
 b8 application::application_create(game* game_inst) {
     if (initialized) {
@@ -28,15 +27,6 @@ b8 application::application_create(game* game_inst) {
 
     this->is_running = TRUE;
     this->is_suspended = FALSE;
-
-    if (!m_event.event_initialize()) {
-        IC_ERROR("Event System failed to initialize! Shutting down!");
-        return FALSE;
-    }
-
-    m_event.event_register(EVENT_CODE_APPLICATION_QUIT, 0, pfn_on_event);
-    m_event.event_register(EVENT_CODE_KEY_PRESSED, 0, pfn_on_key);
-    m_event.event_register(EVENT_CODE_KEY_RELEASED, 0, pfn_on_key);
 
     if (!platform_startup(
         &this->state,
@@ -93,13 +83,7 @@ b8 application::run() {
 
     this->is_running = FALSE;
 
-    // Shutdown event system.
-    m_event.event_unregister(EVENT_CODE_APPLICATION_QUIT, 0, pfn_on_event);
-    m_event.event_unregister(EVENT_CODE_KEY_PRESSED, 0, pfn_on_key);
-    m_event.event_unregister(EVENT_CODE_KEY_RELEASED, 0, pfn_on_key);
     
-    m_event.event_shutdown();
-    m_input.input_shutdown();
 
     platform_shutdown(&this->state);
 
@@ -107,55 +91,24 @@ b8 application::run() {
 }
 
 application::application() {
-    app = this;
-    PFN_on_event pfn_on_event = [](u16 code, void* sender, void* listener_inst, event_context context) -> b8 {
-        return app.application_on_event(code, sender, listener_inst, context);
-    };
-
-    PFN_on_event pfn_on_key = [](u16 code, void* sender, void* listener_inst, event_context context) -> b8 {
-        return app.application_on_key(code, sender, listener_inst, context);
-    };
+    
 }
 
 application::~application() {
 }
 
-b8 application::application_on_event(u16 code, void* sender, void* listener_inst, event_context context) {
-    switch (code) {
-        case EVENT_CODE_APPLICATION_QUIT: {
-            IC_INFO("Application quit event recieved, shutting down.\n");
-            this->is_running = FALSE;
-            return TRUE;
-        }
-    }
+b8 application::application_on_event(event& e) {
+    event_dispatcher dispatcher(e);
+    dispatcher.dispatch<window_close_event>(BIND_EVENT_FN(application_on_key));
 
-    return FALSE;
+    for (auto it = m_layer_stack.end(); it != m_layer_stack.begin();)
+    {
+        (*--it)->on_event(e);
+        if (e.handled)
+            break;
+    }
 }
 
-b8 application::application_on_key(u16 code, void* sender, void* listener_inst, event_context context) {
-    if (code == EVENT_CODE_KEY_PRESSED) {
-        u16 key_code = context.data.u16[0];
-        if (key_code == KEY_SPACE) {
-            event_context data {};
-            m_event.event_fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
-
-            return TRUE;
-        } else if (key_code == KEY_A) {
-            // Example on checking for a key
-            IC_DEBUG("Explicit - A key pressed!");
-        } else {
-            IC_DEBUG("'%c' key pressed in window.", key_code);
-        }
-
-    } else if (code == EVENT_CODE_KEY_RELEASED) {
-        u16 key_code = context.data.u16[0];
-        if (key_code == KEY_B) {
-            // Example on checking for a key
-            IC_DEBUG("Explicit - B key released!");
-        } else {
-            IC_DEBUG("'%c' key released in window.", key_code);
-        }
-    }
+b8 application::application_on_key(window_close_event& e) {
     return FALSE;
-    
 }

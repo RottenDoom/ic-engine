@@ -7,6 +7,8 @@
 #include "platform/platform.h"
 #include "core/ic_memory.h"
 #include "core/input.h"
+#include "core/application_event.h"
+#include "core/layer_stack.h"
 
 struct game;
 
@@ -28,9 +30,7 @@ private:
     memory mem;
     Logger log;
     input m_input;
-
-    PFN_on_event pfn_on_key;
-    PFN_on_event pfn_on_event;
+    layer_stack m_layer_stack;
 
     // application state
     game* game_inst;
@@ -41,11 +41,13 @@ private:
     i16 height;
     f64 last_time;
 
+    application* s_instance;
+
 
 public:
     // Event handlers
-    b8 application_on_event(u16 code, void* sender, void* listener_inst, event_context context);
-    b8 application_on_key(u16 code, void* sender, void* listener_inst, event_context context);
+    b8 application_on_event(event& e);
+    b8 application_on_key(window_close_event& e);
 
     b8 application_create(struct game* game_inst);
     b8 run();

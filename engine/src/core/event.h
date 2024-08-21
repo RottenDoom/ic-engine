@@ -1,117 +1,80 @@
 #pragma once
 
 #include "defines.h"
+#include <string>
 
-#include "ic_memory.h"
-#include "containers/darray.h"
+#define BIT(x) (1 << x)
 
-typedef struct event_context {
-    // 128 bytes
-    union {
-        i64 i64[2];
-        u64 u64[2];
-        f64 f64[2];
-
-        i32 i32[4];
-        u32 u32[4];
-        f32 f32[4];
-
-        i16 i16[8];
-        u16 u16[8];
-
-        i8 i8[16];
-        u8 u8[16];
-
-        char c[16];
-    } data;
-} event_context;
-
-#define MAX_MESSAGE_CODES 16384
-
-// callback function that dispatches to application instead of the whole class
-typedef b8 (*PFN_on_event)(u16 code, void* sender, void* listener_inst, event_context data);
-
-class IC_API event
+// enum class is basically an enum of classes
+enum class event_type
 {
-private:
-    typedef struct registered_event{
-        void* m_listener;
-        PFN_on_event callback;
-    } registered_event;
-
-    typedef struct event_code_entry {
-        registered_event* events;
-    } event_code_entry;
-
-    typedef struct event_system_state {
-        event_code_entry registered[MAX_MESSAGE_CODES];
-    } event_system_state;
-
-    event_system_state m_state;
-    b8 is_initialized;
-    memory mem;
-    darray arr;
-    
-
-public:
-    b8 event_initialize();
-    void event_shutdown();
-
-    b8 event_register(u16 code, void* listener, PFN_on_event on_event);
-    b8 event_unregister(u16 code, void* listener, PFN_on_event on_event);
-    b8 event_fire(u16 code, void* sender, event_context context);
-
-    event();
-    ~event();
+    None = 0,
+    window_close, window_resize, window_focus, window_lost_focus, window_moved,
+    app_tick, app_update, app_render,
+    key_pressed, key_released, key_typed,
+    mouse_button_pressed, mouse_button_released, mouse_moved, mouse_scrolled
 };
 
-typedef enum system_event_code {
-    // Shuts the application down on the next frame.
-    EVENT_CODE_APPLICATION_QUIT = 0x01,
+enum event_category
+{
+    None = 0,
+    event_category_application = BIT(0),
+    event_category_input = BIT(1),
+    event_category_keyboard = BIT(2),
+    event_category_mouse = BIT(3),
+    event_category_mouse_button = BIT(4)
+};
 
-    // Keyboard key pressed.
-    /* Context usage:
-     * u16 key_code = data.data.u16[0];
-     */
-    EVENT_CODE_KEY_PRESSED = 0x02,
+#define EVENT_CLASS_TYPE(type) static event_type get_static_type() { return event_type::type; }\
+							   virtual event_type get_event_type() const override { return get_static_type(); }\
+							   virtual const char* get_name() const override { return #type; }
 
-    // Keyboard key released.
-    /* Context usage:
-     * u16 key_code = data.data.u16[0];
-     */
-    EVENT_CODE_KEY_RELEASED = 0x03,
+#define EVENT_CLASS_CATEGORY(category) virtual int get_category_flags() const override { return category; }
 
-    // Mouse button pressed.
-    /* Context usage:
-     * u16 button = data.data.u16[0];
-     */
-    EVENT_CODE_BUTTON_PRESSED = 0x04,
+class IC_API event {
+    friend class event_dispatcher;
 
-    // Mouse button released.
-    /* Context usage:
-     * u16 button = data.data.u16[0];
-     */
-    EVENT_CODE_BUTTON_RELEASED = 0x05,
+public:
+    virtual ~event() = default;
 
-    // Mouse moved.
-    /* Context usage:
-     * u16 x = data.data.u16[0];
-     * u16 y = data.data.u16[1];
-     */
-    EVENT_CODE_MOUSE_MOVED = 0x06,
+    bool handled = FALSE;
 
-    // Mouse moved.
-    /* Context usage:
-     * u8 z_delta = data.data.u8[0];
-     */
-    EVENT_CODE_MOUSE_WHEEL = 0x07,
+    virtual event_type get_event_type() const = 0;
+    virtual const char* get_name() const = 0;
+    virtual int get_category_flags() const = 0;
+    virtual std::string to_string() const { return get_name(); }
 
-    // Resized/resolution changed from the OS.
-    /* Context usage:
-     * u16 width = data.data.u16[0];
-     * u16 height = data.data.u16[1];
-     */
-    EVENT_CODE_RESIZED = 0x08,
+    inline bool is_incharge(event_category category)
+    {
+        return get_category_flags() & category;
+    }
+};
 
-    MAX_EVENT_CODE = 0xFF
-} system_event_code;
+class event_dispatcher {
+    template<typename T>
+    using event_fn = std::function<bool(T&)>; // function pointer using function from std lib instead of using PFN_on_event
+
+public:
+    event_dispatcher(event& e)
+        : m_event(e)
+    {}
+
+    template<typename T>
+    bool dispatch(event_fn<T> func)
+    {
+        if (m_event.get_event_type() == T::get_static_type())
+        {
+            m_event.handled |= func(*(T*)& m_event);
+            return TRUE;
+        }
+        return FALSE;
+    }
+
+private:
+    event& m_event;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const event& e)
+{
+    return os << e.to_string();
+}

@@ -2,6 +2,7 @@
 
 #include "defines.h"
 #include <string>
+#include <core/event.h>
 
 class IC_API layer
 {
@@ -12,7 +13,7 @@ public:
     virtual void on_attach() {}
     virtual void on_detach() {}
     virtual void on_update() {}
-    virtual void on_event() {}
+    virtual void on_event(event& e) {}
 
     inline const std::string get_name() const { return m_DebugName; }
 
