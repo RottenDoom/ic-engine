@@ -22,13 +22,13 @@ typedef enum log_level {
 } log_level;
 
 // class for initializing logger
-class Logger {
+class logger {
     public:
         b8 initialize_logging();
         void shutdown_logging();
         
-        Logger();
-        ~Logger();
+        logger();
+        ~logger();
 };
 
 // c-type function that exports to testbed

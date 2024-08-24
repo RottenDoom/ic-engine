@@ -5,7 +5,7 @@
 #if IC_PLATFORM_WINDOWS
 
 #include "core/logger.h"
-#include "core/input.h"
+#include "core/event.h"
 
 #include <windows.h>
 #include <windowsx.h>  // param input extraction
@@ -19,33 +19,14 @@ typedef struct internal_state {
 // Clock
 static f64 clock_frequency;
 static LARGE_INTEGER start_time;
-static input in;
+
+input* platform::in = new input();
 
 LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param);
 
 platform::platform() {
 }
 
-platform::platform(
-    platform::platform_state state,
-    const char* application_name,
-    i32 x,
-    i32 y,
-    i32 width,
-    i32 height) 
-{
-    this->application_name = application_name;
-    this->x = x;
-    this->y = y;
-    this->width = width;
-    this->height = height;
-
-    if (platform_startup(&state, this->application_name, this->x, this->y, this->width, this->height)) {
-        while(TRUE) {
-            platform_pump_messages(&state);
-        }
-    }
-}
 
 platform::~platform() {
 
@@ -63,7 +44,6 @@ b8 platform_startup(
     internal_state* state = (internal_state*)plat_state->internal_state;
 
     state->handle_instance = GetModuleHandleA(0);
-
     // Setup and register window class.
     HICON icon = LoadIcon(state->handle_instance, IDI_APPLICATION);
     WNDCLASSA wc;
@@ -218,14 +198,17 @@ void platform::platform_sleep(u64 ms) {
     Sleep(ms);
 }
 
-LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param) {
+LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARAM l_param)
+{
     switch (msg) {
         case WM_ERASEBKGND:
             // Notify the OS that erasing will be handled by the application to prevent flicker.
             return 1;
-        case WM_CLOSE:
-            // TODO: Fire an event for the application to quit.
-            return 0;
+        case WM_CLOSE: {
+            event_context data = {};
+            event_fire(EVENT_CODE_APPLICATION_QUIT, 0, data); // we don't want this to happen
+            return TRUE;
+        }
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
@@ -246,21 +229,22 @@ LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARA
             b8 pressed = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
             keys key = (keys)w_param;
 
-            in.input_process_key(key, pressed);
+            platform::in->input_process_key(key, pressed);
 
         } break;
         case WM_MOUSEMOVE: {
-            // Mouse move
-            //i32 x_position = GET_X_LPARAM(l_param);
-            //i32 y_position = GET_Y_LPARAM(l_param);
-            // TODO: input processing.
+            // // Mouse move
+            // i32 x_position = GET_X_LPARAM(l_param);
+            // i32 y_position = GET_Y_LPARAM(l_param);
+            // // TODO: input processing.
+            // platform::in->input_process_mouse_move(x_position, y_position);
         } break;
         case WM_MOUSEWHEEL: {
             i32 z_delta = GET_WHEEL_DELTA_WPARAM(w_param);
             if (z_delta != 0) {
                 // Flatten the input to an OS-independent (-1, 1)
                 z_delta = (z_delta < 0) ? -1 : 1;
-                in.input_process_mouse_wheel(z_delta);
+                platform::in->input_process_mouse_wheel(z_delta);
             }
         } break;
         case WM_LBUTTONDOWN:
@@ -288,7 +272,7 @@ LRESULT CALLBACK win32_process_message(HWND hwnd, u32 msg, WPARAM w_param, LPARA
 
             // Pass over to the input subsystem.
             if (mouse_button != BUTTON_MAX_BUTTONS) {
-                in.input_process_button(mouse_button, pressed);
+                platform::in->input_process_button(mouse_button, pressed);
             }
 
         } break;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defines.h"
-
+#include "core/input.h"
 
 class platform 
 {
@@ -12,9 +12,9 @@ private:
     i32 width;
     i32 height;
 
-    
 
 public:
+    static input* in; // problem lies here I think
     typedef struct platform_state {
         void* internal_state;
     } platform_state;
@@ -34,14 +34,6 @@ public:
 
     // default constructor
     platform();
-
-    platform(
-        platform::platform_state state,
-        const char* application_name,
-        i32 x,
-        i32 y,
-        i32 width,
-        i32 height);
     ~platform();
 };
 

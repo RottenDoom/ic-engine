@@ -4,9 +4,7 @@
 
 #include "defines.h"
 
-#include "core/event.h"
 #include "core/ic_memory.h"
-#include "core/logger.h"
 
 typedef enum buttons {
     BUTTON_LEFT,
@@ -152,7 +150,6 @@ class IC_API input
 {
 private:
     memory mem;
-    event m_event;
 
     b8 is_initialized;
 
@@ -174,17 +171,16 @@ private:
     } input_state;
 
     input_state state = {};
-
-    
-
+       
 public:
+
     void input_process_button(buttons button, b8 pressed);
     void input_process_mouse_move(i16 x, i16 y);
     void input_process_mouse_wheel(i8 z_delta);
 
     void input_process_key(keys key, b8 pressed);
 
-    void input_initialoize();
+    void input_initialize();
     void input_shutdown();
     void input_update(f64 delta_time);
 

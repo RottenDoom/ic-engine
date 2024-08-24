@@ -2,9 +2,6 @@
 
 #include "defines.h"
 
-#include "ic_memory.h"
-#include "containers/darray.h"
-
 typedef struct event_context {
     // 128 bytes
     union {
@@ -31,39 +28,25 @@ typedef struct event_context {
 // callback function that dispatches to application instead of the whole class
 typedef b8 (*PFN_on_event)(u16 code, void* sender, void* listener_inst, event_context data);
 
-class IC_API event
-{
-private:
-    typedef struct registered_event{
-        void* m_listener;
-        PFN_on_event callback;
-    } registered_event;
+typedef struct registered_event{
+    void* m_listener;
+    PFN_on_event callback;
+} registered_event;
 
-    typedef struct event_code_entry {
-        registered_event* events;
-    } event_code_entry;
+typedef struct event_code_entry {
+    registered_event* events;
+} event_code_entry;
 
-    typedef struct event_system_state {
-        event_code_entry registered[MAX_MESSAGE_CODES];
-    } event_system_state;
+typedef struct event_system_state {
+    event_code_entry registered[MAX_MESSAGE_CODES];
+} event_system_state;
 
-    event_system_state m_state;
-    b8 is_initialized;
-    memory mem;
-    darray arr;
-    
+b8 event_initialize();
+void event_shutdown();
 
-public:
-    b8 event_initialize();
-    void event_shutdown();
-
-    b8 event_register(u16 code, void* listener, PFN_on_event on_event);
-    b8 event_unregister(u16 code, void* listener, PFN_on_event on_event);
-    b8 event_fire(u16 code, void* sender, event_context context);
-
-    event();
-    ~event();
-};
+b8 event_register(u16 code, void* listener, PFN_on_event on_event);
+b8 event_unregister(u16 code, void* listener, PFN_on_event on_event);
+b8 event_fire(u16 code, void* sender, event_context context);
 
 typedef enum system_event_code {
     // Shuts the application down on the next frame.

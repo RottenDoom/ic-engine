@@ -1,11 +1,9 @@
 #include "application.h"
 #include "game_inst.h"
 
-#include "logger.h"
-#include "core/event.h"
+application* application::s_instance = nullptr;
 
-static event m_event;
-static application* app = nullptr;
+input* in = platform::in;
 
 b8 application::application_create(game* game_inst) {
     if (initialized) {
@@ -13,11 +11,11 @@ b8 application::application_create(game* game_inst) {
         return FALSE;
     }
 
-    this->game_inst = game_inst; // maybe problem is here
+    this->game_inst = game_inst;
 
     // Initialize Subsystems
     log.initialize_logging();
-    m_input.input_initialoize();
+    in->input_initialize();
 
     IC_FATAL("A test message: %f", 3.14f);
     IC_ERROR("A test message: %f", 3.14f);
@@ -29,14 +27,15 @@ b8 application::application_create(game* game_inst) {
     this->is_running = TRUE;
     this->is_suspended = FALSE;
 
-    if (!m_event.event_initialize()) {
+    if (!event_initialize()) {
         IC_ERROR("Event System failed to initialize! Shutting down!");
         return FALSE;
     }
 
-    m_event.event_register(EVENT_CODE_APPLICATION_QUIT, 0, pfn_on_event);
-    m_event.event_register(EVENT_CODE_KEY_PRESSED, 0, pfn_on_key);
-    m_event.event_register(EVENT_CODE_KEY_RELEASED, 0, pfn_on_key);
+    // registers event
+    event_register(EVENT_CODE_APPLICATION_QUIT, 0, application_on_event);
+    event_register(EVENT_CODE_KEY_PRESSED, 0, application_on_key);
+    event_register(EVENT_CODE_KEY_RELEASED, 0, application_on_key);
 
     if (!platform_startup(
         &this->state,
@@ -63,12 +62,12 @@ b8 application::application_create(game* game_inst) {
 b8 application::run() {
     IC_INFO(mem.get_memory_usage_str())
     
-    i32 i = 0;
     while (this->is_running) {
         if (!platform_pump_messages(&this->state)) {
             this->is_running = FALSE;
         }
 
+        // this chunk of code only gets called once this->suspended becomes -2 for some reason
         if (!this->is_suspended) {
             if (!this->game_inst->update(this->game_inst, (f32)0)) {
                 IC_FATAL("Game update failed. Shutting down!");
@@ -87,19 +86,20 @@ b8 application::run() {
             // after any input should be recorded; I.E. before this line.
             // As a safety, input is the last thing to be updated before
             // this frame ends.
-            m_input.input_update(0);
+            in->input_update(0);
         }
+
     }
 
     this->is_running = FALSE;
 
     // Shutdown event system.
-    m_event.event_unregister(EVENT_CODE_APPLICATION_QUIT, 0, pfn_on_event);
-    m_event.event_unregister(EVENT_CODE_KEY_PRESSED, 0, pfn_on_key);
-    m_event.event_unregister(EVENT_CODE_KEY_RELEASED, 0, pfn_on_key);
+    event_unregister(EVENT_CODE_APPLICATION_QUIT, 0, application_on_event);
+    event_unregister(EVENT_CODE_KEY_PRESSED, 0, application_on_key);
+    event_unregister(EVENT_CODE_KEY_RELEASED, 0, application_on_key);
     
-    m_event.event_shutdown();
-    m_input.input_shutdown();
+    event_shutdown();
+    in->input_shutdown();
 
     platform_shutdown(&this->state);
 
@@ -107,24 +107,18 @@ b8 application::run() {
 }
 
 application::application() {
-    app = this;
-    PFN_on_event pfn_on_event = [](u16 code, void* sender, void* listener_inst, event_context context) -> b8 {
-        return app.application_on_event(code, sender, listener_inst, context);
-    };
-
-    PFN_on_event pfn_on_key = [](u16 code, void* sender, void* listener_inst, event_context context) -> b8 {
-        return app.application_on_key(code, sender, listener_inst, context);
-    };
+    s_instance = this;
 }
 
 application::~application() {
 }
 
+// this function doesn't get called
 b8 application::application_on_event(u16 code, void* sender, void* listener_inst, event_context context) {
     switch (code) {
         case EVENT_CODE_APPLICATION_QUIT: {
             IC_INFO("Application quit event recieved, shutting down.\n");
-            this->is_running = FALSE;
+            s_instance->is_running = FALSE;
             return TRUE;
         }
     }
@@ -132,12 +126,13 @@ b8 application::application_on_event(u16 code, void* sender, void* listener_inst
     return FALSE;
 }
 
+// this function doesn't get called
 b8 application::application_on_key(u16 code, void* sender, void* listener_inst, event_context context) {
     if (code == EVENT_CODE_KEY_PRESSED) {
         u16 key_code = context.data.u16[0];
-        if (key_code == KEY_SPACE) {
+        if (key_code == KEY_ESCAPE) {
             event_context data {};
-            m_event.event_fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
+            event_fire(EVENT_CODE_APPLICATION_QUIT, 0, data);
 
             return TRUE;
         } else if (key_code == KEY_A) {

@@ -96,7 +96,7 @@ void darray::darray_insert_at(void* array, u64 index, void* value_ptr) {
 
 u64 darray::_darray_field_get(void* array, u64 field) {
     u64* header = (u64*)array - DARRAY_FIELD_LENGTH;
-    return header[field];
+    return *(header + field);
 }
 
 void darray::_darray_field_set(void* array, u64 field, u64 value) {

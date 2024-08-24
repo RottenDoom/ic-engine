@@ -8,19 +8,19 @@
 #include <stdarg.h>
 
 
-b8 Logger::initialize_logging() {
+b8 logger::initialize_logging() {
     return TRUE;
 }
 
-void Logger::shutdown_logging() {
+void logger::shutdown_logging() {
     // TODO: cleanup logging/write queued entries.
 }
 
-Logger::Logger() {
+logger::logger() {
     
 }
 
-Logger::~Logger() {
+logger::~logger() {
 
 }
 

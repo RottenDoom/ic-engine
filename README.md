@@ -2,11 +2,8 @@
 My Game Engine Project. This game engine uses vulkan api for rendering and I plan to make my own game in this engine.
 
 # TODOs
-1. The input system is rigged. The problem stems from usage of pointer functions. Since I used code from Kohi engine I can't figure out how I should integrate C++ object oriented programming with C programming style. What happens then is that if I don't use class varible and use statically defined variable for my app. I can't do anything since I get a segmentation fault. And if I use this my function pointers complain all the time. Also I can't use the functions directly into the register events since the function I made doesn't matches my pfn. Which just sucks. 
+1. The input system is rigged. I used the c-style event system which is robust but I am not sure about its memory. I am looking forward to making and designing my own event system. For now if I explicitely apply a event some codes are not registered while others are not. Escape registered but the others are not. I am making the event system in the test branch where I will test my own event system that will work seemlessly and with no errors.
 
 2. After completing input start with renderer.
 
 3. Continue the Kohi Game engine series. I do not want to make my own math library so I am going to use glm. Probably gonna make another branch in my tutorial github repo to test it.
-
-
-Solution to todo 1 is I am going to use layers and layerstack and use my own event class with dispatcher to create my own event system which just works that well. I just hope it works I know it will take a lot of time to create.
