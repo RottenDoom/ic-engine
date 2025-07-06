@@ -14,5 +14,11 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=ninja -DCMAKE_C_C
 cmake --build build-ninja
 ```
 
+### TODO
+- Add debug and release builds
+- Start making renderer.
+- Workflows and Tests
+- DLL imports and exports and live reloads
+
 The project is largely based on the game engine by the cherno and kofi engine.<p>
 Thank You.

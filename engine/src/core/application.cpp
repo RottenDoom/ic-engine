@@ -6,10 +6,11 @@
 // TODO: Add logging wherever required
 // TODO: Create input system and start creating the graphics library frontend first and then the backend.
 
-namespace ic {
+namespace ic
+{
 #define BIND_EVENT_FN(x) std::bind(&application::x, this, std::placeholders::_1)
 
-    application* application::s_Instance = nullptr;
+    application *application::s_Instance = nullptr;
 
     application::application()
     {
@@ -37,7 +38,7 @@ namespace ic {
         return true;
     }
 
-    void application::onEvent(event& e)
+    void application::onEvent(event &e)
     {
         eventDispatcher dispatcher(e);
         dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT_FN(onWindowClose));
@@ -45,16 +46,16 @@ namespace ic {
         IC_CORE_TRACE("{0}", e.toString());
     }
 
-    bool application::applicationCreate(game* game_inst)
+    bool application::applicationCreate(game *game_inst)
     {
         return true;
     }
 
-    application& application::get()
+    application &application::get()
     {
         return *s_Instance;
     }
-    bool application::onWindowClose(WindowClosedEvent & e)
+    bool application::onWindowClose(WindowClosedEvent &e)
     {
         m_Running = false;
         return true;
