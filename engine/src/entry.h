@@ -20,19 +20,19 @@ int main(void)
 {
     game game_inst;
     if (!create_game(&game_inst)) {
-        // IC_FATAL("Could not create game!");
+        IC_CRITICAL("Could not create game!");
         return -1;
     }
     
     // ensure function pointers exists
     if (!game_inst.render || !game_inst.update || !game_inst.on_resize || !game_inst.initialize) {
-        // IC_FATAL("Game's function pointers not assigned!");
+        IC_CRITICAL("Game's function pointers not assigned!");
         return -2;
     }
     
     // initialization
     ic::application app;
-    if (!app.application_create(&game_inst)) {
+    if (!app.applicationCreate(&game_inst)) {
         IC_INFO("Application failed to create!");
         return 1;
     }

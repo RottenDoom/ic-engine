@@ -1,23 +1,24 @@
 #pragma once
 
 #include "event.h"
+#include "core/mousecodes.h"
 
 namespace ic {
 
 	class MouseMovedEvent : public event
 	{
 	public:
-		MouseMovedEvent(float x, float y)
+		MouseMovedEvent(const float x, const float y)
 			: m_mouseX(x), m_mouseY(y) {}
 
-		inline float getX() const { return m_mouseX; }
-		inline float getY() const { return m_mouseY; }
+		float getX() const { return m_mouseX; }
+		float getY() const { return m_mouseY; }
 
-		const char* toString() const override
+		std::string toString() const override
 		{
 			std::stringstream ss;
 			ss << "MouseMovedEvent: " << m_mouseX << ", " << m_mouseY;
-			return ss.str().c_str();
+			return ss.str();
 		}
 
 		EVENT_CLASS_TYPE(MouseMoved)
@@ -30,17 +31,17 @@ namespace ic {
     class MouseScrolledEvent : public event
 	{
 	public:
-		MouseScrolledEvent(float xOffset, float yOffset)
+		MouseScrolledEvent(const float xOffset, const float yOffset)
 			: m_xOffset(xOffset), m_yOffset(yOffset) {}
 
-		inline float getXOffset() const { return m_xOffset; }
-		inline float getYOffset() const { return m_yOffset; }
-
-		const char* toString() const override
+		float getXOffset() const { return m_xOffset; }
+		float getYOffset() const { return m_yOffset; }
+		
+		std::string toString() const override
 		{
 			std::stringstream ss;
 			ss << "MouseScrolledEvent: " << getXOffset() << ", " << getYOffset();
-			return ss.str().c_str();
+			return ss.str();
 		}
 
 		EVENT_CLASS_TYPE(MouseScrolled)
@@ -53,29 +54,29 @@ namespace ic {
 	class MouseButtonEvent : public event
 	{
 	public:
-		inline int getMouseButton() const { return m_button; }
+		MouseCode getMouseButton() const { return m_button; }
 
 		EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
 
 	protected:
-		MouseButtonEvent(int button)
+		MouseButtonEvent(MouseCode button)
 			: m_button(button) {}
 
 	
-		int m_button;
+		MouseCode m_button;
 	};
 
 	class MouseButtonPressedEvent : public MouseButtonEvent
 	{
 	public:
-		MouseButtonPressedEvent(int button)
+		MouseButtonPressedEvent(MouseCode button)
 			: MouseButtonEvent(button) {}
 
-		const char* toString() const override
+		std::string toString() const override
 		{
 			std::stringstream ss;
 			ss << "MouseButtonPressedEvent: " << m_button;
-			return ss.str().c_str();
+			return ss.str();
 		}
 		
 		EVENT_CLASS_TYPE(MouseButtonPressed)
@@ -84,14 +85,14 @@ namespace ic {
 	class MouseButtonReleasedEvent : public MouseButtonEvent
 	{
 	public:
-		MouseButtonReleasedEvent(int button)
+		MouseButtonReleasedEvent(MouseCode button)
 			: MouseButtonEvent(button) {}
 
-		const char* toString() const override
+		std::string toString() const override
 		{
 			std::stringstream ss;
 			ss << "MouseButtonReleasedEvent: " << m_button;
-			return ss.str().c_str();
+			return ss.str();
         }
 
 		EVENT_CLASS_TYPE(MouseButtonReleased)

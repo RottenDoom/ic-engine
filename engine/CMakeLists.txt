@@ -8,13 +8,17 @@ set(IC_SOURCES
     src/core/window.h
     src/core/logger.h
     src/core/logger.cpp
+    src/core/input.h
+    src/core/mousecodes.h
+    src/core/keycodes.h
     src/core/events/event.h
     src/core/events/application_event.h
     src/core/events/key_event.h
     src/core/events/mouse_event.h
 
     src/platform/Win32/window_win32.h
-    src/platform/Win32/window_win32.cpp   
+    src/platform/Win32/window_win32.cpp
+    src/platform/Win32/input_win32.cpp
 )
 
 set(OBJ_DIR ${PROJECT_BINARY_DIR}/obj)

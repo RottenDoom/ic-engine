@@ -15,14 +15,14 @@ namespace ic
 
         bool run();
         void onEvent(event& e);
-        bool application_create(game* game_inst);
+        bool applicationCreate(game* game_inst);
 
-        static application& Get();
-        inline window& GetWindow() { return *m_Window; }
+        static application& get();
+        inline window& getWindow() { return *m_Window; }
 
     private:
-        bool on_window_close(WindowClosedEvent& e);
-        // bool on_window_resize(WindowResizedEvent& e);
+        bool onWindowClose(WindowClosedEvent& e);
+        // bool onWindowResize(WindowResizedEvent& e);
 
         bool m_Running = true;
         window* m_Window;

@@ -26,8 +26,8 @@ namespace ic
 
 // macros to check class types and category
 #define EVENT_CLASS_TYPE(type) static EventType getStaticType() { return EventType::type; }\
-                               virtual EventType getEventType() const override { return getStaticType(); }\
-                               virtual const char* getName() const override { return #type; }
+								virtual EventType getEventType() const override { return getStaticType(); }\
+								virtual const char* getName() const override { return #type; }
 
 #define EVENT_CLASS_CATEGORY(category) virtual int getCategoryFlags() const override { return category; }
 
@@ -42,7 +42,7 @@ namespace ic
         virtual EventType getEventType() const = 0;
         virtual const char* getName() const = 0;
         virtual int getCategoryFlags() const = 0;
-        virtual const char* toString() const { return getName(); }
+        virtual std::string toString() const { return getName(); }
         
         inline bool isIncharge(EventCategory category)
         {
@@ -52,21 +52,17 @@ namespace ic
 
     class eventDispatcher
     {
-        // function wrapper for dispatcher takes in reference T and outputs a boolean
-        template<typename T>
-        using eventFn = std::function<bool(T&)>;
-
     public:
         eventDispatcher(event& event)
             : m_event(event)
         {}
 
-        template<typename T>
-        bool dispatch(eventFn<T> func)
+        template<typename T, typename F>
+        bool dispatch(const F& func)
         {
             if (m_event.getEventType() == T::getStaticType())
             {
-                m_event.handled |= func(*(T*)& m_event);
+                m_event.handled |= func(static_cast<T&>(m_event));
                 return true;
             }
             return false;
@@ -77,8 +73,8 @@ namespace ic
     };
 
     inline std::ostream& operator<<(std::ostream& os, const event& e)
-    {
-        return os << e.toString();
-    }
+	{
+		return os << e.toString();
+	}
 
 } // namespace ic

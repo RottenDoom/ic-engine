@@ -1,5 +1,6 @@
 #include "application.h"
 #include "defines.h"
+#include "input.h"
 
 // TODO: Refactor the code to be more modular and easier to understand
 // TODO: Add logging wherever required
@@ -37,24 +38,24 @@ namespace ic {
         return true;
     }
 
-    void application::onEvent(event & e)
+    void application::onEvent(event& e)
     {
         eventDispatcher dispatcher(e);
-        dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT_FN(on_window_close));
+        dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT_FN(onWindowClose));
 
-        IC_CORE_TRACE("{0}", e.getName());
+        IC_CORE_TRACE("{0}", e.toString());
     }
 
-    bool application::application_create(game* game_inst)
+    bool application::applicationCreate(game* game_inst)
     {
         return true;
     }
 
-    application& application::Get()
+    application& application::get()
     {
         return *s_Instance;
     }
-    bool application::on_window_close(WindowClosedEvent & e)
+    bool application::onWindowClose(WindowClosedEvent & e)
     {
         m_Running = false;
         return true;

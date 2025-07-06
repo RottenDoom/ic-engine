@@ -1,54 +1,56 @@
 #pragma once
 
+#include "defines.h"
 #include "core/events/event.h"
+#include "core/keycodes.h"
 
 namespace ic
 {
     class KeyEvent : public event
     {
     public:
-        inline int getKeyCode() const { return m_keyCode; }
+        KeyCode getKeyCode() const { return m_keyCode; }
 
         EVENT_CLASS_CATEGORY(EventCategoryKeyBoard | EventCategoryInput)
     protected:
-        KeyEvent(int keycode)
+        KeyEvent(const KeyCode keycode)
             : m_keyCode(keycode) {}
 
-        int m_keyCode;
+        KeyCode m_keyCode;
     };
 
     class KeyPressedEvent : public KeyEvent
     {
     public:
-        KeyPressedEvent(int keycode, int repeatCount)
-            : KeyEvent(keycode), m_RepeatCount(repeatCount) {}
+        KeyPressedEvent(const KeyCode keycode,bool isRepeat = false)
+            : KeyEvent(keycode), m_IsRepeat(isRepeat) {}
 
-        inline int GetRepeatCount() const { return m_RepeatCount; }
+        inline uint32_t isRepeat() const { return m_IsRepeat; }
 
-        const char* toString() const override
+        std::string toString() const override
         {
             std::stringstream ss;
-            ss << "KeyPressedEvent: " << m_keyCode << " (" << m_RepeatCount << " repeats)";
-            return ss.str().c_str();
+            ss << "KeyPressedEvent: " << m_keyCode << " ( repeat: " << m_IsRepeat << " )";
+            return ss.str();
         }
 
         EVENT_CLASS_TYPE(KeyPressed)
 
     private:
-        int m_RepeatCount;
+        bool m_IsRepeat;
     };
 
     class KeyReleasedEvent : public KeyEvent
     {
     public:
-        KeyReleasedEvent(int keycode)
+        KeyReleasedEvent(KeyCode keycode)
             : KeyEvent(keycode) {}
 
-        const char* toString() const override
+        std::string toString() const override
         {
             std::stringstream ss;
             ss << "KeyReleasedEvent: " << m_keyCode;
-            return ss.str().c_str();
+            return ss.str();
         }
 
         EVENT_CLASS_TYPE(KeyReleased)
@@ -57,14 +59,14 @@ namespace ic
     class KeyTypedEvent : public KeyEvent
     {
     public:
-        KeyTypedEvent(int keycode)
+        KeyTypedEvent(KeyCode keycode)
             : KeyEvent(keycode) {}
 
-        const char* toString() const override
+        std::string toString() const override
         {
             std::stringstream ss;
             ss << "KeyTypedEvent: " << m_keyCode;
-            return ss.str().c_str();
+            return ss.str();
         }
         
         EVENT_CLASS_TYPE(KeyTyped)
