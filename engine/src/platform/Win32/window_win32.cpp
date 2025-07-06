@@ -33,6 +33,8 @@ namespace ic {
 		if (!s_GLFWInitialized)
 		{
 			int success = glfwInit();
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // TODO: change this for platform specific code (vulkan for now)
+			glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 			IC_CORE_ASSERT(success, "Could not initialize GLFW!");
 			glfwSetErrorCallback(GLFWErrorCallback);
 			s_GLFWInitialized = true;
@@ -140,6 +142,7 @@ namespace ic {
 	void win32_window::shutdown()
 	{
 		glfwDestroyWindow(m_Window);
+		glfwTerminate();
 	}
 
 	void win32_window::onUpdate()
