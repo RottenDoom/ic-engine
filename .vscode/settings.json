@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "defines.h": "c",
+        "logger.h": "c",
+        "functional": "cpp"
+    }
+}
