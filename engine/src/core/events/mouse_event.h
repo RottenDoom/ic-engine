@@ -98,4 +98,4 @@ namespace ic {
 		EVENT_CLASS_TYPE(MouseButtonReleased)
 	};
 
-}
+} // namespace ic

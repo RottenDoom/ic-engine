@@ -16,6 +16,11 @@ set(IC_SOURCES
     src/core/events/key_event.h
     src/core/events/mouse_event.h
 
+    # TODO: How to not include tests
+    # src/tests/rendering/base.h
+
+    # src/renderer/*
+
     src/platform/Win32/window_win32.h
     src/platform/Win32/window_win32.cpp
     src/platform/Win32/input_win32.cpp
@@ -46,6 +51,7 @@ target_link_libraries(engine
     PRIVATE
         Vulkan::Vulkan
         glfw
+        glm::glm
 )
 
 # Set compiler flags and definitions

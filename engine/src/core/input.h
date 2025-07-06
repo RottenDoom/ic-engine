@@ -15,4 +15,4 @@ namespace ic {
         static float getMouseY();
 
     };
-}
+} // namespace ic

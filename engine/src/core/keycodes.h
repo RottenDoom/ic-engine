@@ -143,4 +143,4 @@ namespace ic
 			Menu = 348
 		};
 	}
-}
+} // namespace ic

@@ -163,4 +163,4 @@ namespace ic {
 		return m_data.VSync;
 	}
 
-}
+} // namespace ic

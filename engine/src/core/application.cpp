@@ -4,7 +4,6 @@
 
 // TODO: Refactor the code to be more modular and easier to understand
 // TODO: Add logging wherever required
-// TODO: Add input system so that it actually works.
 // TODO: Create input system and start creating the graphics library frontend first and then the backend.
 
 namespace ic {
@@ -60,4 +59,4 @@ namespace ic {
         m_Running = false;
         return true;
     }
-}
+} // namespace ic

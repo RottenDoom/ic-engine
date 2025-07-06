@@ -28,4 +28,4 @@ namespace ic
         window* m_Window;
         static application* s_Instance;
     };
-}
+} // namespace ic

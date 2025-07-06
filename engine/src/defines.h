@@ -18,6 +18,8 @@
 typedef float f32;
 typedef double f64;
 
+#define GLFW_INCLUDE_VULKAN
+
 // Properly define static assertions.
 #if defined(__clang__) || defined(__gcc__)
 #define STATIC_ASSERT _Static_assert

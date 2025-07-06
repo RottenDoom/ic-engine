@@ -36,4 +36,4 @@ namespace ic {
 		auto [x, y] = getMousePosition();
 		return y;
 	}
-}
+} // namespace ic

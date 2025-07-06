@@ -21,7 +21,7 @@ namespace ic {
 		static std::shared_ptr<spdlog::logger> s_ClientLogger; // https://github.com/gabime/spdlog/issues/1505 this might be helpfull
 	};
 
-}
+} // namespace ic
 
 // Core log macros
 #define IC_CORE_WARN(...)      ::ic::logger::getCoreLogger()->warn(__VA_ARGS__)

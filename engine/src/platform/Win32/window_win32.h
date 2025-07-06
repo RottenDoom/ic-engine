@@ -1,5 +1,7 @@
 #pragma once
 
+#include "defines.h"
+
 #include "GLFW/glfw3.h"
 #include "core/window.h"
 
@@ -8,7 +10,6 @@
 #include "core/events/mouse_event.h"
 #include "core/events/key_event.h"
 
-#include "defines.h"
 
 struct GLFWwindow;
 
@@ -50,4 +51,4 @@ namespace ic {
 		window_data m_data;
 	};
 
-}
+} // namespace ic

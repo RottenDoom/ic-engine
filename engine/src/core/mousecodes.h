@@ -26,4 +26,4 @@ namespace ic
 			ButtonMiddle = Button2
 		};
 	}
-}
+} // namespace ic

@@ -41,4 +41,4 @@ namespace ic {
 		static window* create(const window_props& props = window_props());
 	};
 
-}
+} // namespace ic
