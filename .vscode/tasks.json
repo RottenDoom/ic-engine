@@ -1,0 +1,24 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Build Everything",
+			"command": "build-all.bat",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"detail": "Builds all components using build-all.bat"
+		},
+		{
+			"type": "shell",
+			"label": "Clean Everything",
+			"command": "clean-all.bat",
+			"group": "build",
+			"problemMatcher": [],
+			"detail": "Cleans all build artifacts using clean-all.bat"
+		}
+	]
+}
