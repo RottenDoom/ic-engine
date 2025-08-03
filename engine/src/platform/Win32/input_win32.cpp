@@ -2,9 +2,6 @@
 
 #include "core/input.h"
 #include "core/application.h"
-
-#include <GLFW/glfw3.h>
-
 namespace ic {
 
 	bool input::isKeyPressed(const KeyCode key)

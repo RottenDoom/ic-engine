@@ -1,7 +1,6 @@
 #pragma once
 
 #include "defines.h"
-#include <GLFW/glfw3.h>
 
 // Vulkan Test
 void testVulkanExtensions() {

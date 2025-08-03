@@ -1,0 +1,27 @@
+#pragma once
+#include "defines.h"
+#include "vulkan/context.h"
+
+/*
+ * The renderer class is nothing but a cross platformer frontend for my engine. I am writing this engine currently in vulkan.
+ * My engine in probably also contain support for other graphic API (hopefully) and I would like this class to be the main hub for all three to present their code here.
+ */
+
+namespace ic {
+    class renderer
+    {
+    private:
+        bool m_initialized = false;
+        vulkan_context m_context;
+        
+    public:
+        renderer() = default;
+        virtual ~renderer() = default;
+
+        void init(GLFWwindow* window);
+        void renderFrame();
+        void cleanUp();
+
+
+    };
+} // namespace ic

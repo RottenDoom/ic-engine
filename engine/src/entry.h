@@ -1,6 +1,6 @@
 #pragma once
-#include "defines.h"
-#include "core/Application.h"
+#include "core/logger.h"
+#include "core/application.h"
 // should contain the declarations of the game class
 
 class game
@@ -20,28 +20,33 @@ int main(void)
 {
     game game_inst;
     if (!create_game(&game_inst)) {
-        IC_CRITICAL("Could not create game!");
+        IC_CORE_CRITICAL("Could not create game!");
         return -1;
     }
     
     // ensure function pointers exists
     if (!game_inst.render || !game_inst.update || !game_inst.on_resize || !game_inst.initialize) {
-        IC_CRITICAL("Game's function pointers not assigned!");
+        IC_CORE_CRITICAL("Game's function pointers not assigned!");
         return -2;
     }
     
     // initialization
     ic::application app;
     if (!app.applicationCreate(&game_inst)) {
-        IC_INFO("Application failed to create!");
+        IC_CORE_ERROR("Application failed to create!");
         return 1;
     }
     
     // begin loop
     if (!app.run()) {
-        IC_INFO("Application did not shutdown gracefully!");
+        IC_CORE_ERROR("Application did not shutdown gracefully!");
         return 2;
     }
+
+    IC_CORE_INFO("Application Shutdown Complete. Press Enter to exit...");
+    std::cout.flush();
+    std::cin.get();
     
     return 0;
+    
 }

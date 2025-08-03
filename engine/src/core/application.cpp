@@ -2,9 +2,11 @@
 #include "defines.h"
 #include "input.h"
 
-// TODO: Refactor the code to be more modular and easier to understand
-// TODO: Add logging wherever required
-// TODO: Create input system and start creating the graphics library frontend first and then the backend.
+// TODO: Refactor code
+// TODO: renderer initiailization done. renderer device creation and queues left
+// TODO: start actually rendering.
+// TODO: add a linux build with wayland to start building with valgrind memory checks
+// TODO: maybe write a memory effecient class for checking how much memory is being used. I suspect that memory of Validation layers of vilkan engine is being leaked
 
 namespace ic
 {
@@ -14,17 +16,21 @@ namespace ic
 
     application::application()
     {
+        ic::logger::init();
         s_Instance = this;
 
         m_Window = window::create();
         m_Window->setEventCallback(BIND_EVENT_FN(onEvent));
 
-        // Initialize the logger testing logger
-        ic::logger::init();
+        m_renderer = new renderer();
+        m_renderer->init((GLFWwindow*)(m_Window->getNativeWindow()));
+        IC_CORE_INFO("Application Initialized!");
     }
 
     application::~application()
     {
+        m_renderer->cleanUp();
+        delete m_renderer;
         delete m_Window;
     }
 
@@ -33,6 +39,9 @@ namespace ic
         while (m_Running)
         {
             m_Window->onUpdate();
+            m_renderer->renderFrame();
+
+            // update and delta time here.
         }
 
         return true;

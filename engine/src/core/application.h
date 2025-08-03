@@ -2,6 +2,7 @@
 #include "window.h"
 #include "events/event.h"
 #include "events/application_event.h"
+#include "renderer/renderer.h"
 
 class game;
 
@@ -26,6 +27,7 @@ namespace ic
 
         bool m_Running = true;
         window* m_Window;
+        renderer* m_renderer;
         static application* s_Instance;
     };
 } // namespace ic

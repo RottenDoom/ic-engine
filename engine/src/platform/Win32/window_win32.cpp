@@ -14,8 +14,16 @@ namespace ic {
 		return new win32_window(props);
 	}
 
-	win32_window::win32_window(const window_props& props)
-	{
+    void win32_window::createWindowSurface(VkInstance instance, VkSurfaceKHR *surface)
+    {
+		if (glfwCreateWindowSurface(instance, m_Window, nullptr, surface)) {
+			IC_ERROR("Failed to create Window Surface");
+			throw std::runtime_error("failed to create window surface!");
+		}
+    }
+
+    win32_window::win32_window(const window_props &props)
+    {
 		init(props);
 	}
 

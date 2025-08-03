@@ -19,6 +19,7 @@ typedef float f32;
 typedef double f64;
 
 #define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 
 // Properly define static assertions.
 #if defined(__clang__) || defined(__gcc__)
@@ -105,13 +106,4 @@ STATIC_ASSERT(sizeof(f64) == 8, "Expected f64 to be 8 bytes.");
 #else
 #define IC_INLINE static inline
 #define IC_NOINLINE
-#endif
-
-// Assertions
-#ifdef IC_ENABLE_ASSERTS
-	#define IC_ASSERT(x, ...) { if(!(x)) { IC_ERROR("Assertion Failed: {0}", __VA_ARGS__); __debugbreak(); } }
-	#define IC_CORE_ASSERT(x, ...) { if(!(x)) { IC_ERROR("Assertion Failed: {0}", __VA_ARGS__); __debugbreak(); } }
-#else
-	#define IC_ASSERT(x, ...)
-	#define IC_CORE_ASSERT(x, ...)
 #endif

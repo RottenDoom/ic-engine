@@ -2,3 +2,7 @@ build/
 build-ninja/
 *.log
 .env
+/shader_scripts
+/gen
+compile_shader.bat
+GEMINI.md

@@ -39,6 +39,8 @@ namespace ic {
 		virtual void* getNativeWindow() const = 0;
 
 		static window* create(const window_props& props = window_props());
+	private:
+		GLFWwindow* m_Window;
 	};
 
 } // namespace ic

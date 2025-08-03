@@ -16,6 +16,17 @@ set(IC_SOURCES
     src/core/events/key_event.h
     src/core/events/mouse_event.h
 
+    # renderer
+    src/renderer/renderer.h
+    src/renderer/renderer.cpp
+
+    # vulkan
+    src/renderer/vulkan/context.h
+    src/renderer/vulkan/context.cpp
+    src/renderer/vulkan/debug.h
+    src/renderer/vulkan/extensions.h
+    src/renderer/vulkan/extensions.cpp
+
     # TODO: How to not include tests
     # src/tests/rendering/base.h
 
@@ -48,9 +59,10 @@ target_include_directories(engine
 target_link_libraries(engine 
     PUBLIC
         spdlog::spdlog
-    PRIVATE
-        Vulkan::Vulkan
+        # todo: fix this public api expose
         glfw
+        Vulkan::Vulkan
+    PRIVATE
         glm::glm
 )
 
