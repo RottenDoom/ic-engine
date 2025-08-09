@@ -1,4 +1,19 @@
 {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "always",
+        "source.fixAll.clang-tidy": "always"
+    },
+    "C_Cpp.formatting": "clangFormat",
+    "clang-format.style": "file",
+    "clang-tidy.checks": "readability-*,modernize-*,performance-*,bugprone-*",
+    "clang-tidy.useBuildPath": "${workspaceFolder}/build/build-gcc",
+    "clang-tidy.compilerArgs": [
+        "-I${workspaceFolder}/build/build-gcc",
+        "-I${workspaceFolder}/engine/src"
+    ],
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/build-gcc/compile_commands.json",
+    "C_Cpp.default.compilerPath": "C:/mingw64/bin/g++.exe",
     "files.associations": {
         "*.tsx": "typescriptreact",
         "*.cpp": "cpp",
@@ -75,6 +90,5 @@
         "cinttypes": "cpp",
         "variant": "cpp",
         "*.tcc": "cpp"
-    },
-    "C_Cpp.default.compilerPath": "C:/mingw64/bin/g++.exe"
+    }
 }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.28)
 
 # Set C and C++ standards
 set(CMAKE_C_STANDARD 99)

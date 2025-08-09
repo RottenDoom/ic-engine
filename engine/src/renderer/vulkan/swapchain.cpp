@@ -4,24 +4,24 @@
 
 namespace ic
 {
-    swapchain::~swapchain() {
-    
-    }
+    swapchain::~swapchain() {}
 
-    swapchain::swapchain(swapchain &&other) noexcept {
+    swapchain::swapchain(swapchain&& other) noexcept
+    {
         m_device = other.m_device;
         m_extent = other.m_extent;
         m_images = other.m_images;
         m_format = other.m_format;
         m_imageFormat = other.m_imageFormat;
         m_imageViews = other.m_imageViews;
-        
+
         m_swapChain = VK_NULL_HANDLE;
     }
 
-    swapchain &swapchain::operator=(swapchain &&other) noexcept
+    swapchain& swapchain::operator=(swapchain&& other) noexcept
     {
-        if (this != &other) {
+        if (this != &other)
+        {
             destroy(); // Clean up current resources
             m_device = other.m_device;
             m_extent = other.m_extent;
@@ -29,18 +29,16 @@ namespace ic
             m_format = other.m_format;
             m_imageFormat = other.m_imageFormat;
             m_imageViews = other.m_imageViews;
-            
+
             m_swapChain = VK_NULL_HANDLE;
         }
         return *this;
     }
 
-    bool swapchain::create(
-        const logical_device &device,
-        const vulkan_surface &surface,
-        VkSwapchainKHR oldSwapChain = VK_NULL_HANDLE)
+    // TODO: const correctness
+    bool swapchain::create(logical_device& device, vulkan_surface& surface, VkSwapchainKHR oldSwapChain)
     {
-        swap_chain_support_details swapChainSupport = querySupport(device.getPhysicalDevice(), *surface.get());
+        swap_chain_support_details swapChainSupport = querySupport(device.getPhysicalDevice()->get(), surface.get());
 
         m_imageFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
         m_extent = chooseSwapExtent(swapChainSupport.capabilities);
@@ -48,13 +46,14 @@ namespace ic
 
         uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 
-        if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+        if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
+        {
             imageCount = swapChainSupport.capabilities.maxImageCount;
         }
 
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.surface = *surface.get();
+        createInfo.surface = surface.get();
         createInfo.minImageCount = imageCount;
         createInfo.imageFormat = m_imageFormat.format;
         createInfo.imageColorSpace = m_imageFormat.colorSpace;
@@ -62,19 +61,18 @@ namespace ic
         createInfo.imageArrayLayers = 1;
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-
         // TODO: fix
-        queue_family_indices indices = device.getPhysicalDevice().getQueueFamilyIndices();
-        uint32_t queueFamilyIndices[] = {
-            indices.graphicsFamily.value(),
-            indices.presentFamily.value()
-        };
+        queue_family_indices indices = device.getPhysicalDevice()->getQueueFamilyIndices();
+        uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
-        if (indices.graphicsFamily != indices.presentFamily) {
+        if (indices.graphicsFamily != indices.presentFamily)
+        {
             createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
             createInfo.queueFamilyIndexCount = 2;
             createInfo.pQueueFamilyIndices = queueFamilyIndices;
-        } else {
+        }
+        else
+        {
             createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
             createInfo.queueFamilyIndexCount = 0;
             createInfo.pQueueFamilyIndices = nullptr;
@@ -82,13 +80,15 @@ namespace ic
 
         createInfo.preTransform = swapChainSupport.capabilities.currentTransform; // transform the image
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // alpha channel blending with other windows.
-        
+
         createInfo.presentMode = m_presentMode;
         createInfo.clipped = VK_TRUE;
         createInfo.oldSwapchain = oldSwapChain;
 
-        if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &m_swapChain) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create swap chain.");
+        if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &m_swapChain) != VK_SUCCESS)
+        {
+            IC_CORE_ERROR("Failed to create swapchain!");
+            return false;
         }
 
         vkGetSwapchainImagesKHR(device, m_swapChain, &imageCount, nullptr);
@@ -97,10 +97,17 @@ namespace ic
 
         m_format = m_imageFormat.format;
 
-        createImageViews();
+        if (!createImageViews())
+        {
+            IC_CORE_ERROR("Failed to create Image Views!");
+            return false;
+        }
+
+        return true;
     }
 
-    void swapchain::destroy() {
+    void swapchain::destroy()
+    {
         vkDestroySwapchainKHR(getDevice(), m_swapChain, nullptr);
 
         // TODO: test this shit
@@ -115,20 +122,24 @@ namespace ic
         VkSwapchainKHR oldSwapChain = m_swapChain;
 
         // Destroy old image views first (but not the swapchain yet)
-        for (auto view : m_imageViews) {
-            if (view != VK_NULL_HANDLE) {
+        for (auto view : m_imageViews)
+        {
+            if (view != VK_NULL_HANDLE)
+            {
                 vkDestroyImageView(device, view, nullptr);
             }
         }
         m_imageViews.clear();
 
         // Call create again with the old swapchain to reuse compatible resources
-        if (!create(*vulkan_context::get()->getDevice(), *m_surface, oldSwapChain)) {
-            throw std::runtime_error("failed to recreate swap chain.");
+        if (!create(*vulkan_context::get()->getDevice(), *m_surface, oldSwapChain))
+        {
+            IC_CORE_ERROR("failed to recreate swap chain.");
         }
 
         // Destroy the old swapchain AFTER creating the new one
-        if (oldSwapChain != VK_NULL_HANDLE) {
+        if (oldSwapChain != VK_NULL_HANDLE)
+        {
             vkDestroySwapchainKHR(device, oldSwapChain, nullptr);
         }
 
@@ -144,7 +155,8 @@ namespace ic
         uint32_t formatCount;
         vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
 
-        if (formatCount != 0) {
+        if (formatCount != 0)
+        {
             details.formats.resize(formatCount);
             vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
         }
@@ -152,7 +164,8 @@ namespace ic
         uint32_t presentModeCount;
         vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
 
-        if (presentModeCount != 0) {
+        if (presentModeCount != 0)
+        {
             details.presentModes.resize(presentModeCount);
             vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
         }
@@ -160,17 +173,19 @@ namespace ic
         return details;
     }
 
-    bool swapchain::createImageViews() {
+    bool swapchain::createImageViews()
+    {
         m_imageViews.resize(m_images.size());
 
-        for (size_t i = 0; i < m_imageViews.size(); i++) {
+        for (size_t i = 0; i < m_imageViews.size(); i++)
+        {
             VkImageViewCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             createInfo.image = m_images[i];
 
             createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // image view in 1d 2d or 3d or cube maps
             createInfo.format = m_format;
-            
+
             createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
             createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
             createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -182,25 +197,35 @@ namespace ic
             createInfo.subresourceRange.baseArrayLayer = 0;
             createInfo.subresourceRange.layerCount = 1;
 
-            if (!vkCreateImageView(vulkan_context::get()->getDevice()->get(), &createInfo, nullptr, &m_imageViews[i]) != VK_SUCCESS) {
+            if (vkCreateImageView(vulkan_context::get()->getDevice()->get(), &createInfo, nullptr, &m_imageViews[i]) !=
+                VK_SUCCESS)
+            {
                 IC_ERROR("Failed to Create Image Views");
+                return false;
             }
         }
+        return true;
     }
 
-    VkSurfaceFormatKHR swapchain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats) const {
-        for (const auto& availableFormat: availableFormats) {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+    VkSurfaceFormatKHR swapchain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const
+    {
+        for (const auto& availableFormat : availableFormats)
+        {
+            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
+                availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            {
                 return availableFormat; // return the format required.
             }
         }
         return availableFormats[0];
     }
 
-    VkPresentModeKHR swapchain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes) const
+    VkPresentModeKHR swapchain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const
     {
-        for (const auto& availablePresentMode: availablePresentModes) {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+        for (const auto& availablePresentMode : availablePresentModes)
+        {
+            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+            {
                 return availablePresentMode;
             }
         }
@@ -208,27 +233,28 @@ namespace ic
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    VkExtent2D swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) const
+    VkExtent2D swapchain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const
     {
-        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+        {
             return capabilities.currentExtent;
-        } else {
+        }
+        else
+        {
             int width, height;
             glfwGetFramebufferSize(application::getWindow(), &width, &height);
 
-            VkExtent2D actualExtent = {
-                static_cast<uint32_t>(width), static_cast<uint32_t>(height)
-            };
+            VkExtent2D actualExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 
-            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+            actualExtent.width =
+                std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+            actualExtent.height =
+                std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
             return actualExtent;
         }
     }
 
-    void swapchain::cleanUp() {
-
-    }
+    void swapchain::cleanUp() {}
 
 } // namespace ic

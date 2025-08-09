@@ -1,28 +1,30 @@
 # IC Engine
-Sounds like a cool combustion engine. This engine is renders stuff so that I can creat games.
+
+Sounds like a cool combustion engine. This engine renders stuff so that I can creat games.
 
 ## Build commands
 
 To build the project use:
 
 ```bash
-cmake -G Ninja -DCMAKE_MAKE_PROGRAM=ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -B build
-cmake --build build
+build-all.bat gcc debug
 ```
-You can use whatever build type you like, I prefer ninja.<p>
-This builds the project and dll file with it. Havent used hot reloading yet.<p>
+
+OR
 
 ```bash
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -B build-ninja
-cmake --build build-ninja
+cmake --preset="gcc-debug"
+cmake --build --preset="gcc-debug"
 ```
 
+The executable can be found inside `build/build-gcc/bin/Debug/`. You can also use clang compiler now. I use vscode for now but configurations for other IDEs can be easily developed.
+
 ### TODO
-- Add debug and release builds
+
 - DLL imports and exports and live reloads
 - Start rendering meshes
 - Create an actual game
 - Workflows and Tests
+- Make a release.
 
 The project is largely based on the game engine by the cherno and kofi engine.<p>
-Thank You.
