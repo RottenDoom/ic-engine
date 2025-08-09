@@ -1,6 +1,6 @@
 # IC Engine
 
-Sounds like a cool combustion engine. This engine is renders stuff so that I can creat games.
+Sounds like a cool combustion engine. This engine renders stuff so that I can creat games.
 
 ## Build commands
 
