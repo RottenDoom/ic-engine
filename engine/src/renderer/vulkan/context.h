@@ -1,26 +1,63 @@
 #pragma once
 #include "defines.h"
+#include "surface.h"
+#include "logical_device.h"
+#include "swapchain.h"
+#include "core/window.h"
+
+// TODO: fix const references
 
 namespace ic
-{ 
+{
     class vulkan_context {
     public:
-        bool init();
-        void cleanUp();
-        
-        VkInstance getInstance() const { return m_instance; }
+        // Move semantics
+        vulkan_context(const vulkan_context&) = delete;
+        vulkan_context& operator=(const vulkan_context&) = delete;
+        vulkan_context(vulkan_context&& other) noexcept;
+        vulkan_context& operator=(vulkan_context&& other) noexcept;
 
+        virtual ~vulkan_context() = default;
+
+        bool initialize(
+            GLFWwindow* window,
+            bool enableValidation = true
+        );
+
+        void cleanUp();
+        void recreateSwapChain();
+
+        
+        vulkan_surface* getSurface() const { return m_surface.get(); }
+        logical_device* getDevice() const { return m_device.get(); }
+        swapchain* getSwapChain() const { return m_swapchain.get(); }
+        
+        // void waitIdle() const { if (m_device) m_device->waitIdle(); } // TODO get this somewhere else.
+        
+        VkInstance* getInstance() const { return m_vk_instance.get(); }
+        
+        static vulkan_context* s_context;
+        static vulkan_context* get() { return s_context; } // getter for context;
+        
     private:
         bool createInstance();
+        bool createSurface(GLFWwindow* window);
+        bool createDevice();
+        bool createSwapChain();
 
-        VkInstance m_instance = VK_NULL_HANDLE;
+        bool m_initialized = false;
+        std::unique_ptr<VkInstance> m_vk_instance;
+        std::unique_ptr<vulkan_surface> m_surface;
+        std::unique_ptr<logical_device> m_device;
+        std::unique_ptr<swapchain> m_swapchain;
+
         VkDebugUtilsMessengerEXT m_debugMessenger = VK_NULL_HANDLE;
-        
-        // debug utils
+    
+        // debug utils (TODO: make this global setting)
 #ifdef _DEBUG
-        const bool m_enableValidationLayers = true;
+        bool m_enableValidation = true;
 #else
-        const bool m_enableValidationLayers = false;
+        bool m_enableValidation = false;
 #endif
         const std::vector<const char*> m_validationLayers = {
             "VK_LAYER_KHRONOS_validation"

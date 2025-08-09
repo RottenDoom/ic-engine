@@ -32,8 +32,6 @@ namespace ic {
 		bool isVSync() const override;
 
 		inline virtual void* getNativeWindow() const { return m_Window; }
-
-		void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface);
 	private:
 		virtual void init(const window_props& props);
 		virtual void shutdown();

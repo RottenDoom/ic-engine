@@ -12,13 +12,13 @@ namespace ic {
     {
     private:
         bool m_initialized = false;
-        vulkan_context m_context;
+        std::unique_ptr<vulkan_context> m_context;
         
     public:
         renderer() = default;
         virtual ~renderer() = default;
 
-        void init(GLFWwindow* window);
+        bool init(GLFWwindow* window);
         void renderFrame();
         void cleanUp();
 

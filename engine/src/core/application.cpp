@@ -2,7 +2,7 @@
 #include "defines.h"
 #include "input.h"
 
-// TODO: Refactor code
+// TODO: Refactor code (refactor device.cpp and make files )
 // TODO: renderer initiailization done. renderer device creation and queues left
 // TODO: start actually rendering.
 // TODO: add a linux build with wayland to start building with valgrind memory checks
@@ -23,7 +23,7 @@ namespace ic
         m_Window->setEventCallback(BIND_EVENT_FN(onEvent));
 
         m_renderer = new renderer();
-        m_renderer->init((GLFWwindow*)(m_Window->getNativeWindow()));
+        m_renderer->init(getWindow());
         IC_CORE_INFO("Application Initialized!");
     }
 

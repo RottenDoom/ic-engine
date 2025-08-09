@@ -4,14 +4,23 @@
 namespace ic
 {
 
-    void renderer::init(GLFWwindow *window)
+    bool renderer::init(GLFWwindow *window)
     {
-        if (!m_context.init()) {
-            IC_CORE_FATAL_IF(!m_initialized, "Renderer not initialized");
-            return;
+        if (m_initialized) {
+            IC_CORE_WARN("Renderer already initialized");
+            return false;
+        }
+
+        m_context = std::make_unique<vulkan_context>();
+
+        device_requirements requirements;
+        if (!m_context->initialize(window, true, requirements)) {
+            IC_CORE_ERROR("Failed to initialize renderer!");
+            return false;
         }
         m_initialized = true;
         IC_CORE_INFO("Renderer Initialized");
+        return true;
     }
 
     void renderer::renderFrame()
@@ -25,7 +34,7 @@ namespace ic
     {
         if (!m_initialized) return;
         m_initialized = false;
-        m_context.cleanUp();
+        m_context->cleanUp();
         IC_CORE_INFO("Renderer Cleaned Up!");
     }
 

@@ -19,7 +19,7 @@ namespace ic
         bool applicationCreate(game* game_inst);
 
         static application& get();
-        inline window& getWindow() { return *m_Window; }
+        static GLFWwindow* getWindow() { return (GLFWwindow*)s_Instance->m_Window->getNativeWindow(); }
 
     private:
         bool onWindowClose(WindowClosedEvent& e);

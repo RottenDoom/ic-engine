@@ -1,3 +1,6 @@
+# IC Engine
+Sounds like a cool combustion engine. This engine is renders stuff so that I can creat games.
+
 ## Build commands
 
 To build the project use:
@@ -16,9 +19,10 @@ cmake --build build-ninja
 
 ### TODO
 - Add debug and release builds
-- Start making renderer.
-- Workflows and Tests
 - DLL imports and exports and live reloads
+- Start rendering meshes
+- Create an actual game
+- Workflows and Tests
 
 The project is largely based on the game engine by the cherno and kofi engine.<p>
 Thank You.

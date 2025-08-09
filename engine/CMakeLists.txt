@@ -23,9 +23,19 @@ set(IC_SOURCES
     # vulkan
     src/renderer/vulkan/context.h
     src/renderer/vulkan/context.cpp
+    src/renderer/vulkan/surface.h
+    src/renderer/vulkan/surface.cpp
     src/renderer/vulkan/debug.h
     src/renderer/vulkan/extensions.h
     src/renderer/vulkan/extensions.cpp
+    src/renderer/vulkan/physical_device.h
+    src/renderer/vulkan/physical_device.cpp
+    src/renderer/vulkan/logical_device.h
+    src/renderer/vulkan/logical_device.cpp
+    src/renderer/vulkan/queue_manager.h
+    src/renderer/vulkan/queue_manager.cpp
+    src/renderer/vulkan/swapchain.h
+    src/renderer/vulkan/swapchain.cpp
 
     # TODO: How to not include tests
     # src/tests/rendering/base.h

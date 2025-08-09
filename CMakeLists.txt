@@ -12,12 +12,11 @@ endif()
 
 # modules
 list(APPEND CMAKE_MODULE_PATH
-${PROJECT_SOURCE_DIR}/cmake
-${PROJECT_SOURCE_DIR}/cmake/cmake-compiler
+    ${PROJECT_SOURCE_DIR}/cmake
+    ${PROJECT_SOURCE_DIR}/cmake/cmake-compiler
 )
 
 # Set gcc as the compiler
-include(cmake/cmake-compiler/gcc.cmake)
 include(cmake/version.cmake)
 include(cmake/macros.cmake)
 
