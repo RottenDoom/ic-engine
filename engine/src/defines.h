@@ -1,20 +1,21 @@
 #pragma once
 
-#include <set>
-#include <cstdint>
-#include <iostream>
-#include <memory>
-#include <utility>
-#include <limits>
 #include <algorithm>
-#include <functional>
-#include <string>
-#include <sstream>
 #include <array>
-#include <vector>
+#include <cstdint>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <map>
+#include <memory>
 #include <optional>
+#include <set>
+#include <sstream>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "core/logger.h"
 
@@ -46,7 +47,7 @@ STATIC_ASSERT(sizeof(f32) == 4, "Expected f32 to be 4 bytes.");
 STATIC_ASSERT(sizeof(f64) == 8, "Expected f64 to be 8 bytes.");
 
 // Platform detection
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
 #define IC_PLATFORM_WINDOWS 1
 #ifndef _WIN64
 #error "64-bit is required on Windows!"
@@ -99,8 +100,7 @@ STATIC_ASSERT(sizeof(f64) == 8, "Expected f64 to be 8 bytes.");
 #endif
 #endif
 
-#define IC_CLAMP(value, min, max) (value <= min) ? min : (value >= max) ? max \
-                                                                      : value;
+#define IC_CLAMP(value, min, max) (value <= min) ? min : (value >= max) ? max : value;
 
 // Inlining
 #ifdef _MSC_VER
