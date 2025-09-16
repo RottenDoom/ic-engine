@@ -3,6 +3,7 @@ build-ninja/
 *.log
 .env
 /shader_scripts
+/logs
 /gen
 compile_shader.bat
 GEMINI.md

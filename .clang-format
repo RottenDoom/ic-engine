@@ -1,7 +1,7 @@
 BasedOnStyle: LLVM
-IndentWidth: 4
+IndentWidth: 8
 ColumnLimit: 120
-AccessModifierOffset: -4
+AccessModifierOffset: -8
 NamespaceIndentation: All
 PointerAlignment: Left
 AllowShortFunctionsOnASingleLine: Empty
@@ -10,3 +10,7 @@ SpaceAfterCStyleCast: true
 SortIncludes: true
 IncludeBlocks: Preserve
 BreakBeforeBraces: Allman
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: false

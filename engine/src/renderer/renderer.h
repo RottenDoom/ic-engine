@@ -10,18 +10,18 @@
 
 namespace ic
 {
-    class renderer
-    {
-    private:
-        bool m_initialized = false;
-        std::unique_ptr<vulkan_context> m_context;
+        class renderer
+        {
+        private:
+                bool m_initialized = false;
+                std::unique_ptr<vulkan_context> m_context;
 
-    public:
-        renderer() = default;
-        virtual ~renderer() = default;
+        public:
+                renderer()          = default;
+                virtual ~renderer() = default;
 
-        bool init(GLFWwindow* window);
-        void renderFrame();
-        void cleanUp();
-    };
+                bool init(GLFWwindow* window);
+                void renderFrame();
+                void cleanUp();
+        };
 } // namespace ic

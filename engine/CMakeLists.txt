@@ -36,6 +36,8 @@ set(IC_SOURCES
     src/renderer/vulkan/queue_manager.cpp
     src/renderer/vulkan/swapchain.h
     src/renderer/vulkan/swapchain.cpp
+    src/renderer/vulkan/pipeline.h
+    src/renderer/vulkan/pipeline.cpp
 
     # TODO: How to not include tests
     # src/tests/rendering/base.h

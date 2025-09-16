@@ -5,50 +5,50 @@
 namespace ic
 {
 
-    class logical_device
-    {
-    private:
-        VkDevice m_device = VK_NULL_HANDLE;
-        std::unique_ptr<physical_device> m_physicalDevice;
-        queue_manager* m_queueManager;
-
-    public:
-        logical_device() = default;
-        virtual ~logical_device();
-
-        // Move semantics (RAII)
-        logical_device(const logical_device&) = delete;
-        logical_device& operator=(const logical_device&) = delete;
-        logical_device(logical_device&& other) noexcept;
-        logical_device& operator=(logical_device&& other) noexcept;
-
-        bool create(std::unique_ptr<physical_device> physicalDevice, VkSurfaceKHR surface);
-
-        void destroy();
-
-        VkDevice get() const
+        class logical_device
         {
-            return m_device;
-        }
-        operator VkDevice() const
-        {
-            return m_device;
-        }
+        private:
+                VkDevice m_device = VK_NULL_HANDLE;
+                std::unique_ptr<physical_device> m_physicalDevice;
+                queue_manager* m_queueManager;
 
-        const physical_device* getPhysicalDevice() const
-        {
-            return m_physicalDevice.get();
-        }
-        // queue_manager* getQueueManager() const { return m_queueManager->get(); }
+        public:
+                logical_device() = default;
+                virtual ~logical_device();
 
-        void waitIdle() const;
+                // Move semantics (RAII)
+                logical_device(const logical_device&)            = delete;
+                logical_device& operator=(const logical_device&) = delete;
+                logical_device(logical_device&& other) noexcept;
+                logical_device& operator=(logical_device&& other) noexcept;
 
-    private:
-        bool createLogicalDevice(VkSurfaceKHR surface);
-        std::vector<const char*> getRequiredExtensionPtrs() const;
+                bool create(std::unique_ptr<physical_device> physicalDevice, VkSurfaceKHR surface);
 
-        void moveFrom(logical_device&& other) noexcept;
-        void reset() noexcept;
-    };
+                void destroy();
+
+                VkDevice get() const
+                {
+                        return m_device;
+                }
+                operator VkDevice() const
+                {
+                        return m_device;
+                }
+
+                const physical_device* getPhysicalDevice() const
+                {
+                        return m_physicalDevice.get();
+                }
+                // queue_manager* getQueueManager() const { return m_queueManager->get(); }
+
+                void waitIdle() const;
+
+        private:
+                bool createLogicalDevice(VkSurfaceKHR surface);
+                std::vector<const char*> getRequiredExtensionPtrs() const;
+
+                void moveFrom(logical_device&& other) noexcept;
+                void reset() noexcept;
+        };
 
 } // namespace ic
