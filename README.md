@@ -1,6 +1,6 @@
 # IC Engine
 
-Sounds like a cool combustion engine. This engine renders stuff so that I can creat games.
+Sounds like a cool combustion engine. This engine renders stuff so that I can create games.
 
 ## Build commands
 
@@ -26,5 +26,8 @@ The executable can be found inside `build/build-gcc/bin/Debug/`. You can also us
 - Create an actual game
 - Workflows and Tests
 - Make a release.
+- Create a custom allocator that also makes a report on how much memory each object is using and if there is a memory leak.
+- Write my own move functions and my own copy functions.
+- Custom file system
 
 The project is largely based on the game engine by the cherno and kofi engine.<p>

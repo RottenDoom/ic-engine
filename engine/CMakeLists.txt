@@ -38,6 +38,20 @@ set(IC_SOURCES
     src/renderer/vulkan/swapchain.cpp
     src/renderer/vulkan/pipeline.h
     src/renderer/vulkan/pipeline.cpp
+    src/renderer/vulkan/shader.h
+    src/renderer/vulkan/shader.cpp
+    src/renderer/vulkan/vk_renderer.h
+    src/renderer/vulkan/vk_renderer.cpp
+    src/renderer/vulkan/pipeline_layout.h
+    src/renderer/vulkan/pipeline_layout.cpp
+    src/renderer/vulkan/renderpass.h
+    src/renderer/vulkan/renderpass.cpp
+    src/renderer/vulkan/framebuffer.h
+    src/renderer/vulkan/framebuffer.cpp
+    src/renderer/vulkan/vkcmd.h
+    src/renderer/vulkan/vkcmd.cpp
+    src/renderer/vulkan/sync_objects.h
+    src/renderer/vulkan/sync_objects.cpp
 
     # TODO: How to not include tests
     # src/tests/rendering/base.h

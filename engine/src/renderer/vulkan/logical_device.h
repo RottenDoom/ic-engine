@@ -26,19 +26,11 @@ namespace ic
 
                 void destroy();
 
-                VkDevice get() const
-                {
-                        return m_device;
-                }
-                operator VkDevice() const
-                {
-                        return m_device;
-                }
+                VkDevice get() const { return m_device; }
 
-                const physical_device* getPhysicalDevice() const
-                {
-                        return m_physicalDevice.get();
-                }
+                operator VkDevice() const { return m_device; }
+
+                const physical_device* getPhysicalDevice() const { return m_physicalDevice.get(); }
                 // queue_manager* getQueueManager() const { return m_queueManager->get(); }
 
                 void waitIdle() const;
@@ -50,5 +42,4 @@ namespace ic
                 void moveFrom(logical_device&& other) noexcept;
                 void reset() noexcept;
         };
-
-} // namespace ic
+}  // namespace ic
