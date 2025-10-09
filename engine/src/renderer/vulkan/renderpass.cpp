@@ -4,7 +4,7 @@ namespace ic
 {
         render_pass::~render_pass() {}
 
-        bool render_pass::create(VkDevice device, const VkFormat& swapchainImageForamt,
+        bool render_pass::create(VkDevice device, const VkFormat& swapchainImageForamt, const VkFormat& depthFormat,
                                  const VkAllocationCallbacks* callback)
         {
                 VkAttachmentDescription colorAttachment{};
@@ -18,27 +18,43 @@ namespace ic
                 colorAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
                 colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-                VkAttachmentReference ref{};
-                ref.attachment = 0;
-                ref.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                VkAttachmentDescription depthAttachment{};
+                depthAttachment.format = depthFormat;
+                depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+                depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+                VkAttachmentReference colorAttachmentRef{};
+                colorAttachmentRef.attachment = 0;
+                colorAttachmentRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+                VkAttachmentReference depthAttachmentRef{};
+                depthAttachmentRef.attachment = 1;
+                depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
                 VkSubpassDescription subpass{};
                 subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
                 subpass.colorAttachmentCount = 1;
-                subpass.pColorAttachments    = &ref;
+                subpass.pColorAttachments    = &colorAttachmentRef;
+                subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
                 VkSubpassDependency deps{};
                 deps.srcSubpass    = VK_SUBPASS_EXTERNAL;
                 deps.dstSubpass    = 0;
-                deps.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                deps.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
                 deps.srcAccessMask = 0;
-                deps.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-                deps.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                deps.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+                deps.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+                std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
                 VkRenderPassCreateInfo CI{};
                 CI.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-                CI.attachmentCount = 1;
-                CI.pAttachments    = &colorAttachment;
+                CI.attachmentCount = static_cast<uint32_t>(attachments.size());
+                CI.pAttachments    = attachments.data();
                 CI.subpassCount    = 1;
                 CI.pSubpasses      = &subpass;
                 CI.dependencyCount = 1;

@@ -21,7 +21,7 @@ namespace ic
                 VkRenderPass get() const { return m_renderPass; }
 
                 // TODO: fix these functions with a allocator
-                bool create(VkDevice device, const VkFormat& swapchainImageForamt,
+                bool create(VkDevice device, const VkFormat& swapchainImageForamt, const VkFormat& depthFormat,
                             const VkAllocationCallbacks* callbacks = nullptr);
                 void destroy(VkDevice device, const VkAllocationCallbacks* callbacks = nullptr);
 

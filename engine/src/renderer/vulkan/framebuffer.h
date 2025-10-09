@@ -17,8 +17,13 @@ namespace ic
                 framebuffer(framebuffer&& other) noexcept;
                 framebuffer& operator=(framebuffer&& other) noexcept;
 
-                bool create(const VkDevice& device, const VkRenderPass& renderpass, const VkExtent2D& swapChainExtent,
-                            const uint32_t& attachmentCount, const VkImageView* pAttachments,
+                operator VkFramebuffer() const { return m_framebuffer; }
+
+                bool create(const VkDevice& device,
+                            const VkRenderPass& renderpass,
+                            const VkExtent2D& swapChainExtent,
+                            const uint32_t& attachmentCount,
+                            const VkImageView* pAttachments,
                             VkAllocationCallbacks* callbacks = nullptr) noexcept;
 
                 void destroy(const VkDevice& device);
@@ -27,4 +32,4 @@ namespace ic
                 void moveFrom(framebuffer&& other);
                 void reset();
         };
-} // namespace ic
+}  // namespace ic

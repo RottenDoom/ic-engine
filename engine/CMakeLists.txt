@@ -30,28 +30,26 @@ set(IC_SOURCES
     src/renderer/vulkan/extensions.cpp
     src/renderer/vulkan/physical_device.h
     src/renderer/vulkan/physical_device.cpp
-    src/renderer/vulkan/logical_device.h
-    src/renderer/vulkan/logical_device.cpp
+    src/renderer/vulkan/device.h
+    src/renderer/vulkan/device.cpp
     src/renderer/vulkan/queue_manager.h
     src/renderer/vulkan/queue_manager.cpp
     src/renderer/vulkan/swapchain.h
     src/renderer/vulkan/swapchain.cpp
-    src/renderer/vulkan/pipeline.h
-    src/renderer/vulkan/pipeline.cpp
+    src/renderer/vulkan/pipeline_config.h
+    src/renderer/vulkan/pipeline_config.cpp
     src/renderer/vulkan/shader.h
     src/renderer/vulkan/shader.cpp
-    src/renderer/vulkan/vk_renderer.h
-    src/renderer/vulkan/vk_renderer.cpp
-    src/renderer/vulkan/pipeline_layout.h
-    src/renderer/vulkan/pipeline_layout.cpp
+    src/renderer/vulkan/vulkan_renderer.h
+    src/renderer/vulkan/vulkan_renderer.cpp
     src/renderer/vulkan/renderpass.h
     src/renderer/vulkan/renderpass.cpp
     src/renderer/vulkan/framebuffer.h
     src/renderer/vulkan/framebuffer.cpp
-    src/renderer/vulkan/vkcmd.h
-    src/renderer/vulkan/vkcmd.cpp
     src/renderer/vulkan/sync_objects.h
     src/renderer/vulkan/sync_objects.cpp
+    src/renderer/vulkan/buffer.h
+    src/renderer/vulkan/buffer.cpp
 
     # TODO: How to not include tests
     # src/tests/rendering/base.h

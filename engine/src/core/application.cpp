@@ -70,4 +70,13 @@ namespace ic
                 m_Running = false;
                 return true;
         }
-} // namespace ic
+        bool application::onWindowResize(WindowResizedEvent& e)
+        {
+                /// TODO: look into the resizing part
+                while (m_Window->getHeight() == 0 || m_Window->getWidth() == 0)
+                {
+                        glfwWaitEvents();
+                }
+                return true;
+        }
+}  // namespace ic

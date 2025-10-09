@@ -19,8 +19,8 @@ namespace ic
                         return false;
                 }
 
-                m_renderer = std::make_unique<vulkan_renderer>();
-                if (!m_renderer->create())
+                m_renderer = std::make_unique<vulkan_renderer>(m_context.get());
+                if (!m_renderer->init())
                 {
                         IC_CORE_ERROR("Failed to initialize renderer!");
                         return false;
@@ -34,9 +34,9 @@ namespace ic
         void renderer::renderFrame()
         {
                 IC_CORE_FATAL_IF(!m_initialized,
-                                 "Render called before Initialization!"); // TODO: fix that if renderer not initialized
-                                                                          // it never comes here
-                m_renderer->drawFrame();
+                                 "Render called before Initialization!");  // TODO: fix that if renderer not initialized
+                                                                           // it never comes here
+                m_renderer->render();
                 // IC_INFO("Renderer Called!");
         }
 
@@ -45,9 +45,9 @@ namespace ic
                 if (!m_initialized)
                         return;
                 m_initialized = false;
-                m_renderer->destroy(m_context.get()->getDevice()->get());
+                m_renderer->destroy();
                 m_context->cleanUp();
                 IC_CORE_INFO("Renderer Cleaned Up!");
         }
 
-} // namespace ic
+}  // namespace ic

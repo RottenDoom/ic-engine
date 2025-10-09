@@ -4,7 +4,7 @@ namespace ic
 {
         shader::~shader() {}
 
-        shader::shader(VkDevice device, const std::string& filename)
+        shader::shader(VkDevice device, const std::string& filename) : m_device(device)
         {
                 create(device, filename);
         }
@@ -55,7 +55,7 @@ namespace ic
                         IC_CORE_ERROR("Failed to open File");
                 }
 
-                size_t fileSize = (size_t) file.tellg();
+                size_t fileSize = (size_t)file.tellg();
                 IC_CORE_TRACE("Filesize: {0}", fileSize);
 
                 std::vector<char> buffer(fileSize);
@@ -80,12 +80,10 @@ namespace ic
 
         void shader::reset() noexcept
         {
-                if (m_shaderModule != VK_NULL_HANDLE && m_device != VK_NULL_HANDLE)
-                {
-                        vkDestroyShaderModule(m_device, m_shaderModule, nullptr);
-                }
+                IC_CORE_TRACE("Deleted Staging Shader Modules");
+                vkDestroyShaderModule(m_device, m_shaderModule, nullptr);
                 m_shaderModule = VK_NULL_HANDLE;
                 m_device       = VK_NULL_HANDLE;
         }
 
-} // namespace ic
+}  // namespace ic

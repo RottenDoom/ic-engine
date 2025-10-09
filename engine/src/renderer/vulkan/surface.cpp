@@ -2,38 +2,33 @@
 
 namespace ic
 {
-    vulkan_surface::~vulkan_surface()
-    {
-        // check for memory leaks
-    }
-
-    vulkan_surface::vulkan_surface(vulkan_surface&& other) noexcept
-    {
-        other.m_surface = VK_NULL_HANDLE;
-    }
-
-    bool vulkan_surface::create(VkInstance* instance, GLFWwindow* window)
-    {
-        if (m_surface != VK_NULL_HANDLE)
+        vulkan_surface::~vulkan_surface()
         {
-            IC_CORE_WARN("Surface already created");
-            return true;
+                // check for memory leaks
         }
 
-        if (glfwCreateWindowSurface(*instance, window, nullptr, &m_surface) != VK_SUCCESS)
+        bool vulkan_surface::create(VkInstance* instance, GLFWwindow* window)
         {
-            IC_CORE_ERROR("GLFW Surface Creation Failed!");
-            return false;
-        }
-        return true;
-    }
+                if (m_surface != VK_NULL_HANDLE)
+                {
+                        IC_CORE_WARN("Surface already created");
+                        return true;
+                }
 
-    void vulkan_surface::destroy(VkInstance* instance)
-    {
-        if (m_surface != VK_NULL_HANDLE)
-        {
-            vkDestroySurfaceKHR(*instance, m_surface, nullptr);
-            m_surface = VK_NULL_HANDLE;
+                if (glfwCreateWindowSurface(*instance, window, nullptr, &m_surface) != VK_SUCCESS)
+                {
+                        IC_CORE_ERROR("GLFW Surface Creation Failed!");
+                        return false;
+                }
+                return true;
         }
-    }
-} // namespace ic
+
+        void vulkan_surface::destroy(VkInstance* instance)
+        {
+                if (m_surface != VK_NULL_HANDLE)
+                {
+                        vkDestroySurfaceKHR(*instance, m_surface, nullptr);
+                        m_surface = VK_NULL_HANDLE;
+                }
+        }
+}  // namespace ic

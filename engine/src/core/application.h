@@ -19,15 +19,15 @@ namespace ic
                 bool applicationCreate(game* game_inst);
 
                 static application& get();
-                static GLFWwindow* getWindow() { return (GLFWwindow*) s_Instance->m_Window->getNativeWindow(); }
+                static GLFWwindow* getWindow() { return (GLFWwindow*)s_Instance->m_Window->getNativeWindow(); }
 
         private:
                 bool onWindowClose(WindowClosedEvent& e);
-                // bool onWindowResize(WindowResizedEvent& e);
+                bool onWindowResize(WindowResizedEvent& e);
 
                 bool m_Running = true;
                 window* m_Window;
                 renderer* m_renderer;
                 static application* s_Instance;
         };
-} // namespace ic
+}  // namespace ic

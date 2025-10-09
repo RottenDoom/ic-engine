@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.h"
 #include "vulkan/context.h"
-#include "vulkan/vk_renderer.h"
+#include "vulkan/vulkan_renderer.h"
 
 /*
  * The renderer class is nothing but a cross platformer frontend for my engine. I am writing this engine currently in
@@ -26,4 +26,4 @@ namespace ic
                 void renderFrame();
                 void cleanUp();
         };
-} // namespace ic
+}  // namespace ic

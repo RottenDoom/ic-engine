@@ -18,8 +18,7 @@ namespace ic
         vulkan_context::vulkan_context(vulkan_context&& other) noexcept
             : m_initialized(other.m_initialized), m_vk_instance(std::move(other.m_vk_instance)),
               m_surface(std::move(other.m_surface)), m_device(std::move(other.m_device)),
-              m_swapchain(std::move(other.m_swapchain)), m_debugMessenger(std::move(other.m_debugMessenger)),
-              m_enableValidation(std::move(other.m_enableValidation))
+              m_swapchain(std::move(other.m_swapchain)), m_debugMessenger(std::move(other.m_debugMessenger))
         {
                 // steal static context pointer if it points to the other
                 if (s_context == &other)
@@ -43,13 +42,12 @@ namespace ic
                 cleanUp();
 
                 // move members
-                m_initialized      = other.m_initialized;
-                m_vk_instance      = std::move(other.m_vk_instance);
-                m_surface          = std::move(other.m_surface);
-                m_device           = std::move(other.m_device);
-                m_swapchain        = std::move(other.m_swapchain);
-                m_debugMessenger   = other.m_debugMessenger;
-                m_enableValidation = other.m_enableValidation;
+                m_initialized    = other.m_initialized;
+                m_vk_instance    = std::move(other.m_vk_instance);
+                m_surface        = std::move(other.m_surface);
+                m_device         = std::move(other.m_device);
+                m_swapchain      = std::move(other.m_swapchain);
+                m_debugMessenger = other.m_debugMessenger;
 
                 // fix static pointer
                 if (s_context == &other)
@@ -80,7 +78,7 @@ namespace ic
                         s_context = this;
                 }
 
-                m_enableValidation = enableValidation;
+                settings.validation = enableValidation;
 
                 if (!createInstance())
                 {
@@ -131,16 +129,10 @@ namespace ic
                         return;
                 }
 
-                // wait for device to be idle before cleanup
-                if (m_device)
+                if (settings.validation && m_debugMessenger != VK_NULL_HANDLE)
                 {
-                        m_device->waitIdle();
-                }
-
-                if (m_enableValidation && m_debugMessenger != VK_NULL_HANDLE)
-                {
-                        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(
-                            *m_vk_instance, "vkDestroyDebugUtilsMessengerEXT");
+                        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)
+                            vkGetInstanceProcAddr(*m_vk_instance, "vkDestroyDebugUtilsMessengerEXT");
 
                         if (func)
                         {
@@ -151,7 +143,7 @@ namespace ic
 
                 if (m_renderpass)
                 {
-                        m_renderpass->destroy(m_device->get());
+                        m_renderpass->destroy(m_device->logicalDevice);
                         m_renderpass = nullptr;
                 }
 
@@ -163,16 +155,16 @@ namespace ic
                         m_swapchain = nullptr;
                 }
 
-                if (m_device)
-                {
-                        m_device->destroy();
-                        m_device = nullptr;
-                }
-
                 if (m_surface)
                 {
                         m_surface->destroy(m_vk_instance.get());
                         m_surface = nullptr;
+                }
+
+                if (m_device)
+                {
+                        m_device->destroy();
+                        m_device = nullptr;
                 }
 
                 if (m_vk_instance)
@@ -211,24 +203,24 @@ namespace ic
                 createInfo.pApplicationInfo = &appInfo;
 
                 // setup extensions
-                auto extensions                    = vk::extensions::getRequiredInstanceExtensions(m_enableValidation);
+                auto extensions                    = vk::extensions::getRequiredInstanceExtensions(settings.validation);
                 createInfo.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
                 createInfo.ppEnabledExtensionNames = extensions.data();
 
                 // validatoin layers setup
-                if (m_enableValidation && !vk::extensions::checkValidationLayerSupport(m_validationLayers))
+                if (settings.validation && !vk::extensions::checkValidationLayerSupport(m_validationLayers))
                 {
                         IC_CORE_ERROR("Validation layers requested but not available.");
                         return false;
                 }
 
                 VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-                if (m_enableValidation)
+                if (settings.validation)
                 {
                         createInfo.enabledLayerCount   = static_cast<uint32_t>(m_validationLayers.size());
                         createInfo.ppEnabledLayerNames = m_validationLayers.data();
 
-                        vk::debug::setupDebugMassenger(m_enableValidation, debugCreateInfo);
+                        vk::debug::setupDebugMassenger(settings.validation, debugCreateInfo);
                         createInfo.pNext = &debugCreateInfo;
                 }
                 else
@@ -248,8 +240,9 @@ namespace ic
 
         bool vulkan_context::createSwapChain()
         {
-                m_swapchain = std::make_unique<swapchain>();
-                if (!m_swapchain->create(*m_device.get(), *m_surface.get()))
+                m_swapchain = std::make_unique<swapchain>(*m_device, m_surface->get());
+                IC_CORE_ASSERT(m_device->logicalDevice != nullptr, "Assertion Failed");
+                if (!m_swapchain->create())
                 {
                         IC_CORE_ERROR("SwapChain Creation Failed.");
                         return false;
@@ -262,7 +255,7 @@ namespace ic
         bool vulkan_context::createRenderPass()
         {
                 m_renderpass = std::make_unique<render_pass>();
-                if (!m_renderpass->create(m_device->get(), m_swapchain->getImageFormat()))
+                if (!m_renderpass->create(m_device->logicalDevice, m_swapchain->getImageFormat(), m_device->getSupportedDepthFormat(true)))
                 {
                         IC_CORE_ERROR("Failed to create Renderpass!");
                         return false;
@@ -280,7 +273,7 @@ namespace ic
                 }
 
                 // wait for device to be idle
-                m_device->waitIdle();
+                // m_device->waitIdle();
 
                 // recreate swap chain
                 m_swapchain->recreate();
@@ -304,25 +297,22 @@ namespace ic
 
         bool vulkan_context::createDevice()
         {
-                if (!m_device)
-                        m_device = std::make_unique<logical_device>();
 
-                std::unique_ptr<physical_device> physicalDevice = std::make_unique<physical_device>();
-                VkSurfaceKHR surface                            = m_surface->get();
+                std::unique_ptr<physical_device> physicalDevice = std::make_unique<physical_device>(*m_vk_instance,
+                                                                                                    *m_surface);
+                VkSurfaceKHR surface                            = *m_surface;
                 if (!physicalDevice->select(*m_vk_instance, surface))
                 {
                         IC_CORE_ERROR("Physical Device Selection Failed!");
                         return false;
                 }
 
-                if (!m_device->create(std::move(physicalDevice), m_surface->get()))
-                {
-                        IC_CORE_ERROR("Logical Device Creation Failed!");
-                        return false;
-                }
-
+                if (!m_device)
+                        m_device = std::make_unique<vkdevice>(physicalDevice->get());
+                VkResult result = m_device->createLogicalDevice(features, extensions, nullptr, true);
+                IC_CORE_ASSERT(result == VK_SUCCESS, "Failed to create logical Device");
                 IC_CORE_INFO("Vulkan Device Creation Successful.");
                 return true;
         }
 
-} // namespace ic
+}  // namespace ic
