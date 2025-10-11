@@ -184,14 +184,6 @@ namespace ic
                 IC_CORE_ASSERT(vkCreatePipelineLayout(device, &layoutCI, nullptr, &pipelineLayout) == VK_SUCCESS,
                                "Failed to set pipeline layout");
 
-                // TODO create filesystem for loading assets
-                shader vert(device, "shader_scripts/bin/simple_shader.vert.spv");
-                shader frag(device, "shader_scripts/bin/simple_shader.frag.spv");
-
-                auto bindingDescriptions  = Vertex::getBindingDescriptions();
-                auto attributeDesciptions = Vertex::getAttributeDescriptions();
-                config.create(vert.getModule(), frag.getModule(), extent2d, bindingDescriptions, attributeDesciptions);
-
                 VkGraphicsPipelineCreateInfo CI{};
                 CI.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
                 CI.layout              = pipelineLayout;
@@ -219,12 +211,31 @@ namespace ic
                 IC_CORE_ASSERT(vkCreatePipelineCache(device, &cacheCreateInfo, nullptr, &pipelineCache) == VK_SUCCESS,
                                "Failed to create Pipeline Cache!");
 
-                if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &CI, nullptr, &pipeline) != VK_SUCCESS)
+                // Make different types of pipeline based on enabled features
+                // Phong shading pipeline
+                shader phong_vert(device, "pipelines/phong.vert.spv");
+                shader phong_frag(device, "pipelines/phong.frag.spv");
+
+                auto bindingDescriptions  = Vertex::getBindingDescriptions();
+                auto attributeDesciptions = Vertex::getAttributeDescriptions();
+                config.create(phong_vert.getModule(),
+                              phong_frag.getModule(),
+                              extent2d,
+                              bindingDescriptions,
+                              attributeDesciptions);
+
+                if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &CI, nullptr, &pipelines.phong) != VK_SUCCESS)
                 {
                         IC_CORE_ERROR("Failed to create Graphics Pipeline");
                 }
-                frag.destroy();
-                vert.destroy();
+
+                // subsequent pipelines are derivatives
+                CI.flags              = VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+                CI.basePipelineHandle = pipelines.phong;
+                CI.basePipelineIndex  = -1;
+
+                phong_frag.destroy();
+                phong_vert.destroy();
                 IC_CORE_TRACE("Pipeline Creation Successfull!");
         }
 
@@ -466,7 +477,7 @@ namespace ic
                                         nullptr);
 
                 VkDeviceSize offsets[] = {0};
-                vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+                vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.phong);
                 vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &vertexBuffer.handle, offsets);
                 vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
 
@@ -530,8 +541,6 @@ namespace ic
                 ubo.projection =
                     glm::perspective(glm::radians(60.0f), extent2d.width / (float)extent2d.height, 0.1f, 256.0f);
 
-                ubo.viewMatrix = glm::lookAt(glm::vec3(0, 0, 2), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-
                 memcpy(uniformBuffers[currentImageIndex].mapped, &ubo, sizeof(ubo));
         }
 
@@ -584,7 +593,7 @@ namespace ic
                 }
                 vertexBuffer.destroy();
 
-                vkDestroyPipeline(device, pipeline, nullptr);
+                vkDestroyPipeline(device, pipelines.phong, nullptr);
                 vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
                 vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
@@ -592,6 +601,19 @@ namespace ic
         }
 
         void vulkan_renderer::windowResize() {}
+
+        void vulkan_renderer::getEnabledFeatures()
+        {
+                if (deviceFeatures.fillModeNonSolid)
+                {
+                        enabledFeatures.fillModeNonSolid = VK_TRUE;
+                };
+
+                if (deviceFeatures.wideLines)
+                {
+                        enabledFeatures.wideLines = VK_TRUE;
+                }
+        }
 
         std::vector<VkVertexInputBindingDescription> vulkan_renderer::Vertex::getBindingDescriptions()
         {

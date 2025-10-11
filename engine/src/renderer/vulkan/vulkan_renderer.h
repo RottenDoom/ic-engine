@@ -40,8 +40,8 @@ namespace ic
                 {
                         glm::mat4 projection;
                         glm::mat4 modelView;
-                        glm::mat4 viewMatrix;
-                        // glm::vec4 lightPos{0.0f, 2.0f, 1.0f, 0.0f};
+                        glm::vec4 lightPos{0.0f, 2.0f, 1.0f, 0.0f};
+                        // glm::mat4 viewMatrix;
                 } uniformData;
                 std::vector<buffer> uniformBuffers;
                 buffer vertexBuffer;
@@ -49,11 +49,18 @@ namespace ic
                 /** @brief For including device and other context related stuff. */
                 vulkan_context* context   = nullptr;
                 uint32_t maxFrameInFlight = 3;  // fix these in some constant file
+                VkPhysicalDeviceFeatures deviceFeatures{};
 
                 /** @brief pipeline */
                 pipeline_config config;
                 VkPipelineCache pipelineCache;
-                VkPipeline pipeline;
+                VkPhysicalDeviceFeatures enabledFeatures{};
+                struct
+                {
+                        VkPipeline phong{VK_NULL_HANDLE};
+                        VkPipeline wireFrame{VK_NULL_HANDLE};
+                        VkPipeline toon{VK_NULL_HANDLE};
+                } pipelines;
                 std::vector<framebuffer> swapchainFramebuffers;
 
                 /** @brief command pool and command buffers */
@@ -96,6 +103,7 @@ namespace ic
                 void destroy();
 
                 void windowResize();
+                void getEnabledFeatures();
 
         private:
                 void loadAssets();  // this should be an api for users to use (somehow)
