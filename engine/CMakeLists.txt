@@ -19,6 +19,8 @@ set(IC_SOURCES
     # renderer
     src/renderer/renderer.h
     src/renderer/renderer.cpp
+    src/renderer/camera.h
+    src/renderer/camera.cpp
 
     # vulkan
     src/renderer/vulkan/context.h

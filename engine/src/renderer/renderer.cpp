@@ -31,12 +31,17 @@ namespace ic
                 return true;
         }
 
-        void renderer::renderFrame()
+        void renderer::onEvent(event& e)
+        {
+                m_renderer->onEvent(e);
+        }
+
+        void renderer::renderFrame(float deltaTime)
         {
                 IC_CORE_FATAL_IF(!m_initialized,
                                  "Render called before Initialization!");  // TODO: fix that if renderer not initialized
                                                                            // it never comes here
-                m_renderer->render();
+                m_renderer->render(deltaTime);
                 // IC_INFO("Renderer Called!");
         }
 

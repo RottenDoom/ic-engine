@@ -29,5 +29,6 @@ namespace ic
                 window* m_Window;
                 renderer* m_renderer;
                 static application* s_Instance;
+                float m_lastFrameTime = 0.0f;
         };
 }  // namespace ic

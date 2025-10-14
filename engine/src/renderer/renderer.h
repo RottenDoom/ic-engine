@@ -23,7 +23,8 @@ namespace ic
                 virtual ~renderer() = default;
 
                 bool init(GLFWwindow* window);
-                void renderFrame();
+                void onEvent(event& e);
+                void renderFrame(float deltaTime);
                 void cleanUp();
         };
 }  // namespace ic

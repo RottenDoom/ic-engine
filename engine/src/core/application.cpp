@@ -39,8 +39,12 @@ namespace ic
         {
                 while (m_Running)
                 {
+                        float time      = glfwGetTime();
+                        float delta     = time - m_lastFrameTime;
+                        m_lastFrameTime = time;
+
                         m_Window->onUpdate();
-                        m_renderer->renderFrame();
+                        m_renderer->renderFrame(delta);
 
                         // update and delta time here.
                 }
@@ -53,7 +57,9 @@ namespace ic
                 eventDispatcher dispatcher(e);
                 dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT_FN(onWindowClose));
 
-                IC_CORE_TRACE("{0}", e.toString());
+                m_renderer->onEvent(e);
+
+                // IC_CORE_TRACE("{0}", e.toString()); TODO: get a better understanding of this
         }
 
         bool application::applicationCreate(game* game_inst)

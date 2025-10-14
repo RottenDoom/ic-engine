@@ -1,13 +1,17 @@
 #include "vulkan_renderer.h"
 #include "shader.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace ic
 {
         vulkan_renderer::vulkan_renderer(vulkan_context* pContext) noexcept
-            : vertexBuffer(pContext->getVulkanDevice()->logicalDevice)
+            : vertexBuffer(pContext->getVulkanDevice()->logicalDevice),
+              indexBuffer(pContext->getVulkanDevice()->logicalDevice)
         {
                 context     = pContext;
                 depthFormat = context->getVulkanDevice()->getSupportedDepthFormat(true);
+                extent2d    = context->getSwapChain()->getExtent();
 
                 vkGetDeviceQueue(context->getVulkanDevice()->logicalDevice,
                                  context->getVulkanDevice()->queueFamilyIndices.graphics,
@@ -19,6 +23,14 @@ namespace ic
                         uniformBuffers.emplace_back(context->getVulkanDevice()->logicalDevice);  // TODO: fix this here
                 }
                 descriptorSets.resize(maxFrameInFlight);
+
+                camera.type = Camera::CameraType::lookat;
+                camera.setPosition(glm::vec3(0.0f, 0.0f, -1.0f));
+                camera.setViewDirection(glm::vec3(0.0f, 0.0f, -5.0f),
+                                        glm::vec3(0.0f, 0.0f, -1.0f));  // look into +ve z axiz
+                // camera.setRotationSpeed(0.5f);
+                camera.setPerspectiveProjection(45.0f, (float)extent2d.width / (float)extent2d.height, 0.1f, 256.0f);
+                // camera.setOrientation(glm::vec3(0.50f, 0.45f, 0.f));
         }
 
         bool vulkan_renderer::init()
@@ -32,6 +44,7 @@ namespace ic
                 createFramebuffers(device);
                 loadAssets();
                 createVertexBuffer();
+                createIndexedBuffer();
                 prepareUniformBuffers();
                 setupDescriptors(device);
                 createGraphicsPipeline(device);
@@ -39,11 +52,30 @@ namespace ic
                 return true;
         }
 
-        void vulkan_renderer::render()
+        void vulkan_renderer::onEvent(event& e)
+        {
+                // TODO: Input Events like move and mouse scrolled
+                camera.onEvent(e);
+        }
+
+        void vulkan_renderer::onUpdate(float deltaTime)
+        {
+                // TODO: we need events here
+
+                // resize
+
+                // render
+                camera.onUpdate(deltaTime);
+        }
+
+        void vulkan_renderer::render(float deltaTime)
         {
                 if (!m_prepared)
                         return;
+
+                // render
                 prepareFrame(context->getVulkanDevice()->logicalDevice);
+                onUpdate(deltaTime);
                 updateUniformBuffers();
                 buildCommandBuffers();
                 submitFrame(context->getVulkanDevice()->logicalDevice);
@@ -174,6 +206,32 @@ namespace ic
                 IC_CORE_TRACE("Vertex Buffers Created");
         }
 
+        void vulkan_renderer::createIndexedBuffer()
+        {
+                VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+                buffer stagingBuffer(context->getVulkanDevice()->logicalDevice);
+
+                context->getVulkanDevice()->createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                                         &stagingBuffer,
+                                                         bufferSize,
+                                                         (void*)indices.data());
+
+                context->getVulkanDevice()->createBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                                             VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                                         &indexBuffer,
+                                                         bufferSize);
+
+                VkBufferCopy copyRegion{};
+                copyRegion.size = bufferSize;
+                context->getVulkanDevice()->copyBuffer(&stagingBuffer, &indexBuffer, queue, &copyRegion);
+                stagingBuffer.destroy();
+                IC_CORE_TRACE("Index Buffers Created");
+        }
+
         void vulkan_renderer::createGraphicsPipeline(VkDevice& device)
         {
                 VkPipelineLayoutCreateInfo layoutCI{};
@@ -184,6 +242,19 @@ namespace ic
                 IC_CORE_ASSERT(vkCreatePipelineLayout(device, &layoutCI, nullptr, &pipelineLayout) == VK_SUCCESS,
                                "Failed to set pipeline layout");
 
+                // Make different types of pipeline based on enabled features
+                // Phong shading pipeline
+                shader phong_vert(device, "shader_scripts/bin/simple_shader.vert.spv");
+                shader phong_frag(device, "shader_scripts/bin/simple_shader.frag.spv");
+
+                auto bindingDescriptions  = Vertex::getBindingDescriptions();
+                auto attributeDesciptions = Vertex::getAttributeDescriptions();
+                config.create(phong_vert.getModule(),
+                              phong_frag.getModule(),
+                              extent2d,
+                              bindingDescriptions,
+                              attributeDesciptions);
+
                 VkGraphicsPipelineCreateInfo CI{};
                 CI.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
                 CI.layout              = pipelineLayout;
@@ -191,6 +262,7 @@ namespace ic
                 CI.flags               = 0;
                 CI.basePipelineIndex   = -1;
                 CI.basePipelineHandle  = VK_NULL_HANDLE;
+                CI.stageCount          = 2;
 
                 CI.pInputAssemblyState = &config.inputAssembly;
                 CI.pRasterizationState = &config.rasterizer;
@@ -211,19 +283,6 @@ namespace ic
                 IC_CORE_ASSERT(vkCreatePipelineCache(device, &cacheCreateInfo, nullptr, &pipelineCache) == VK_SUCCESS,
                                "Failed to create Pipeline Cache!");
 
-                // Make different types of pipeline based on enabled features
-                // Phong shading pipeline
-                shader phong_vert(device, "pipelines/phong.vert.spv");
-                shader phong_frag(device, "pipelines/phong.frag.spv");
-
-                auto bindingDescriptions  = Vertex::getBindingDescriptions();
-                auto attributeDesciptions = Vertex::getAttributeDescriptions();
-                config.create(phong_vert.getModule(),
-                              phong_frag.getModule(),
-                              extent2d,
-                              bindingDescriptions,
-                              attributeDesciptions);
-
                 if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &CI, nullptr, &pipelines.phong) != VK_SUCCESS)
                 {
                         IC_CORE_ERROR("Failed to create Graphics Pipeline");
@@ -242,7 +301,6 @@ namespace ic
         void vulkan_renderer::setupDepthStencil(VkDevice& device)
         {
                 IC_CORE_ASSERT((depthFormat != VK_FORMAT_UNDEFINED), "Depth Format Invalid");
-                extent2d = context->getSwapChain()->getExtent();
                 VkImageCreateInfo imageCI{.sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                                           .imageType   = VK_IMAGE_TYPE_2D,
                                           .format      = depthFormat,
@@ -479,7 +537,8 @@ namespace ic
                 VkDeviceSize offsets[] = {0};
                 vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.phong);
                 vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &vertexBuffer.handle, offsets);
-                vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
+                vkCmdBindIndexBuffer(cmdBuffer, indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
+                vkCmdDrawIndexed(cmdBuffer, indexCount, 1, 0, 0, 0);
 
                 /* The scene and other things can be done later for now main target is to get something to show on
                  * screen.*/
@@ -534,12 +593,23 @@ namespace ic
                 }
         }
 
+        // THis is a scene function and should be in a scene
         void vulkan_renderer::updateUniformBuffers()
         {
                 UniformData ubo{};
-                ubo.modelView = glm::mat4(1.0f);
-                ubo.projection =
-                    glm::perspective(glm::radians(60.0f), extent2d.width / (float)extent2d.height, 0.1f, 256.0f);
+
+                static auto startTime = std::chrono::high_resolution_clock::now();
+                auto currentTime      = std::chrono::high_resolution_clock::now();
+                float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+                ubo.modelMatrix     = glm::mat4(1.0f);
+
+                float rotationSpeed = glm::radians(45.0f);
+
+                ubo.viewMatrix      = camera.matrices.view;
+                ubo.projection      = camera.projection;
+
+                ubo.projection[1][1] *= -1;
 
                 memcpy(uniformBuffers[currentImageIndex].mapped, &ubo, sizeof(ubo));
         }
@@ -592,6 +662,7 @@ namespace ic
                         vkFreeMemory(device, uniformBuffers[i].memory, nullptr);
                 }
                 vertexBuffer.destroy();
+                indexBuffer.destroy();
 
                 vkDestroyPipeline(device, pipelines.phong, nullptr);
                 vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -624,6 +695,7 @@ namespace ic
 
                 return bindingDescription;
         }
+
         std::vector<VkVertexInputAttributeDescription> vulkan_renderer::Vertex::getAttributeDescriptions()
         {
                 std::vector<VkVertexInputAttributeDescription> attributeDescription(2);

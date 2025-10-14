@@ -2,6 +2,7 @@
 #include "defines.h"
 
 #include "core/events/event.h"
+#include "core/events/key_event.h"
 #include "core/events/mouse_event.h"
 
 #define GLM_FORCE_RADIANS
@@ -15,58 +16,109 @@ namespace ic
 {
         class Camera
         {
+        private:
+                float fovY;
+                float znear, zfar;
+                float aspectRatio;
+
+                void updateViewMatrix();
+
         public:
-                float fovY, aspectRatio, znear, zfar;
+                enum CameraType
+                {
+                        lookat,
+                        firstperson
+                };
+                CameraType type = CameraType::lookat;
 
-                Camera() = default;
-                Camera(float fov, float aspectRatio, float znear, float zfar);
+                // camera attributes
+                glm::quat orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+                glm::vec3 position    = glm::vec3(0.0f);
+                bool flipY            = false;
 
+                // the projection matrix used for projecting onto the screen into the clip space.
+                glm::mat4 projection = glm::mat4(1.0f);
+                struct
+                {
+                        glm::mat4 perspective;
+                        glm::mat4 view;
+                        glm::mat4 orthographic;
+                } matrices;
+
+                float zoomSpeed        = 0.5f;
+                float mouseSensitivity = 0.1f;
+                float movementSpeed    = 1.0f;
+
+                bool updated           = true;
+                bool fovChanged        = false;
+
+                struct
+                {
+                        bool left  = false;
+                        bool right = false;
+                        bool up    = false;
+                        bool down  = false;
+                } keys;
+
+                bool moving() const { return keys.left || keys.right || keys.up || keys.down; }
+
+                float getNearClip() const { return znear; }
+                float getFarClip() const { return zfar; }
+
+                // sets up perspective or orthographic projection
+                void setPerspectiveProjection(float fov, float aspect, float znear, float zfar);
+                void setOrthographicProjection(float left, float right, float top, float bottom, float near, float far);
+
+                // set view direction set view target
+
+                /// @brief This function takes in position and direction of the object we want to see and transforms
+                /// into the eye coordinates using the view matrix more precisely its the inverse of rotation multiplied
+                /// to the translation transform matrix. I am currently using quaternions since I am interested in them
+                /// but will later use euler angles as well if needed and if they are simpler with more constraints
+                /// @param position The position of the object the tranform will be negative of this
+                /// @param direction The direction of the matrix we will calculate the quaternion to find the rotation
+                /// matrix to that direction in the space and multiply the negative of it to the tranform to find the
+                /// view matrix
+                void setViewDirection(glm::vec3 position, glm::vec3 direction);
+                void setViewTarget(glm::vec3 position, glm::vec3 target);
+
+                void updateAspectRatio(float aspect);
+
+                void setPosition(glm::vec3 position)
+                {
+                        this->position = position;
+                        updateViewMatrix();
+                }
+
+                void setTranslation(glm::vec3 translation)
+                {
+                        this->position = translation;
+                        updateViewMatrix();
+                };
+
+                // same as set direction except it sets the quaternion of the camera direction
+                void setOrientation(glm::vec3 angles)
+                {
+                        this->orientation = glm::quat(angles);
+                        updateViewMatrix();
+                }
+
+                void translate(glm::vec3 delta)
+                {
+                        this->position += delta;
+                        updateViewMatrix();
+                }
+
+                void setZoomSpeed(float speed) { this->zoomSpeed; }
+                void setMouseSensitivity(float sensitivity) { this->mouseSensitivity = sensitivity; }
+                void setMovementSpeed(float speed) { this->movementSpeed = speed; }
+                void resetCameraPosition();
+
+                void handleInput(float deltaTime);
                 void onUpdate(float deltaTime);
                 void onEvent(event& e);
-
-                inline float getDistance() { return distance; }
-                inline float setDistance(float distance) { this->distance = distance; }
-
-                const glm::mat4& getViewMatrix() const { return m_viewMatrix; }
-                const glm::mat4& getProjection() const { return m_projection; }
-                glm::mat4 getViewProjection() const { return m_projection * m_viewMatrix; }
-
-                glm::vec3 getUpDirection() const;
-                glm::vec3 getRightDirection() const;
-                glm::vec3 getForwardDirection() const;
-                const glm::vec3& getPosition() const { return m_position; }
-                glm::quat getOrientation() const;
-
-                float getPitch() const { return pitch; }
-                float getYaw() const { return yaw; }
-
-        private:
-                void updateProjection();
-                void updateView();
-
+                bool onKeyPressed(KeyPressedEvent& e);
+                bool onMouseMoved(MouseMovedEvent& e);
                 bool onMouseScroll(MouseScrolledEvent& e);
-
-                void mousePan(const glm::vec2& delta);
-                void mouseRotate(const glm::vec2& delta);
-                void mouseZoom(float delta);
-
-                glm::vec3 calculatePosition() const;
-
-                glm::vec2 panSpeed() const;
-                float rotationSpeed() const;
-                float zoomSpeed() const;
-
-        private:
-                glm::mat4 m_viewMatrix;
-                glm::mat4 m_projection = glm::mat4(1.0f);
-                glm::vec3 m_position   = glm::vec3(0.0f);
-                glm::vec3 m_focalPoint = glm::vec3(0.0f);
-
-                glm::vec2 m_mousePos   = glm::vec2(0.0f);
-
-                float distance         = 10.0f;
-                float pitch = 0.0f, yaw = 0.0f;
-
-                float viewportWidth, viewportHeight;
         };
 }  // namespace ic
