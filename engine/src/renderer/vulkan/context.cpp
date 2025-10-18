@@ -15,10 +15,12 @@ namespace ic
                 }
         }
 
+        vulkan_context::vulkan_context(window& w) : m_window(w) {}
+
         vulkan_context::vulkan_context(vulkan_context&& other) noexcept
             : m_initialized(other.m_initialized), m_vk_instance(std::move(other.m_vk_instance)),
               m_surface(std::move(other.m_surface)), m_device(std::move(other.m_device)),
-              m_swapchain(std::move(other.m_swapchain)), m_debugMessenger(std::move(other.m_debugMessenger))
+              m_debugMessenger(std::move(other.m_debugMessenger)), m_window(m_window)
         {
                 // steal static context pointer if it points to the other
                 if (s_context == &other)
@@ -28,7 +30,6 @@ namespace ic
                 other.m_vk_instance    = VK_NULL_HANDLE;
                 other.m_surface        = nullptr;
                 other.m_device         = nullptr;
-                other.m_swapchain      = nullptr;
                 other.m_debugMessenger = VK_NULL_HANDLE;
                 other.m_initialized    = false;
         }
@@ -46,7 +47,7 @@ namespace ic
                 m_vk_instance    = std::move(other.m_vk_instance);
                 m_surface        = std::move(other.m_surface);
                 m_device         = std::move(other.m_device);
-                m_swapchain      = std::move(other.m_swapchain);
+                m_window         = other.m_window;
                 m_debugMessenger = other.m_debugMessenger;
 
                 // fix static pointer
@@ -57,21 +58,20 @@ namespace ic
                 other.m_vk_instance    = VK_NULL_HANDLE;
                 other.m_surface        = nullptr;
                 other.m_device         = nullptr;
-                other.m_swapchain      = nullptr;
                 other.m_debugMessenger = VK_NULL_HANDLE;
                 other.m_initialized    = false;
 
                 return *this;
         }
 
-        bool vulkan_context::initialize(GLFWwindow* window, bool enableValidation)
+        bool vulkan_context::initialize(bool enableValidation)
         {
                 if (m_initialized)
                 {
                         IC_CORE_WARN("VulkanContext already initialized");
                         return true;
                 }
-                IC_CORE_ASSERT(window != nullptr, "Invalid GLFW window");
+                IC_CORE_ASSERT(m_window.getNativeWindow() != nullptr, "Invalid GLFW window");
 
                 if (!s_context)
                 {
@@ -87,7 +87,7 @@ namespace ic
                         return false;
                 }
 
-                if (!createSurface(window))
+                if (!createSurface((GLFWwindow*)m_window.getNativeWindow()))
                 {
                         IC_CORE_ERROR("Failed to create window surface!");
                         cleanUp();
@@ -101,20 +101,6 @@ namespace ic
                         return false;
                 }
 
-                if (!createSwapChain())
-                {
-                        IC_CORE_ERROR("Failed to create swap chain!");
-                        cleanUp();
-                        return false;
-                }
-
-                if (!createRenderPass())
-                {
-                        IC_CORE_ERROR("Failed to create Renderpass!");
-                        cleanUp();
-                        return false;
-                }
-
                 m_initialized = true;
                 IC_CORE_INFO("Initializad Vulkan Context!");
                 return true;
@@ -122,8 +108,7 @@ namespace ic
 
         void vulkan_context::cleanUp()
         {
-                if (!m_initialized && m_swapchain == nullptr && m_device == nullptr && m_surface == nullptr &&
-                    m_vk_instance == nullptr)
+                if (!m_initialized && m_device == nullptr && m_surface == nullptr && m_vk_instance == nullptr)
                 {
                         // nothing to do
                         return;
@@ -139,20 +124,6 @@ namespace ic
                                 func(*m_vk_instance, m_debugMessenger, nullptr);
                         }
                         m_debugMessenger = VK_NULL_HANDLE;
-                }
-
-                if (m_renderpass)
-                {
-                        m_renderpass->destroy(m_device->logicalDevice);
-                        m_renderpass = nullptr;
-                }
-
-                if (m_swapchain)
-                {
-                        // swapchain->destroy() should be safe even if partially constructed
-                        // TODO: fix the destroy class.
-                        m_swapchain->destroy();
-                        m_swapchain = nullptr;
                 }
 
                 if (m_surface)
@@ -238,49 +209,6 @@ namespace ic
                 return true;
         }
 
-        bool vulkan_context::createSwapChain()
-        {
-                m_swapchain = std::make_unique<swapchain>(*m_device, m_surface->get());
-                IC_CORE_ASSERT(m_device->logicalDevice != nullptr, "Assertion Failed");
-                if (!m_swapchain->create())
-                {
-                        IC_CORE_ERROR("SwapChain Creation Failed.");
-                        return false;
-                }
-
-                IC_CORE_INFO("Swap chain created successfully!");
-                return true;
-        }
-
-        bool vulkan_context::createRenderPass()
-        {
-                m_renderpass = std::make_unique<render_pass>();
-                if (!m_renderpass->create(m_device->logicalDevice, m_swapchain->getImageFormat(), m_device->getSupportedDepthFormat(true)))
-                {
-                        IC_CORE_ERROR("Failed to create Renderpass!");
-                        return false;
-                }
-                IC_CORE_INFO("Renderpass created successfully!");
-                return true;
-        }
-
-        void vulkan_context::recreateSwapChain()
-        {
-                if (!m_initialized || !m_swapchain)
-                {
-                        IC_CORE_ERROR("Cannot recreate swap chain - context not initialized");
-                        return;
-                }
-
-                // wait for device to be idle
-                // m_device->waitIdle();
-
-                // recreate swap chain
-                m_swapchain->recreate();
-
-                IC_CORE_INFO("Swap chain recreated!");
-        }
-
         bool vulkan_context::createSurface(GLFWwindow* window)
         {
                 if (!m_surface)
@@ -298,17 +226,17 @@ namespace ic
         bool vulkan_context::createDevice()
         {
 
-                std::unique_ptr<physical_device> physicalDevice = std::make_unique<physical_device>(*m_vk_instance,
-                                                                                                    *m_surface);
-                VkSurfaceKHR surface                            = *m_surface;
-                if (!physicalDevice->select(*m_vk_instance, surface))
+                std::unique_ptr<PhysicalDevice> physicalDevice = std::make_unique<PhysicalDevice>(*m_vk_instance,
+                                                                                                  *m_surface);
+                SelectionConfig cfg;  // Normal Configuration TODO: make so that the configuration can be later edited
+                if (!physicalDevice->select(cfg))
                 {
                         IC_CORE_ERROR("Physical Device Selection Failed!");
                         return false;
                 }
 
                 if (!m_device)
-                        m_device = std::make_unique<vkdevice>(physicalDevice->get());
+                        m_device = std::make_unique<vkdevice>(physicalDevice->get(), *m_surface);
                 VkResult result = m_device->createLogicalDevice(features, extensions, nullptr, true);
                 IC_CORE_ASSERT(result == VK_SUCCESS, "Failed to create logical Device");
                 IC_CORE_INFO("Vulkan Device Creation Successful.");

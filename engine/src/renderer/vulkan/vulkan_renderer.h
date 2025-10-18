@@ -6,6 +6,9 @@
 #include "buffer.h"
 #include "pipeline_config.h"
 #include "framebuffer.h"
+#include "device.h"
+
+#include "core/events/application_event.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -126,8 +129,8 @@ namespace ic
                 buffer indexBuffer;
 
                 /** @brief For including device and other context related stuff. */
-                vulkan_context* context   = nullptr;
-                uint32_t maxFrameInFlight = 3;  // fix these in some constant file
+                vulkan_context* context      = nullptr;
+                uint32_t MAX_FRAME_IN_FLIGHT = 3;  // fix these in some constant file
                 VkPhysicalDeviceFeatures deviceFeatures{};
 
                 /** @brief pipeline */
@@ -154,32 +157,37 @@ namespace ic
                 std::vector<VkCommandBuffer> drawCmdBuffers;
 
                 /** @brief Stencil Properties */
-                VkQueue queue;
+                // VkQueue queue; Use graphics and present queues
                 struct
                 {
                         VkImage image;
                         VkDeviceMemory memory;
                         VkImageView view;
                 } depthStencil;
-                VkExtent2D extent2d;
                 VkFormat depthFormat;
-                uint32_t currentBuffer{0};
+                uint32_t currentFrame{0};
                 uint32_t currentImageIndex{0};
                 VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
-                std::vector<VkSemaphore> presentSemaphores{};  // waits for completion of presenting
-                std::vector<VkSemaphore> renderSemaphore{};    // waits for completion of rendering
-                std::vector<VkFence> waitFences{};
+                std::vector<VkSemaphore> imageAvailableSemaphores{};  // waits for completion of presenting
+                std::vector<VkSemaphore> renderFinishedSemaphores{};  // waits for completion of rendering
+                std::vector<VkFence> inFlightFences{};
+                std::vector<VkFence> imagesInFlight{};
 
         private:
-                bool m_prepared = false;
+                bool m_prepared           = false;
+                bool m_frameBufferResized = false;
+
+                vkdevice& m_device;
+                std::unique_ptr<RenderPass> m_renderPass;
+                std::unique_ptr<SwapChain> m_swapChain;
 
                 /** @brief Camera for now is just a basic implementation with events later multiple camera types will be
                  * available that I might use with this engine outside just the renderer but with scenes */
                 Camera camera;
 
         public:
-                explicit vulkan_renderer(vulkan_context* pContext) noexcept;
+                explicit vulkan_renderer(vulkan_context* pContext, vkdevice& device) noexcept;
 
                 bool init();
                 void onEvent(event& e);
@@ -187,12 +195,16 @@ namespace ic
                 void render(float deltaTime);
                 void destroy();
 
-                void windowResize();
+                bool onWindowResize(WindowResizedEvent& e);
                 void getEnabledFeatures();
 
         private:
                 void loadAssets();  // this should be an api for users to use (somehow)
                 void setupDescriptors(VkDevice& device);
+
+                void createSwapChain();
+                void createRenderPass();
+
                 void createCommandPool();
                 void createCommandBuffers(VkDevice& device);
 
@@ -206,8 +218,12 @@ namespace ic
 
                 void prepareFrame(VkDevice& device, bool waitForFence = true);
                 void submitFrame(VkDevice& device, bool skipQueueSubmit = false);
-                void buildCommandBuffers();
+                void buildCommandBuffers(uint32_t imageIndex);
                 void prepareUniformBuffers();
                 void updateUniformBuffers();
+
+                void recreateSwapChain();
+                void recreateSyncObjects();
+                void destroyDepthStencil();
         };
 }  // namespace ic

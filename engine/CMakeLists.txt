@@ -34,8 +34,6 @@ set(IC_SOURCES
     src/renderer/vulkan/physical_device.cpp
     src/renderer/vulkan/device.h
     src/renderer/vulkan/device.cpp
-    src/renderer/vulkan/queue_manager.h
-    src/renderer/vulkan/queue_manager.cpp
     src/renderer/vulkan/swapchain.h
     src/renderer/vulkan/swapchain.cpp
     src/renderer/vulkan/pipeline_config.h

@@ -3,7 +3,7 @@
 namespace ic
 {
 
-        bool renderer::init(GLFWwindow* window)
+        bool renderer::init(window* w)
         {
                 if (m_initialized)
                 {
@@ -11,15 +11,15 @@ namespace ic
                         return false;
                 }
 
-                m_context = std::make_unique<vulkan_context>();
+                m_context = std::make_unique<vulkan_context>(*w);
 
-                if (!m_context->initialize(window, true))
+                if (!m_context->initialize(true))
                 {
                         IC_CORE_ERROR("Failed to initialize context!");
                         return false;
                 }
 
-                m_renderer = std::make_unique<vulkan_renderer>(m_context.get());
+                m_renderer = std::make_unique<vulkan_renderer>(m_context.get(), m_context->getVulkanDevice());
                 if (!m_renderer->init())
                 {
                         IC_CORE_ERROR("Failed to initialize renderer!");

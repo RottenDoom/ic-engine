@@ -2,7 +2,7 @@
 
 namespace ic
 {
-        vkdevice::vkdevice(VkPhysicalDevice physicalDevice)
+        vkdevice::vkdevice(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) : surface(surface)
         {
                 IC_CORE_ASSERT(physicalDevice, "Physical Device does not exist");
                 this->physicalDevice = physicalDevice;
@@ -129,58 +129,37 @@ namespace ic
                                                VkQueueFlags requestedQueueTypes)
         {
                 std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
-
                 const float defaultQueuePriority(0.0f);
 
-                // graphics queue
+                // Graphics queue
                 if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
                 {
-                        queueFamilyIndices.graphics = getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
+                        queues.graphics.index = getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
+                        queues.graphics.flags = VK_QUEUE_GRAPHICS_BIT;
+                        queues.graphics.count = 1;
+
                         VkDeviceQueueCreateInfo queueInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                                                          .queueFamilyIndex = queueFamilyIndices.graphics,
+                                                          .queueFamilyIndex = queues.graphics.index,
                                                           .queueCount       = 1,
                                                           .pQueuePriorities = &defaultQueuePriority};
                         queueCreateInfos.push_back(queueInfo);
                 }
                 else
                 {
-                        queueFamilyIndices.graphics = 0;
+                        queues.graphics.index = UINT32_MAX;
                 }
 
-                // dedicated compute queue
+                // Dedicated compute queue
                 if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
                 {
-                        queueFamilyIndices.compute = getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
-                        if (queueFamilyIndices.compute != queueFamilyIndices.graphics)
-                        {
-                                // if compute family index differs, we need an additional queue create info for the
-                                // compute queue
-                                VkDeviceQueueCreateInfo queueInfo{
-                                    .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                                    .queueFamilyIndex = queueFamilyIndices.compute,
-                                    .queueCount       = 1,
-                                    .pQueuePriorities = &defaultQueuePriority,
-                                };
-                                queueCreateInfos.push_back(queueInfo);
-                        }
-                }
-                else
-                {
-                        // else we use the same queue
-                        queueFamilyIndices.compute = queueFamilyIndices.graphics;
-                }
+                        queues.compute.index = getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
+                        queues.compute.flags = VK_QUEUE_COMPUTE_BIT;
+                        queues.compute.count = 1;
 
-                // dedicated transfer queue
-                if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
-                {
-                        queueFamilyIndices.transfer = getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT);
-                        if ((queueFamilyIndices.transfer != queueFamilyIndices.graphics) &&
-                            (queueFamilyIndices.transfer != queueFamilyIndices.compute))
+                        if (queues.compute.index != queues.graphics.index)
                         {
-                                // if transfer family index differs, we need an additional queue create info for the
-                                // transfer queue
                                 VkDeviceQueueCreateInfo queueInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                                                                  .queueFamilyIndex = queueFamilyIndices.transfer,
+                                                                  .queueFamilyIndex = queues.compute.index,
                                                                   .queueCount       = 1,
                                                                   .pQueuePriorities = &defaultQueuePriority};
                                 queueCreateInfos.push_back(queueInfo);
@@ -188,16 +167,79 @@ namespace ic
                 }
                 else
                 {
-                        // else we use the same queue
-                        queueFamilyIndices.transfer = queueFamilyIndices.graphics;
+                        queues.compute.index = queues.graphics.index;
+                        queues.compute.flags = queues.graphics.flags;
+                        queues.compute.count = 0;  // Sharing graphics queue
                 }
 
-                // create the logical device representation
+                // Dedicated transfer queue
+                if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
+                {
+                        queues.transfer.index = getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT);
+                        queues.transfer.flags = VK_QUEUE_TRANSFER_BIT;
+                        queues.transfer.count = 1;
+
+                        if ((queues.transfer.index != queues.graphics.index) &&
+                            (queues.transfer.index != queues.compute.index))
+                        {
+                                VkDeviceQueueCreateInfo queueInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                                                  .queueFamilyIndex = queues.transfer.index,
+                                                                  .queueCount       = 1,
+                                                                  .pQueuePriorities = &defaultQueuePriority};
+                                queueCreateInfos.push_back(queueInfo);
+                        }
+                }
+                else
+                {
+                        queues.transfer.index = queues.graphics.index;
+                        queues.transfer.flags = queues.graphics.flags;
+                        queues.transfer.count = 0;  // Sharing graphics queue
+                }
+
+                // Handle present queue if surface is available
+                if (surface != VK_NULL_HANDLE)
+                {
+                        // Find queue family that supports presentation
+                        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProps.size()); i++)
+                        {
+                                VkBool32 presentSupport = false;
+                                vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
+
+                                if (presentSupport)
+                                {
+                                        queues.present.index = i;
+                                        queues.present.flags = 0;  // Present doesn't have a standard flag
+                                        queues.present.count = 1;
+
+                                        // Only create a new queue if present family differs from existing ones
+                                        bool needsNewQueue = true;
+                                        for (const auto& qci : queueCreateInfos)
+                                        {
+                                                if (qci.queueFamilyIndex == i)
+                                                {
+                                                        needsNewQueue = false;
+                                                        break;
+                                                }
+                                        }
+
+                                        if (needsNewQueue)
+                                        {
+                                                VkDeviceQueueCreateInfo queueInfo{
+                                                    .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                                    .queueFamilyIndex = i,
+                                                    .queueCount       = 1,
+                                                    .pQueuePriorities = &defaultQueuePriority};
+                                                queueCreateInfos.push_back(queueInfo);
+                                        }
+                                        break;
+                                }
+                        }
+                }
+
+                // Create the logical device representation
                 std::vector<const char*> deviceExtensions(enabledExtensions);
                 if (useSwapChain)
                 {
-                        // if the device will be used for presenting to a display via a swapchain we need to request the
-                        // swapchain extension
                         deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
                 }
 
@@ -207,7 +249,7 @@ namespace ic
                                                     .pQueueCreateInfos = queueCreateInfos.data(),
                                                     .pEnabledFeatures  = &enabledFeatures};
 
-                // If a pNext(Chain) has been passed, we need to add it to the device creation info
+                // If a pNext(Chain) has been passed, add it to the device creation info
                 VkPhysicalDeviceFeatures2 physicalDeviceFeatures2{};
                 if (pNextChain)
                 {
@@ -218,13 +260,15 @@ namespace ic
                         deviceCreateInfo.pNext            = &physicalDeviceFeatures2;
                 }
 
+                // Validate and set extensions
                 if (deviceExtensions.size() > 0)
                 {
                         for (const char* enabledExtension : deviceExtensions)
                         {
                                 if (!extensionSupported(enabledExtension))
                                 {
-                                        IC_CORE_CRITICAL("Enabled device extension {} is not present at device level\n",
+                                        IC_CORE_CRITICAL("Enabled device extension {} is not present at device "
+                                                         "level\n",
                                                          enabledExtension);
                                 }
                         }
@@ -235,15 +279,50 @@ namespace ic
 
                 this->enabledFeatures = enabledFeatures;
 
-                VkResult result       = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
+                // Create the logical device
+                VkResult result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
                 if (result != VK_SUCCESS)
                 {
                         IC_CORE_ERROR("Device Creation Failed");
                         return result;
                 }
 
+                // Retrieve queue handles
+                if (queues.graphics.index != UINT32_MAX)
+                {
+                        vkGetDeviceQueue(logicalDevice, queues.graphics.index, 0, &queues.graphics.handle);
+                }
+
+                if (queues.compute.index != UINT32_MAX && queues.compute.count > 0)
+                {
+                        vkGetDeviceQueue(logicalDevice, queues.compute.index, 0, &queues.compute.handle);
+                }
+                else if (queues.compute.index == queues.graphics.index)
+                {
+                        // Reuse graphics queue handle
+                        queues.compute.handle = queues.graphics.handle;
+                }
+
+                if (queues.transfer.index != UINT32_MAX && queues.transfer.count > 0)
+                {
+                        vkGetDeviceQueue(logicalDevice, queues.transfer.index, 0, &queues.transfer.handle);
+                }
+                else if (queues.transfer.index == queues.graphics.index)
+                {
+                        // Reuse graphics queue handle
+                        queues.transfer.handle = queues.graphics.handle;
+                }
+
+                if (queues.present.index != UINT32_MAX)
+                {
+                        vkGetDeviceQueue(logicalDevice, queues.present.index, 0, &queues.present.handle);
+                }
+
                 // Create a default command pool for graphics command buffers
-                cmdPool = createCommandPool(queueFamilyIndices.graphics);
+                if (queues.graphics.index != UINT32_MAX)
+                {
+                        cmdPool = createCommandPool(queues.graphics.index);
+                }
 
                 return result;
         }
@@ -446,12 +525,10 @@ namespace ic
                                "Couldn't create fence");
 
                 // Submit to the queue
-                IC_CORE_TRACE("Transfering queue");
                 IC_CORE_ASSERT(vkQueueSubmit(queue, 1, &submitInfo, fence) == VK_SUCCESS, "Queue Submition failed");
 
                 // wait for the fence to signal that command buffer has finished executing
-                // TODO: fix the default timeout in global
-                IC_CORE_ASSERT(vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, 10000000000) == VK_SUCCESS,
+                IC_CORE_ASSERT(vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, UINT64_MAX) == VK_SUCCESS,
                                "Timed Out!");
 
                 vkDestroyFence(logicalDevice, fence, nullptr);
@@ -499,6 +576,34 @@ namespace ic
                 }
                 IC_CORE_ERROR("Could not find a matching depth format!");
                 return VK_FORMAT_UNDEFINED;
+        }
+
+        SwapChainSupportDetails vkdevice::getSwapChainSupport(VkPhysicalDevice device)
+        {
+                SwapChainSupportDetails details;
+                vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+                uint32_t formatCount;
+                vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+
+                if (formatCount != 0)
+                {
+                        details.formats.resize(formatCount);
+                        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+                }
+
+                uint32_t presentModeCount;
+                vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+
+                if (presentModeCount != 0)
+                {
+                        details.presentModes.resize(presentModeCount);
+                        vkGetPhysicalDeviceSurfacePresentModesKHR(device,
+                                                                  surface,
+                                                                  &presentModeCount,
+                                                                  details.presentModes.data());
+                }
+                return details;
         }
 
 }  // namespace ic

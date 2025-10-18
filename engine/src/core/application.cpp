@@ -2,9 +2,6 @@
 #include "defines.h"
 #include "input.h"
 
-// TODO: Refactor code (refactor device.cpp and make files )
-// TODO: renderer initiailization done. renderer device creation and queues left
-// TODO: start actually rendering.
 // TODO: add a linux build with wayland to start building with valgrind memory checks
 // TODO: maybe write a memory effecient class for checking how much memory is being used. I suspect that memory of
 // Validation layers of vilkan engine is being leaked
@@ -24,7 +21,7 @@ namespace ic
                 m_Window->setEventCallback(BIND_EVENT_FN(onEvent));
 
                 m_renderer = new renderer();
-                m_renderer->init(getWindow());
+                m_renderer->init(m_Window);
                 IC_CORE_INFO("Application Initialized!");
         }
 
@@ -45,8 +42,6 @@ namespace ic
 
                         m_Window->onUpdate();
                         m_renderer->renderFrame(delta);
-
-                        // update and delta time here.
                 }
 
                 return true;
@@ -74,15 +69,6 @@ namespace ic
         bool application::onWindowClose(WindowClosedEvent& e)
         {
                 m_Running = false;
-                return true;
-        }
-        bool application::onWindowResize(WindowResizedEvent& e)
-        {
-                /// TODO: look into the resizing part
-                while (m_Window->getHeight() == 0 || m_Window->getWidth() == 0)
-                {
-                        glfwWaitEvents();
-                }
                 return true;
         }
 }  // namespace ic

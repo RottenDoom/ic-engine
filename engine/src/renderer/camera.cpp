@@ -15,9 +15,6 @@ namespace ic
 {
 #define degreeToRadian(x) (x * (1 / 57.295779513082320876798154814105))
 
-#define bindevent(fn)                                                                                                  \
-        [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
-
         void Camera::updateViewMatrix()
         {
                 glm::mat4 rotation    = glm::mat4_cast(glm::conjugate(orientation));
@@ -152,9 +149,9 @@ namespace ic
         void Camera::onEvent(event& e)
         {
                 eventDispatcher dispatcher(e);
-                dispatcher.dispatch<MouseMovedEvent>(bindevent(Camera::onMouseMoved));
-                dispatcher.dispatch<MouseScrolledEvent>(bindevent(Camera::onMouseScroll));
-                dispatcher.dispatch<KeyPressedEvent>(bindevent(Camera::onKeyPressed));
+                dispatcher.dispatch<MouseMovedEvent>(BIND_EVENT(Camera::onMouseMoved));
+                dispatcher.dispatch<MouseScrolledEvent>(BIND_EVENT(Camera::onMouseScroll));
+                dispatcher.dispatch<KeyPressedEvent>(BIND_EVENT(Camera::onKeyPressed));
         }
 
         bool Camera::onKeyPressed(KeyPressedEvent& e)
@@ -165,6 +162,7 @@ namespace ic
                 }
                 if (input::isKeyPressed(Key::C))
                 {
+                        // TODO: Improve this code
                         if (type == lookat)
                         {
                                 type = firstperson;
@@ -218,8 +216,8 @@ namespace ic
 
         bool Camera::onMouseScroll(MouseScrolledEvent& e)
         {
-                fovY -= e.getYOffset() * zoomSpeed;     // zoom speed
-                fovY = glm::clamp(fovY, 10.0f, 90.0f);  // prevent extreme zoom
+                fovY -= e.getYOffset() * zoomSpeed;      // zoom speed
+                fovY  = glm::clamp(fovY, 10.0f, 90.0f);  // prevent extreme zoom
                 // IC_CORE_TRACE("FOV: {}", fovY);
                 fovChanged = true;
                 return false;

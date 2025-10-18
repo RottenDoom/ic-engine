@@ -13,16 +13,18 @@ namespace ic
         {
                 if (this != &other)
                 {
-                        // TODO fix this memory leak
                         reset();
                         moveFrom(std::move(other));
                 }
                 return *this;
         }
 
-        bool framebuffer::create(const VkDevice& device, const VkRenderPass& renderpass,
-                                 const VkExtent2D& swapChainExtent, const uint32_t& attachmentCount,
-                                 const VkImageView* pAttachments, VkAllocationCallbacks* callbacks) noexcept
+        bool framebuffer::create(const VkDevice& device,
+                                 const VkRenderPass& renderpass,
+                                 const VkExtent2D& swapChainExtent,
+                                 const uint32_t& attachmentCount,
+                                 const VkImageView* pAttachments,
+                                 VkAllocationCallbacks* callbacks) noexcept
         {
                 VkFramebufferCreateInfo CI{};
                 CI.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -47,7 +49,7 @@ namespace ic
         {
                 if (m_framebuffer != VK_NULL_HANDLE)
                 {
-                        vkDestroyFramebuffer(device, m_framebuffer, nullptr); // TODO: allocator
+                        vkDestroyFramebuffer(device, m_framebuffer, nullptr);  // TODO: allocator
                 }
                 reset();
         }
@@ -62,4 +64,4 @@ namespace ic
                 m_framebuffer = VK_NULL_HANDLE;
         }
 
-} // namespace ic
+}  // namespace ic

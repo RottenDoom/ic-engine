@@ -1,90 +1,121 @@
 #pragma once
-#include "queue_manager.h"
+#include "defines.h"
 #include "surface.h"
+#include "device.h"
 
 namespace ic
 {
-        class vulkan_context;
-
-        struct device_info
+        /** @brief DeviceInfo class contains the the information for each physical device handle such as features,
+         * properties, queues and swapchain support. This is the basis for comparision between the GPU handles. */
+        struct DeviceInfo
         {
-                VkPhysicalDevice device = VK_NULL_HANDLE;
+
+                VkPhysicalDevice handle;
+
+                // features and properties
                 VkPhysicalDeviceProperties properties{};
                 VkPhysicalDeviceFeatures features{};
                 VkPhysicalDeviceMemoryProperties memoryProperties{};
                 std::vector<VkExtensionProperties> availableExtensions;
 
-                // Cache all device info once
-                void queryDeviceInfo(VkSurfaceKHR surface)
-                {
-                        vkGetPhysicalDeviceProperties(device, &properties);
-                        vkGetPhysicalDeviceFeatures(device, &features);
-                        vkGetPhysicalDeviceMemoryProperties(device, &memoryProperties);
+                std::vector<QueueFamily> queues;
+                int32_t graphicsQueueFamily = -1;
+                int32_t computeQueueFamily  = -1;
+                int32_t presentQueueFamily  = -1;
+                int32_t transferQueueFamily = -1;
 
-                        // Query available extensions
-                        uint32_t extensionCount;
-                        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-                        availableExtensions.resize(extensionCount);
-                        vkEnumerateDeviceExtensionProperties(device,
-                                                             nullptr,
-                                                             &extensionCount,
-                                                             availableExtensions.data());
+                SwapChainSupportDetails swapChainSupportDetails{};
+
+                std::string label;
+
+                bool supportsExtension(const char* name) const
+                {
+                        for (const auto& e : availableExtensions)
+                                if (std::strcmp(e.extensionName, name) == 0)
+                                        return true;
+                        return false;
                 }
+
+                bool supportsSwapchain() const
+                {
+                        return swapChainSupportDetails.surfaceSupported && !swapChainSupportDetails.formats.empty() &&
+                               !swapChainSupportDetails.presentModes.empty();
+                }
+
+                bool hasGraphicsAndCompute() const { return graphicsQueueFamily >= 0 && computeQueueFamily >= 0; }
         };
 
-        struct device_requirements
+        /** @brief SelectionConfig is a struct for setting up the requiremnets for selecting a GPU handle. It sets up a
+         * score based on the queues and properties and swapchain supports based on a score. Even though a score is does
+         * not speak of the true differences between the GPU handles. For now I am just going to use this as the basis
+         * later on manual selection would be the go. */
+        struct SelectionConfig
         {
-                std::vector<const char*> requiredExtensions;  // Use vector for dynamic extensions
-
-                VkPhysicalDeviceFeatures requiredFeatures{};
-                bool requiresDedicatedGPU = false;
                 uint32_t minVulkanVersion = VK_API_VERSION_1_0;
+                std::vector<const char*> requiredExtensions;
+                VkPhysicalDeviceFeatures requiredFeatures{};
 
-                device_requirements()
+                std::function<float(const DeviceInfo&)> score = [](const DeviceInfo& d) -> float
                 {
-                        requiredExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+                        if (!d.hasGraphicsAndCompute() || !d.supportsSwapchain())
+                                return -std::numeric_limits<float>::infinity();  // TODO: Use my own infinity
 
-                        requiredFeatures.samplerAnisotropy = VK_TRUE;
-                        requiredFeatures.fillModeNonSolid  = VK_TRUE;
-                        // TODO - add more requirements and extensions
-                }
+                        // Prefer discrete, then VRAM, then API version
+                        float s = 0.0f;
+                        switch (d.properties.deviceType)
+                        {
+                        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+                                s += 1000.0f;
+                                break;
+                        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+                                s += 100.0f;
+                                break;
+                        default:
+                                break;
+                        }
 
-                void addExtension(const char* extension) { requiredExtensions.push_back(extension); }
+                        // Approx device-local heap size
+                        VkDeviceSize vram = 0;
+                        for (uint32_t i = 0; i < d.memoryProperties.memoryHeapCount; ++i)
+                                if (d.memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+                                        vram = std::max(vram, d.memoryProperties.memoryHeaps[i].size);
+                        s += static_cast<float>(vram / (1024.0 * 1024.0 * 1024.0));  // GB
+
+                        s += static_cast<float>(VK_API_VERSION_MAJOR(d.properties.apiVersion)) * 10.0f;
+                        return s;
+                };
         };
 
-        class physical_device
+        /** @brief Physical Device class is just wrapper for device selection. This class can be later extended to use
+         * with UI configs for manual selection for devices */
+        class PhysicalDevice
         {
         private:
-                device_info m_deviceInfo;
-                device_requirements m_requirements;
-                VkInstance m_instance;
-                VkSurfaceKHR m_surface;
+                VkSurfaceKHR m_surface            = VK_NULL_HANDLE;
+                VkInstance m_instance             = VK_NULL_HANDLE;
+                VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
+
+                std::vector<DeviceInfo> m_devices;
+                int m_selectedIndex = -1;
+
+        private:
+                DeviceInfo buildInfo(VkPhysicalDevice handle) const;
+                static bool meetsRequirements(const DeviceInfo& deviceInfo, const SelectionConfig& config);
 
         public:
-                physical_device(VkInstance& instance, const VkSurfaceKHR& surface);
-                ~physical_device() = default;
+                PhysicalDevice(VkInstance& instance, const VkSurfaceKHR& surface);
+                ~PhysicalDevice() = default;
 
-                bool select(VkInstance& instance, VkSurfaceKHR& surface);
+                /** @brief These functions are for device selection.For future for UI GPU selections this implementation
+                 * might help */
+                const std::vector<DeviceInfo>& enumerate();
+                bool select(const SelectionConfig& config);
+                bool selectByIndex(uint32_t index);
+                bool selectByPredicate(const std::function<bool(const DeviceInfo&)>& pred);
 
-                VkPhysicalDevice get() const { return m_deviceInfo.device; }
-                operator VkPhysicalDevice() const { return m_deviceInfo.device; }
-
-                const VkPhysicalDeviceProperties& getProperties() const { return m_deviceInfo.properties; }
-                const VkPhysicalDeviceFeatures& getFeatures() const { return m_deviceInfo.features; }
-                const VkPhysicalDeviceMemoryProperties& getMemoryProperties() const
-                {
-                        return m_deviceInfo.memoryProperties;
-                }
-                const device_requirements& getRequirements() const { return m_requirements; }
-
-                const queue_family_indices getQueueFamilyIndices() const;
-
-        private:
-                // TODO: rewrite these functions
-                bool isDeviceSuitable(device_info& deviceInfo, device_requirements& requirements);
-                bool checkExtensionSupport(VkPhysicalDevice device);
-                uint32_t rateDeviceSuitability(device_info& deviceInfo, device_requirements& requirements);
-                void logDeviceInfo() const;  // TODO write this function.
+                VkPhysicalDevice get() const { return m_physicalDevice; }
+                int selectedIndex() const { return m_selectedIndex; }
+                const std::vector<DeviceInfo>& devices() const { return m_devices; }
         };
 
 }  // namespace ic

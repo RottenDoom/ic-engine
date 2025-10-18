@@ -23,7 +23,6 @@ namespace ic
 
         private:
                 bool onWindowClose(WindowClosedEvent& e);
-                bool onWindowResize(WindowResizedEvent& e);
 
                 bool m_Running = true;
                 window* m_Window;

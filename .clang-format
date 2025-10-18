@@ -8,6 +8,7 @@ UseTab: Never
 SortIncludes: false
 NamespaceIndentation: All
 AccessModifierOffset: -8
+ArrayInitializerAlignmentStyle: Right
 
 # declaration/call alignment
 BinPackArguments: false
@@ -21,6 +22,9 @@ AlignConsecutiveAssignments:
   Enabled: true
   AcrossEmptyLines: true
   AcrossComments: false
+  AlignCompound: true
+  AlignFunctionDeclarations: true
+  AlignFunctionPointers: true
 
 # function declaration
 AlwaysBreakAfterReturnType: None

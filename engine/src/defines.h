@@ -32,6 +32,9 @@ typedef double f64;
 #define STATIC_ASSERT static_assert
 #endif
 
+#define BIND_EVENT(fn)                                                                                                 \
+        [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
+
 // Ensure all types are of the correct size.
 STATIC_ASSERT(sizeof(uint8_t) == 1, "Expected u8 to be 1 byte.");
 STATIC_ASSERT(sizeof(uint16_t) == 2, "Expected u16 to be 2 bytes.");

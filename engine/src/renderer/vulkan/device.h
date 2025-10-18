@@ -5,7 +5,25 @@
 
 namespace ic
 {
-        /**/
+
+        struct SwapChainSupportDetails
+        {
+                bool surfaceSupported = false;
+                VkSurfaceCapabilitiesKHR capabilities;
+                std::vector<VkSurfaceFormatKHR> formats;
+                std::vector<VkPresentModeKHR> presentModes;
+        };
+
+        struct QueueFamily
+        {
+                uint32_t index     = UINT32_MAX;
+                VkQueueFlags flags = 0;
+                uint32_t count     = 0;
+                VkQueue handle     = VK_NULL_HANDLE;
+        };
+
+        /** @brief vkdevice is a unified class for logical and physical device. The selection of physical device is done
+         * through the PhysicalDevice class and this takes in those features.*/
         struct vkdevice
         {
                 VkPhysicalDevice physicalDevice{VK_NULL_HANDLE};
@@ -17,15 +35,17 @@ namespace ic
                 std::vector<VkQueueFamilyProperties> queueFamilyProps{};
                 std::vector<std::string> supportedExtensions{};
                 VkCommandPool cmdPool{};
+                VkSurfaceKHR surface = VK_NULL_HANDLE;
 
                 struct
                 {
-                        uint32_t graphics;
-                        uint32_t compute;
-                        uint32_t transfer;
-                } queueFamilyIndices;
+                        QueueFamily graphics;
+                        QueueFamily compute;
+                        QueueFamily transfer;
+                        QueueFamily present;
+                } queues;
 
-                explicit vkdevice(VkPhysicalDevice physicalDevice);
+                explicit vkdevice(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
                 ~vkdevice();
                 void destroy();
 
@@ -67,5 +87,6 @@ namespace ic
 
                 bool extensionSupported(std::string extension);
                 VkFormat getSupportedDepthFormat(bool checkSamplingSupport);
+                SwapChainSupportDetails getSwapChainSupport(VkPhysicalDevice device);
         };
 }  // namespace ic
