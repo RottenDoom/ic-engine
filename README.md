@@ -32,8 +32,6 @@ The executable can be found inside `build/build-gcc/bin/Debug/`. You can also us
 
 #### Issues
 
-- Fix the resizing issue
-- Swapchain Recreation and Renderpass Compatibilility
 - Modularity
 
 The project is largely based on the game engine by the cherno and kofi engine.<p>

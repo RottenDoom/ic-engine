@@ -1,29 +1,41 @@
 #include "vulkan_renderer.h"
 #include "shader.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace ic
 {
-        vulkan_renderer::vulkan_renderer(vulkan_context* pContext) noexcept
-            : vertexBuffer(pContext->getVulkanDevice()->logicalDevice)
+        vulkan_renderer::vulkan_renderer(vulkan_context* pContext, vkdevice& device) noexcept
+            : m_device(device), vertexBuffer(device.logicalDevice), indexBuffer(device.logicalDevice)
         {
-                context     = pContext;
-                depthFormat = context->getVulkanDevice()->getSupportedDepthFormat(true);
+                context       = pContext;
+                depthFormat   = m_device.getSupportedDepthFormat(true);
+                auto extent2d = pContext->getWindowExtent();
 
-                vkGetDeviceQueue(context->getVulkanDevice()->logicalDevice,
-                                 context->getVulkanDevice()->queueFamilyIndices.graphics,
-                                 0,
-                                 &queue);
-                uniformBuffers.reserve(context->getSwapChain()->getImageCount());
-                for (size_t i = 0; i < maxFrameInFlight; ++i)
+                m_swapChain   = std::make_unique<SwapChain>(device, extent2d);
+                m_renderPass  = std::make_unique<RenderPass>();
+
+                uniformBuffers.reserve(m_swapChain->imageCount());
+                for (size_t i = 0; i < MAX_FRAME_IN_FLIGHT; ++i)
                 {
-                        uniformBuffers.emplace_back(context->getVulkanDevice()->logicalDevice);  // TODO: fix this here
+                        uniformBuffers.emplace_back(m_device.logicalDevice);
                 }
-                descriptorSets.resize(maxFrameInFlight);
+                descriptorSets.resize(MAX_FRAME_IN_FLIGHT);
+
+                camera.type = Camera::CameraType::lookat;
+                camera.setPosition(glm::vec3(0.0f, 0.0f, -1.0f));
+                camera.setViewDirection(glm::vec3(0.0f, 0.0f, -5.0f),
+                                        glm::vec3(0.0f, 0.0f, -1.0f));  // look into +ve z axiz
+                // camera.setRotationSpeed(0.5f);
+                camera.setPerspectiveProjection(45.0f, (float)extent2d.width / (float)extent2d.height, 0.1f, 256.0f);
+                // camera.setOrientation(glm::vec3(0.50f, 0.45f, 0.f));
         }
 
         bool vulkan_renderer::init()
         {
-                VkDevice device = context->getVulkanDevice()->logicalDevice;
+                VkDevice device = m_device.logicalDevice;
+                createSwapChain();
+                createRenderPass();
                 createCommandPool();
                 createCommandBuffers(device);
                 createSyncObjects(device);
@@ -32,6 +44,7 @@ namespace ic
                 createFramebuffers(device);
                 loadAssets();
                 createVertexBuffer();
+                createIndexedBuffer();
                 prepareUniformBuffers();
                 setupDescriptors(device);
                 createGraphicsPipeline(device);
@@ -39,14 +52,34 @@ namespace ic
                 return true;
         }
 
-        void vulkan_renderer::render()
+        void vulkan_renderer::onEvent(event& e)
+        {
+                // TODO: Input Events like move and mouse scrolled
+                camera.onEvent(e);
+                eventDispatcher dispatcher(e);
+                dispatcher.dispatch<WindowResizedEvent>(BIND_EVENT(vulkan_renderer::onWindowResize));
+        }
+
+        void vulkan_renderer::onUpdate(float deltaTime)
+        {
+                // TODO: we need events here
+
+                // resize
+
+                // render
+                camera.onUpdate(deltaTime);
+        }
+
+        void vulkan_renderer::render(float deltaTime)
         {
                 if (!m_prepared)
                         return;
-                prepareFrame(context->getVulkanDevice()->logicalDevice);
+
+                // render
+                prepareFrame(m_device.logicalDevice);
+                onUpdate(deltaTime);
                 updateUniformBuffers();
-                buildCommandBuffers();
-                submitFrame(context->getVulkanDevice()->logicalDevice);
+                submitFrame(m_device.logicalDevice);
         }
 
         void vulkan_renderer::loadAssets() {}
@@ -55,13 +88,13 @@ namespace ic
         {
                 // pool
                 VkDescriptorPoolSize descriptorPoolSize{.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                                        .descriptorCount = maxFrameInFlight};
+                                                        .descriptorCount = MAX_FRAME_IN_FLIGHT};
                 std::vector<VkDescriptorPoolSize> poolSizes = {descriptorPoolSize};
                 VkDescriptorPoolCreateInfo descriptorCI{};
                 descriptorCI.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
                 descriptorCI.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
                 descriptorCI.pPoolSizes    = poolSizes.data();
-                descriptorCI.maxSets       = maxFrameInFlight;
+                descriptorCI.maxSets       = MAX_FRAME_IN_FLIGHT;
 
                 IC_CORE_ASSERT(vkCreateDescriptorPool(device, &descriptorCI, nullptr, &descriptorPool) == VK_SUCCESS,
                                "Failed to Create Descriptor Pool");
@@ -115,20 +148,33 @@ namespace ic
                 }
 
                 IC_CORE_TRACE("Descriptors Setup Successful!");
-        }  // namespace ic
+        }
+
+        void vulkan_renderer::createSwapChain()
+        {
+                IC_CORE_ASSERT(m_swapChain != nullptr, "SwapChain was not Initialized");
+                IC_CORE_INFO("Swapchain created successfully!");
+        }
+
+        void vulkan_renderer::createRenderPass()
+        {
+                if (!m_renderPass->create(m_device.logicalDevice,
+                                          m_swapChain->getSwapChainImageFormat(),
+                                          m_device.getSupportedDepthFormat(true)))
+                {
+                        IC_CORE_ERROR("Failed to create Renderpass!");
+                }
+                IC_CORE_INFO("Renderpass created successfully!");
+        }
 
         void vulkan_renderer::createCommandPool()
         {
-                VkDevice device = context->getVulkanDevice()->logicalDevice;
-
-                // TODO use the device version instead (write tests first)
-                queue_family_indices queueFamilyIndices =
-                    queue_manager::findQueueFamilies(context->getVulkanDevice()->physicalDevice, context->getSurface());
+                VkDevice device = m_device.logicalDevice;
 
                 VkCommandPoolCreateInfo cmdPoolInfo{
                     .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                     .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-                    .queueFamilyIndex = queueFamilyIndices.graphicsFamily.value(),
+                    .queueFamilyIndex = m_device.queues.graphics.index,
                 };
                 IC_CORE_ASSERT(vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &cmdPool) == VK_SUCCESS,
                                "Failed to create Command Pool!");
@@ -137,7 +183,7 @@ namespace ic
 
         void vulkan_renderer::createCommandBuffers(VkDevice& device)
         {
-                drawCmdBuffers.resize(maxFrameInFlight);
+                drawCmdBuffers.resize(MAX_FRAME_IN_FLIGHT);
                 VkCommandBufferAllocateInfo cmdBufAllocateInfo{
                     .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
                     .commandPool        = cmdPool,
@@ -155,23 +201,45 @@ namespace ic
                 VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
                 // Create staging buffer
-                buffer stagingBuffer(context->getVulkanDevice()->logicalDevice);
-                context->getVulkanDevice()->createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                                         &stagingBuffer,
-                                                         bufferSize,
-                                                         (void*)vertices.data());
-                context->getVulkanDevice()->createBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                                             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                                         &vertexBuffer,
-                                                         bufferSize);
+                buffer stagingBuffer(m_device.logicalDevice);
+                m_device.createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                      &stagingBuffer,
+                                      bufferSize,
+                                      (void*)vertices.data());
+                m_device.createBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                      &vertexBuffer,
+                                      bufferSize);
                 VkBufferCopy copyRegion{};
                 copyRegion.size = bufferSize;
-                context->getVulkanDevice()->copyBuffer(&stagingBuffer, &vertexBuffer, queue, &copyRegion);
+                m_device.copyBuffer(&stagingBuffer, &vertexBuffer, m_device.queues.graphics.handle, &copyRegion);
                 stagingBuffer.destroy();
                 IC_CORE_TRACE("Vertex Buffers Created");
+        }
+
+        void vulkan_renderer::createIndexedBuffer()
+        {
+                VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+                buffer stagingBuffer(m_device.logicalDevice);
+
+                m_device.createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                      &stagingBuffer,
+                                      bufferSize,
+                                      (void*)indices.data());
+
+                m_device.createBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                      &indexBuffer,
+                                      bufferSize);
+
+                VkBufferCopy copyRegion{};
+                copyRegion.size = bufferSize;
+                m_device.copyBuffer(&stagingBuffer, &indexBuffer, m_device.queues.graphics.handle, &copyRegion);
+                stagingBuffer.destroy();
+                IC_CORE_TRACE("Index Buffers Created");
         }
 
         void vulkan_renderer::createGraphicsPipeline(VkDevice& device)
@@ -184,21 +252,27 @@ namespace ic
                 IC_CORE_ASSERT(vkCreatePipelineLayout(device, &layoutCI, nullptr, &pipelineLayout) == VK_SUCCESS,
                                "Failed to set pipeline layout");
 
-                // TODO create filesystem for loading assets
-                shader vert(device, "shader_scripts/bin/simple_shader.vert.spv");
-                shader frag(device, "shader_scripts/bin/simple_shader.frag.spv");
+                // Make different types of pipeline based on enabled features
+                // Phong shading pipeline
+                shader phong_vert(device, "shader_scripts/bin/simple_shader.vert.spv");
+                shader phong_frag(device, "shader_scripts/bin/simple_shader.frag.spv");
 
                 auto bindingDescriptions  = Vertex::getBindingDescriptions();
                 auto attributeDesciptions = Vertex::getAttributeDescriptions();
-                config.create(vert.getModule(), frag.getModule(), extent2d, bindingDescriptions, attributeDesciptions);
+                config.create(phong_vert.getModule(),
+                              phong_frag.getModule(),
+                              context->getWindowExtent(),
+                              bindingDescriptions,
+                              attributeDesciptions);
 
                 VkGraphicsPipelineCreateInfo CI{};
                 CI.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
                 CI.layout              = pipelineLayout;
-                CI.renderPass          = context->getRenderpass()->get();
+                CI.renderPass          = m_renderPass->get();
                 CI.flags               = 0;
                 CI.basePipelineIndex   = -1;
                 CI.basePipelineHandle  = VK_NULL_HANDLE;
+                CI.stageCount          = 2;
 
                 CI.pInputAssemblyState = &config.inputAssembly;
                 CI.pRasterizationState = &config.rasterizer;
@@ -219,23 +293,30 @@ namespace ic
                 IC_CORE_ASSERT(vkCreatePipelineCache(device, &cacheCreateInfo, nullptr, &pipelineCache) == VK_SUCCESS,
                                "Failed to create Pipeline Cache!");
 
-                if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &CI, nullptr, &pipeline) != VK_SUCCESS)
+                if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &CI, nullptr, &pipelines.phong) != VK_SUCCESS)
                 {
                         IC_CORE_ERROR("Failed to create Graphics Pipeline");
                 }
-                frag.destroy();
-                vert.destroy();
+
+                // subsequent pipelines are derivatives
+                CI.flags              = VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+                CI.basePipelineHandle = pipelines.phong;
+                CI.basePipelineIndex  = -1;
+
+                phong_frag.destroy();
+                phong_vert.destroy();
                 IC_CORE_TRACE("Pipeline Creation Successfull!");
         }
 
         void vulkan_renderer::setupDepthStencil(VkDevice& device)
         {
                 IC_CORE_ASSERT((depthFormat != VK_FORMAT_UNDEFINED), "Depth Format Invalid");
-                extent2d = context->getSwapChain()->getExtent();
                 VkImageCreateInfo imageCI{.sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                                           .imageType   = VK_IMAGE_TYPE_2D,
                                           .format      = depthFormat,
-                                          .extent      = {extent2d.width, extent2d.height, 1},
+                                          .extent      = {context->getWindowExtent().width,
+                                                          context->getWindowExtent().height,
+                                                          1},
                                           .mipLevels   = 1,
                                           .arrayLayers = 1,
                                           .samples     = VK_SAMPLE_COUNT_1_BIT,
@@ -248,7 +329,7 @@ namespace ic
 
                 VkMemoryAllocateInfo memAllloc{.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                                                .allocationSize  = memReqs.size,
-                                               .memoryTypeIndex = context->getVulkanDevice()->getMemoryType(
+                                               .memoryTypeIndex = m_device.getMemoryType(
                                                    memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
                 IC_CORE_ASSERT(vkAllocateMemory(device, &memAllloc, nullptr, &depthStencil.memory) == VK_SUCCESS,
                                "Couldn't allocate depth stencil memory");
@@ -279,19 +360,15 @@ namespace ic
 
         void vulkan_renderer::createFramebuffers(VkDevice& device)
         {
-                std::vector<VkImageView> swapchainImageViews = context->getSwapChain()->getImageViews();
-                swapchainFramebuffers.resize(swapchainImageViews.size());
+                swapchainFramebuffers.resize(m_swapChain->imageCount());
 
                 IC_CORE_INFO("No of framebuffers: {}", swapchainFramebuffers.size());
 
-                for (size_t i = 0; i < swapchainImageViews.size(); i++)
+                for (size_t i = 0; i < swapchainFramebuffers.size(); i++)
                 {
-                        VkImageView attachments[] = {swapchainImageViews[i], depthStencil.view};
-                        bool res                  = swapchainFramebuffers[i].create(device,
-                                                                   context->getRenderpass()->get(),
-                                                                   context->getSwapChain()->getExtent(),
-                                                                   2,
-                                                                   attachments);
+                        VkImageView attachments[] = {m_swapChain->getImageView(i), depthStencil.view};
+                        bool res                  = swapchainFramebuffers[i].create(
+                            device, m_renderPass->get(), m_swapChain->getSwapChainExtent(), 2, attachments);
 
                         if (!res)
                         {
@@ -303,23 +380,24 @@ namespace ic
 
         void vulkan_renderer::createSyncObjects(VkDevice& device)
         {
-                presentSemaphores.resize(maxFrameInFlight);
-                renderSemaphore.resize(maxFrameInFlight);  // this needs to be the same size as swapchain image frames
-                                                           // since this can differ
-                waitFences.resize(maxFrameInFlight);
+                imageAvailableSemaphores.resize(MAX_FRAME_IN_FLIGHT);
+                renderFinishedSemaphores.resize(MAX_FRAME_IN_FLIGHT);  // this needs to be the same size as swapchain
+                                                                       // image frames since this can differ
+                inFlightFences.resize(MAX_FRAME_IN_FLIGHT);
+                imagesInFlight.resize(m_swapChain->imageCount(), VK_NULL_HANDLE);
 
-                for (uint32_t i = 0; i < maxFrameInFlight; i++)
+                for (uint32_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++)
                 {
                         // Fence used to ensure that command buffer has completed exection before using it again
                         VkFenceCreateInfo fenceCI{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
                         // Create the fences in signaled state (so we don't wait on first render of each command buffer)
                         fenceCI.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-                        IC_CORE_ASSERT(vkCreateFence(device, &fenceCI, nullptr, &waitFences[i]) == VK_SUCCESS,
+                        IC_CORE_ASSERT(vkCreateFence(device, &fenceCI, nullptr, &inFlightFences[i]) == VK_SUCCESS,
                                        "Wait Fences creation Failed");
                 }
                 // Semaphores are used for correct command ordering within a queue
                 // Used to ensure that image presentation is complete before starting to submit again
-                for (auto& semaphore : presentSemaphores)
+                for (auto& semaphore : imageAvailableSemaphores)
                 {
                         VkSemaphoreCreateInfo semaphoreCI{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
                         IC_CORE_ASSERT(vkCreateSemaphore(device, &semaphoreCI, nullptr, &semaphore) == VK_SUCCESS,
@@ -328,12 +406,13 @@ namespace ic
                 // Render completion
                 // Semaphore used to ensure that all commands submitted have been finished before submitting the image
                 // to the queue
-                for (auto& semaphore : renderSemaphore)
+                for (auto& semaphore : renderFinishedSemaphores)
                 {
                         VkSemaphoreCreateInfo semaphoreCI{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
                         IC_CORE_ASSERT(vkCreateSemaphore(device, &semaphoreCI, nullptr, &semaphore) == VK_SUCCESS,
                                        "Render Semaphore Creation Failed");
                 }
+
                 IC_CORE_TRACE("Sync Objects Initialized!");
         }
 
@@ -341,86 +420,122 @@ namespace ic
         {
                 if (waitForFence)
                 {
-                        // wait for command buffers to complete execution
-                        IC_CORE_ASSERT(vkWaitForFences(device, 1, &waitFences[currentBuffer], VK_TRUE, UINT64_MAX) ==
+                        // Wait for command buffers to complete execution
+                        IC_CORE_ASSERT(vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX) ==
                                            VK_SUCCESS,
                                        "Failed to wait for fences!");
-                        IC_CORE_ASSERT(vkResetFences(device, 1, &waitFences[currentBuffer]) == VK_SUCCESS,
-                                       "Failed to reset fences!");
                 }
 
-                // TODO maybe put this function inside swapchain
                 VkResult result = vkAcquireNextImageKHR(device,
-                                                        context->getSwapChain()->swapchainHandle,
+                                                        m_swapChain->getSwapChain(),
                                                         UINT64_MAX,
-                                                        presentSemaphores[currentBuffer],
+                                                        imageAvailableSemaphores[currentFrame],
                                                         VK_NULL_HANDLE,
                                                         &currentImageIndex);
 
-                if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR))
+                if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_frameBufferResized)
                 {
-                        if (result == VK_ERROR_OUT_OF_DATE_KHR)
-                        {
-                                windowResize();
-                        }
+                        m_frameBufferResized = false;
+                        IC_CORE_TRACE("SwapChain Recreation Called!");
+                        recreateSyncObjects();
+                        recreateSwapChain();
+
+                        // CRITICAL: Mark that we need to skip the submit for this frame
+                        // because no image was successfully acquired
+                        currentImageIndex = UINT32_MAX;  // Invalid index to signal skip
+                        currentFrame      = (currentFrame + 1) % MAX_FRAME_IN_FLIGHT;
                         return;
                 }
-                else
+
+                IC_CORE_ASSERT(result == VK_SUCCESS, "Failed to Acquire SwapChain Images!");
+
+                if (imagesInFlight[currentImageIndex] != VK_NULL_HANDLE)
                 {
-                        IC_CORE_ASSERT(result == VK_SUCCESS, "Frame Preparation Failed!");
+                        // Wait for the fence that is using this image to finish
+                        vkWaitForFences(device, 1, &imagesInFlight[currentImageIndex], VK_TRUE, UINT64_MAX);
                 }
+
+                // 4) Mark this image as now being in use by currentFrame's fence
+                imagesInFlight[currentImageIndex] = inFlightFences[currentFrame];
+
+                // 5) Now record the command buffer for this image (reset + begin + record + end)
+                // Make sure recordCommandBuffer resets it (vkResetCommandBuffer or vkResetCommandPool)
+                buildCommandBuffers(currentImageIndex);  // you must implement this; example below
         }
 
-        // TODO
         void vulkan_renderer::submitFrame(VkDevice& device, bool skipQueueSubmit)
         {
-                if (!skipQueueSubmit)
+                // CRITICAL FIX: If no image was acquired (e.g., due to swapchain recreation),
+                // skip the entire submission and presentation
+                if (currentImageIndex == UINT32_MAX)
                 {
-                        const VkPipelineStageFlags waitPipelineStage{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-                        VkSubmitInfo submitInfo{.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                                                .waitSemaphoreCount   = 1,
-                                                .pWaitSemaphores      = &presentSemaphores[currentBuffer],
-                                                .pWaitDstStageMask    = &waitPipelineStage,
-                                                .commandBufferCount   = 1,
-                                                .pCommandBuffers      = &drawCmdBuffers[currentBuffer],
-                                                .signalSemaphoreCount = 1,
-                                                .pSignalSemaphores    = &renderSemaphore[currentImageIndex]};
-                        IC_CORE_ASSERT(vkQueueSubmit(queue, 1, &submitInfo, waitFences[currentBuffer]) == VK_SUCCESS,
-                                       "Queue Submition Failed!");
+                        // Advance to next frame slot even though we skipped
+                        currentImageIndex = UINT32_MAX;
+                        currentFrame      = (currentFrame + 1) % MAX_FRAME_IN_FLIGHT;
+                        return;
                 }
 
-                VkPresentInfoKHR presentInfo{.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-                                             .waitSemaphoreCount = 1,
-                                             .pWaitSemaphores    = &renderSemaphore[currentImageIndex],
-                                             .swapchainCount     = 1,
-                                             .pSwapchains        = &context->getSwapChain()->swapchainHandle,
-                                             .pImageIndices      = &currentImageIndex};
-                VkResult result = vkQueuePresentKHR(queue, &presentInfo);
-                // Recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer
-                // optimal for presentation (SUBOPTIMAL)
-                if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR))
+                vkResetFences(device, 1, &inFlightFences[currentFrame]);
+
+                if (!skipQueueSubmit)
                 {
-                        windowResize();
-                        if (result == VK_ERROR_OUT_OF_DATE_KHR)
-                        {
-                                return;
-                        }
+                        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
+                        VkSubmitInfo submitInfo{};
+                        submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                        submitInfo.waitSemaphoreCount   = 1;
+                        submitInfo.pWaitSemaphores      = &imageAvailableSemaphores[currentFrame];
+                        submitInfo.pWaitDstStageMask    = waitStages;
+                        submitInfo.commandBufferCount   = 1;
+                        submitInfo.pCommandBuffers      = &drawCmdBuffers[currentImageIndex];
+                        submitInfo.signalSemaphoreCount = 1;
+                        submitInfo.pSignalSemaphores    = &renderFinishedSemaphores[currentFrame];
+
+                        VkResult submitRes              = vkQueueSubmit(m_device.queues.graphics.handle,
+                                                           1,
+                                                           &submitInfo,
+                                                           inFlightFences[currentFrame]);
+                        IC_CORE_ASSERT(submitRes == VK_SUCCESS, "Queue Submission Failed!");
                 }
-                else
+
+                // Present: wait on the same render-finished semaphore for this frame
+                VkPresentInfoKHR presentInfo{};
+                presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+                presentInfo.waitSemaphoreCount = 1;
+                presentInfo.pWaitSemaphores    = &renderFinishedSemaphores[currentFrame];
+
+                VkSwapchainKHR swapchains[]    = {m_swapChain->getSwapChain()};
+                presentInfo.swapchainCount     = 1;
+                presentInfo.pSwapchains        = swapchains;
+                presentInfo.pImageIndices      = &currentImageIndex;
+
+                VkResult result                = vkQueuePresentKHR(m_device.queues.present.handle, &presentInfo);
+
+                if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_frameBufferResized)
                 {
-                        IC_CORE_ASSERT(result == VK_SUCCESS, "Frame Submition Failed!");
+                        m_frameBufferResized = false;
+                        IC_CORE_TRACE("SwapChain Recreation Called!");
+                        recreateSwapChain();
                 }
-                // Select the next frame to render to, based on the max. no. of concurrent frames
-                currentBuffer = (currentBuffer + 1) % maxFrameInFlight;
+                else if (result != VK_SUCCESS)
+                {
+                        IC_CORE_ASSERT(false, "Frame Submission Failed!");
+                }
+
+                // Advance to next frame slot
+                currentFrame = (currentFrame + 1) % MAX_FRAME_IN_FLIGHT;
         }
 
         // used in renderframe
-        void vulkan_renderer::buildCommandBuffers()
+        void vulkan_renderer::buildCommandBuffers(uint32_t imageIndex)
         {
-                VkCommandBuffer cmdBuffer = drawCmdBuffers[currentBuffer];
+                VkCommandBuffer cmdBuffer = drawCmdBuffers[imageIndex];
+
+                vkResetCommandBuffer(cmdBuffer, 0);
 
                 VkCommandBufferBeginInfo cmdBufInfo{};
                 cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                cmdBufInfo.flags = 0;  // or VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT if you require
 
                 VkClearValue clearValues[2]{};
                 clearValues[0].color        = defaultClearColor;
@@ -428,14 +543,14 @@ namespace ic
 
                 VkRenderPassBeginInfo renderPassBeginInfo{};
                 renderPassBeginInfo.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                renderPassBeginInfo.renderPass               = context->getRenderpass()->get();
+                renderPassBeginInfo.renderPass               = m_renderPass->get();
                 renderPassBeginInfo.renderArea.offset.x      = 0;
                 renderPassBeginInfo.renderArea.offset.y      = 0;
-                renderPassBeginInfo.renderArea.extent.width  = extent2d.width;
-                renderPassBeginInfo.renderArea.extent.height = extent2d.height;
+                renderPassBeginInfo.renderArea.extent.width  = context->getWindowExtent().width;
+                renderPassBeginInfo.renderArea.extent.height = context->getWindowExtent().height;
                 renderPassBeginInfo.clearValueCount          = 2;
                 renderPassBeginInfo.pClearValues             = clearValues;
-                renderPassBeginInfo.framebuffer              = swapchainFramebuffers[currentImageIndex];
+                renderPassBeginInfo.framebuffer              = swapchainFramebuffers[imageIndex];
 
                 IC_CORE_ASSERT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo) == VK_SUCCESS,
                                "Command buffer begin failed");
@@ -443,15 +558,15 @@ namespace ic
                 vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
                 VkViewport viewport{};
-                viewport.width    = (float)extent2d.width;
-                viewport.height   = (float)extent2d.height;
+                viewport.width    = (float)context->getWindowExtent().width;
+                viewport.height   = (float)context->getWindowExtent().height;
                 viewport.minDepth = 0.0f;
                 viewport.maxDepth = 1.0f;
                 vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
                 VkRect2D scissor{};
-                scissor.extent.width  = extent2d.width;
-                scissor.extent.height = extent2d.height;
+                scissor.extent.width  = context->getWindowExtent().width;
+                scissor.extent.height = context->getWindowExtent().height;
                 scissor.offset.x      = 0;
                 scissor.offset.y      = 0;
                 vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
@@ -461,17 +576,18 @@ namespace ic
                                         pipelineLayout,
                                         0,
                                         1,
-                                        &descriptorSets[currentBuffer],
+                                        &descriptorSets[currentFrame],
                                         0,
                                         nullptr);
 
                 VkDeviceSize offsets[] = {0};
-                vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+                vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.phong);
                 vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &vertexBuffer.handle, offsets);
-                vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
+                vkCmdBindIndexBuffer(cmdBuffer, indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
+                vkCmdDrawIndexed(cmdBuffer, indexCount, 1, 0, 0, 0);
 
-                /* The scene and other things can be done later for now main target is to get something to show on
-                 * screen.*/
+                /* The scene and other things can be done later for now main target is to get something to show
+                 * on screen.*/
                 // scene.bindBuffers(cmdBuffer);
 
                 // Left : Render the scene using the solid colored pipeline with phong shading
@@ -512,32 +628,112 @@ namespace ic
         {
                 for (auto& buffer : uniformBuffers)
                 {
-                        IC_CORE_ASSERT(context->getVulkanDevice()->createBuffer(
-                                           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                           &buffer,
-                                           sizeof(UniformData)) == VK_SUCCESS,
+                        IC_CORE_ASSERT(m_device.createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                                             &buffer,
+                                                             sizeof(UniformData)) == VK_SUCCESS,
                                        "Failed to Create Uniform Buffers");
 
                         IC_CORE_ASSERT(buffer.map() == VK_SUCCESS, "Buffer was mapped to CPU");
                 }
         }
 
+        // THis is a scene function and should be in a scene
         void vulkan_renderer::updateUniformBuffers()
         {
                 UniformData ubo{};
-                ubo.modelView = glm::mat4(1.0f);
-                ubo.projection =
-                    glm::perspective(glm::radians(60.0f), extent2d.width / (float)extent2d.height, 0.1f, 256.0f);
 
-                ubo.viewMatrix = glm::lookAt(glm::vec3(0, 0, 2), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+                static auto startTime = std::chrono::high_resolution_clock::now();
+                auto currentTime      = std::chrono::high_resolution_clock::now();
+                float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-                memcpy(uniformBuffers[currentImageIndex].mapped, &ubo, sizeof(ubo));
+                ubo.modelMatrix       = glm::mat4(1.0f);
+
+                float rotationSpeed   = glm::radians(45.0f);
+
+                ubo.viewMatrix        = camera.matrices.view;
+                ubo.projection        = camera.projection;
+
+                ubo.projection[1][1] *= -1;
+                if (currentImageIndex != UINT32_MAX)
+                        memcpy(uniformBuffers[currentImageIndex].mapped, &ubo, sizeof(ubo));
+                else
+                {
+                        IC_CORE_TRACE("Skipping Uniform Buffer Update");
+                        return;
+                }
+        }
+
+        // TODO: make sure swapchain extent dependencies are lowered
+        void vulkan_renderer::recreateSwapChain()
+        {
+                vkDeviceWaitIdle(m_device.logicalDevice);
+                // destroy the things
+                for (auto& fb : swapchainFramebuffers)
+                        vkDestroyFramebuffer(m_device.logicalDevice, fb, nullptr);
+                destroyDepthStencil();
+
+                m_swapChain->destroy(m_device.logicalDevice, nullptr);
+                m_swapChain = nullptr;  // TODO : see how to fix this
+
+                auto extent = context->getWindowExtent();
+                while (extent.width == 0 || extent.height == 0)
+                {
+                        extent = context->getWindowExtent();
+                        glfwWaitEvents();  // TODO: use own API
+                }
+
+                if (m_swapChain == nullptr)
+                {
+                        m_swapChain = std::make_unique<SwapChain>(m_device, extent);
+                }
+                else
+                {
+                        std::shared_ptr<SwapChain> oldSwapChain = std::move(m_swapChain);
+                        m_swapChain = std::make_unique<SwapChain>(m_device, extent, oldSwapChain.get());
+                }
+                setupDepthStencil(m_device.logicalDevice);
+                createFramebuffers(m_device.logicalDevice);
+
+                // currentFrame = 0;
+        }
+
+        void vulkan_renderer::recreateSyncObjects()
+        {
+                VkDevice device = m_device.logicalDevice;
+
+                // Destroy old semaphores for the current frame only
+                vkDestroySemaphore(device, imageAvailableSemaphores[currentFrame], nullptr);
+                vkDestroySemaphore(device, renderFinishedSemaphores[currentFrame], nullptr);
+
+                // Recreate them
+                VkSemaphoreCreateInfo semaphoreInfo{};
+                semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+                IC_CORE_ASSERT(vkCreateSemaphore(device,
+                                                 &semaphoreInfo,
+                                                 nullptr,
+                                                 &imageAvailableSemaphores[currentFrame]) == VK_SUCCESS,
+                               "Failed to recreate image available semaphore!");
+
+                IC_CORE_ASSERT(vkCreateSemaphore(device,
+                                                 &semaphoreInfo,
+                                                 nullptr,
+                                                 &renderFinishedSemaphores[currentFrame]) == VK_SUCCESS,
+                               "Failed to recreate render finished semaphore!");
+        }
+
+        void vulkan_renderer::destroyDepthStencil()
+        {
+                vkDestroyImageView(m_device.logicalDevice, depthStencil.view, nullptr);
+                vkDestroyImage(m_device.logicalDevice, depthStencil.image, nullptr);
+                vkFreeMemory(m_device.logicalDevice, depthStencil.memory, nullptr);
         }
 
         void vulkan_renderer::destroy()
         {
-                VkDevice device = context->getVulkanDevice()->logicalDevice;
+                VkDevice device = m_device.logicalDevice;
                 vkDeviceWaitIdle(device);
 
                 for (auto& buffer : uniformBuffers)
@@ -554,44 +750,68 @@ namespace ic
                                      static_cast<uint32_t>(drawCmdBuffers.size()),
                                      drawCmdBuffers.data());
 
+                destroyDepthStencil();
+
                 for (size_t i = 0; i < swapchainFramebuffers.size(); i++)
                 {
                         swapchainFramebuffers[i].destroy(device);
                 }
                 swapchainFramebuffers.clear();
 
-                vkDestroyImageView(device, depthStencil.view, nullptr);
-                vkDestroyImage(device, depthStencil.image, nullptr);
-                vkFreeMemory(device, depthStencil.memory, nullptr);
-
                 vkDestroyPipelineCache(device, pipelineCache, nullptr);
                 vkDestroyCommandPool(device, cmdPool, nullptr);
 
                 // delete everything else first
-                for (size_t i = 0; i < presentSemaphores.size(); i++)
+                for (size_t i = 0; i < imageAvailableSemaphores.size(); i++)
                 {
-                        vkDestroySemaphore(device, presentSemaphores[i], nullptr);
+                        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
                 }
-                for (size_t i = 0; i < renderSemaphore.size(); i++)
+                for (size_t i = 0; i < renderFinishedSemaphores.size(); i++)
                 {
-                        vkDestroySemaphore(device, renderSemaphore[i], nullptr);
+                        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
                 }
-                for (uint32_t i = 0; i < maxFrameInFlight; i++)
+                for (uint32_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++)
                 {
-                        vkDestroyFence(device, waitFences[i], nullptr);
+                        vkDestroyFence(device, inFlightFences[i], nullptr);
                         vkDestroyBuffer(device, uniformBuffers[i].handle, nullptr);
                         vkFreeMemory(device, uniformBuffers[i].memory, nullptr);
                 }
                 vertexBuffer.destroy();
+                indexBuffer.destroy();
 
-                vkDestroyPipeline(device, pipeline, nullptr);
+                vkDestroyPipeline(device, pipelines.phong, nullptr);
                 vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
                 vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
+                m_renderPass->destroy(device, nullptr);
+                m_swapChain->destroy(device, nullptr);
 
                 IC_CORE_TRACE("Everything was destroyed!");
         }
 
-        void vulkan_renderer::windowResize() {}
+        bool vulkan_renderer::onWindowResize(WindowResizedEvent& e)
+        {
+                if (e.getHeight() == 0 || e.getWidth() == 0)
+                {
+                        IC_CORE_TRACE("{0}, {1}", e.getHeight(), e.getWidth());
+                        return true;  // TODO use better logic here.
+                }
+                m_frameBufferResized = true;
+                return false;
+        }
+
+        void vulkan_renderer::getEnabledFeatures()
+        {
+                if (deviceFeatures.fillModeNonSolid)
+                {
+                        enabledFeatures.fillModeNonSolid = VK_TRUE;
+                };
+
+                if (deviceFeatures.wideLines)
+                {
+                        enabledFeatures.wideLines = VK_TRUE;
+                }
+        }
 
         std::vector<VkVertexInputBindingDescription> vulkan_renderer::Vertex::getBindingDescriptions()
         {
@@ -602,6 +822,7 @@ namespace ic
 
                 return bindingDescription;
         }
+
         std::vector<VkVertexInputAttributeDescription> vulkan_renderer::Vertex::getAttributeDescriptions()
         {
                 std::vector<VkVertexInputAttributeDescription> attributeDescription(2);

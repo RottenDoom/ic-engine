@@ -1,286 +1,218 @@
 #include "physical_device.h"
 #include "context.h"
 #include "defines.h"
-#include "queue_manager.h"
 
 // TODO: implement swapchain selection
 
 namespace ic
 {
-        physical_device::physical_device(VkInstance& instance, const VkSurfaceKHR& surface)
+        DeviceInfo PhysicalDevice::buildInfo(VkPhysicalDevice handle) const
+        {
+                DeviceInfo out{};
+                out.handle = handle;
+
+                // core props/features/memory
+                vkGetPhysicalDeviceProperties(handle, &out.properties);
+                vkGetPhysicalDeviceFeatures(handle, &out.features);
+                vkGetPhysicalDeviceMemoryProperties(handle, &out.memoryProperties);
+
+                uint32_t qcount = 0;
+                vkGetPhysicalDeviceQueueFamilyProperties(handle, &qcount, nullptr);
+                std::vector<VkQueueFamilyProperties> qprops(qcount);
+                vkGetPhysicalDeviceQueueFamilyProperties(handle, &qcount, qprops.data());
+
+                IC_CORE_TRACE("{0} queues found on the GPU device handle {1}", qcount, out.properties.deviceName);
+
+                out.queues.reserve(qcount);
+                for (uint32_t i = 0; i < qcount; ++i)
+                {
+                        QueueFamily q{};
+                        q.index = i;
+                        q.flags = qprops[i].queueFlags;
+                        q.count = qprops[i].queueCount;
+                        out.queues.push_back(q);
+                }
+                // find G+C
+                for (const auto& q : out.queues)
+                {
+                        if ((q.flags & VK_QUEUE_GRAPHICS_BIT) && out.graphicsQueueFamily < 0)
+                                out.graphicsQueueFamily = static_cast<int>(q.index);
+                        if ((q.flags & VK_QUEUE_COMPUTE_BIT) && out.computeQueueFamily < 0)
+                                out.computeQueueFamily = static_cast<int>(q.index);
+                        if ((q.flags & VK_QUEUE_TRANSFER_BIT) && out.transferQueueFamily < 0)
+                                out.transferQueueFamily = static_cast<int>(q.index);
+                }
+                // present support (surface-dependent)
+                out.presentQueueFamily = -1;
+                if (m_surface != VK_NULL_HANDLE)
+                {
+                        for (const auto& q : out.queues)
+                        {
+                                VkBool32 supported = VK_FALSE;
+                                vkGetPhysicalDeviceSurfaceSupportKHR(handle, q.index, m_surface, &supported);
+                                if (supported && out.presentQueueFamily < 0)
+                                        out.presentQueueFamily = static_cast<int>(q.index);
+                        }
+                        out.swapChainSupportDetails.surfaceSupported = out.presentQueueFamily >= 0;
+                        if (out.swapChainSupportDetails.surfaceSupported)
+                        {
+                                uint32_t formatCount = 0;
+                                vkGetPhysicalDeviceSurfaceFormatsKHR(handle, m_surface, &formatCount, nullptr);
+                                out.swapChainSupportDetails.formats.resize(formatCount);
+                                if (formatCount)
+                                        vkGetPhysicalDeviceSurfaceFormatsKHR(handle,
+                                                                             m_surface,
+                                                                             &formatCount,
+                                                                             out.swapChainSupportDetails.formats.data());
+
+                                uint32_t presentModes = 0;
+                                vkGetPhysicalDeviceSurfacePresentModesKHR(handle, m_surface, &presentModes, nullptr);
+                                out.swapChainSupportDetails.presentModes.resize(presentModes);
+                                if (presentModes)
+                                        vkGetPhysicalDeviceSurfacePresentModesKHR(
+                                            handle,
+                                            m_surface,
+                                            &presentModes,
+                                            out.swapChainSupportDetails.presentModes.data());
+
+                                vkGetPhysicalDeviceSurfaceCapabilitiesKHR(handle,
+                                                                          m_surface,
+                                                                          &out.swapChainSupportDetails.capabilities);
+                        }
+                }
+
+                // extensions
+                uint32_t extCount = 0;
+                vkEnumerateDeviceExtensionProperties(handle, nullptr, &extCount, nullptr);
+                out.availableExtensions.resize(extCount);
+                if (extCount)
+                        vkEnumerateDeviceExtensionProperties(handle, nullptr, &extCount, out.availableExtensions.data());
+                for (size_t i = 0; i < extCount; i++)
+                {
+                        IC_CORE_TRACE("    {0}. {1}", i + 1, out.availableExtensions[i].extensionName);
+                }
+                IC_CORE_TRACE("{0} extensions found on the GPU handle {1}", extCount, out.properties.deviceName);
+
+                // label
+                const char* typeStr = "Other";
+                switch (out.properties.deviceType)
+                {
+                case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+                        typeStr = "Discrete";
+                        break;
+                case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+                        typeStr = "Integrated";
+                        break;
+                case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+                        typeStr = "Virtual";
+                        break;
+                case VK_PHYSICAL_DEVICE_TYPE_CPU:
+                        typeStr = "CPU";
+                        break;
+                default:
+                        break;
+                }
+                out.label = std::string(out.properties.deviceName) + " (" + typeStr + ")";
+                IC_CORE_TRACE("GPU handle labeled {0} is set up for comparision", out.label);
+                return out;
+        }
+
+        bool PhysicalDevice::meetsRequirements(const DeviceInfo& deviceInfo, const SelectionConfig& config)
+        {
+                if (deviceInfo.properties.apiVersion < config.minVulkanVersion)
+                        return false;
+
+                // required extensions
+                for (const char* ext : config.requiredExtensions)
+                        if (!deviceInfo.supportsExtension(ext))
+                                return false;
+
+                // required features TODO(make a macro for checking and enabling extensions future proofing)
+                const auto& req = config.requiredFeatures;
+                // Example: if you set req.samplerAnisotropy = VK_TRUE, we enforce it
+                if (req.samplerAnisotropy && !deviceInfo.features.samplerAnisotropy)
+                        return false;
+                if (req.geometryShader && !deviceInfo.features.geometryShader)
+                        return false;
+                if (req.tessellationShader && !deviceInfo.features.tessellationShader)
+                        return false;
+                // Extend with other fields you actually set in req...
+
+                return true;
+        }
+
+        PhysicalDevice::PhysicalDevice(VkInstance& instance, const VkSurfaceKHR& surface)
             : m_instance(instance), m_surface(surface)
         {
         }
 
-        bool physical_device::select(VkInstance& instance, VkSurfaceKHR& surface)
+        const std::vector<DeviceInfo>& PhysicalDevice::enumerate()
         {
-                if (!instance || !surface)
+                if (!m_devices.empty())
+                        return m_devices;
+                uint32_t count = 0;
+                vkEnumeratePhysicalDevices(m_instance, &count, nullptr);
+                std::vector<VkPhysicalDevice> phys(count);
+                vkEnumeratePhysicalDevices(m_instance, &count, phys.data());
+
+                m_devices.reserve(count);
+                for (auto h : phys)
+                        m_devices.push_back(buildInfo(h));
+                return m_devices;
+        }
+
+        bool PhysicalDevice::select(const SelectionConfig& config)
+        {
+                const auto& devices = enumerate();
+                float bestScore     = -std::numeric_limits<float>::infinity();
+                int bestIdx         = -1;
+                for (int i = 0; i < static_cast<int>(devices.size()); ++i)
                 {
-                        IC_CORE_ERROR("Invalid instance or surface for device selection");
-                        return false;
-                }
-
-                // enumerate devices
-                uint32_t deviceCount = 0;
-                vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-
-                IC_CORE_FATAL_IF(deviceCount == 0, "Failed to find GPUs with Vulkan support");
-
-                std::vector<VkPhysicalDevice> devices(deviceCount);
-                vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-                // cache all device information once per device
-                std::vector<device_info> deviceInfos;
-                deviceInfos.reserve(deviceCount);
-
-                IC_CORE_INFO("Found {} physical device(s)", deviceCount);
-
-                for (const auto& device : devices)
-                {
-                        device_info& info = deviceInfos.emplace_back();
-                        info.device       = device;
-                        info.queryDeviceInfo(surface);
-
-                        IC_CORE_TRACE("Cached info for device: {}", info.properties.deviceName);
-                }
-
-                std::multimap<uint32_t, const device_info*> candidates;
-
-                for (auto& deviceInfo : deviceInfos)
-                {
-                        uint32_t score = rateDeviceSuitability(deviceInfo, m_requirements);
-                        if (score > 0)
+                        // Check if the device meets all requirements
+                        if (!meetsRequirements(devices[i], config))
+                                continue;
+                        // If device meets requirements then check the score of device if not zero
+                        float score = config.score ? config.score(devices[i]) : 0.0f;
+                        if (score > bestScore)
                         {
-                                candidates.insert(std::make_pair(score, &deviceInfo));
-                                IC_CORE_TRACE("Device '{}' scored: {}", deviceInfo.properties.deviceName, score);
-                        }
-                        else
-                        {
-                                IC_CORE_TRACE("Device '{}' failed suitability test", deviceInfo.properties.deviceName);
+                                bestScore = score;
+                                bestIdx   = i;
                         }
                 }
-
-                if (candidates.empty())
+                if (bestIdx >= 0)
                 {
-                        IC_CORE_ERROR("Failed to find a suitable GPU!");
-                        return false;
+                        m_physicalDevice = devices[bestIdx].handle;
+                        m_selectedIndex  = bestIdx;
+                        IC_CORE_TRACE("{0} GPU handle was selected based on the requirements. ",
+                                      devices[bestIdx].label);
+                        return true;
                 }
+                return false;
+        }
 
-                const device_info* bestDevice = candidates.rbegin()->second;
-                m_deviceInfo                  = *bestDevice;  // Copy the cached information
-
-                logDeviceInfo();
-
-                IC_CORE_INFO("Selected physical device: {} (Score: {})",
-                             m_deviceInfo.properties.deviceName,
-                             candidates.rbegin()->first);
+        bool PhysicalDevice::selectByIndex(uint32_t index)
+        {
+                const auto& devices = enumerate();
+                if (index >= devices.size())
+                        return false;
+                m_physicalDevice = devices[index].handle;
+                m_selectedIndex  = static_cast<int>(index);
                 return true;
         }
 
-        bool physical_device::isDeviceSuitable(device_info& deviceInfo, device_requirements& requirements)
+        bool PhysicalDevice::selectByPredicate(const std::function<bool(const DeviceInfo&)>& pred)
         {
-                // check queue families
-                queue_family_indices indices = queue_manager::findQueueFamilies(deviceInfo.device, m_surface);
-                bool queueFamiliesComplete   = indices.isComplete();
-                if (queueFamiliesComplete)
+                const auto& devices = enumerate();
+                for (int i = 0; i < static_cast<int>(devices.size()); ++i)
                 {
-                        IC_CORE_INFO("All required queue families found");
-                }
-                else
-                {
-                        IC_CORE_WARN("Missing required queue families");
-                        if (!indices.graphicsFamily.has_value())
-                                IC_CORE_WARN("    - Missing graphics queue family");
-                        if (!indices.presentFamily.has_value())
-                                IC_CORE_WARN("    - Missing present queue family");
-                        if (!indices.computeFamily.has_value())
-                                IC_CORE_WARN("    - Missing compute queue family");
-                        if (!indices.transferFamily.has_value())
-                                IC_CORE_WARN("    - Missing transfer queue family");
-                }
-
-                // check extensions
-                bool extensionsSupported = checkExtensionSupport(deviceInfo.device);
-                bool swapChainAdequate   = false;
-                if (extensionsSupported)
-                {
-                        IC_CORE_INFO("All required extensions supported");
-                        swap_chain_support_details swapChainSupport =
-                            vulkan_context::get()->getSwapChain()->querySupport(deviceInfo.device, m_surface);
-                        swapChainAdequate = swapChainSupport.isAdequate();
-                }
-
-                IC_CORE_INFO("Supported features:");
-                IC_CORE_INFO(" - samplerAnisotropy: {}", deviceInfo.features.samplerAnisotropy);
-                IC_CORE_INFO(" - fillModeNonSolid: {}", deviceInfo.features.fillModeNonSolid);
-
-                // check for all features
-                IC_CORE_INFO("Required features:");
-                IC_CORE_INFO(" - samplerAnisotropy: {}", m_requirements.requiredFeatures.samplerAnisotropy);
-                IC_CORE_INFO(" - fillModeNonSolid: {}", m_requirements.requiredFeatures.fillModeNonSolid);
-
-                bool featuresSupported = true;
-                if (m_requirements.requiredFeatures.samplerAnisotropy && !deviceInfo.features.samplerAnisotropy)
-                {
-                        featuresSupported = false;
-                }
-                if (m_requirements.requiredFeatures.fillModeNonSolid && !deviceInfo.features.fillModeNonSolid)
-                {
-                        featuresSupported = false;
-                }
-
-                // more feature checks ....
-                if (!extensionsSupported)
-                        IC_CORE_WARN(" -> Missing required extensions");
-                if (!swapChainAdequate)
-                        IC_CORE_WARN(" -> Swapchain support inadequate");
-                if (!featuresSupported)
-                        IC_CORE_WARN(" -> Required features not supported");
-
-                return indices.isComplete() && extensionsSupported && swapChainAdequate && featuresSupported;
-        }
-
-        const queue_family_indices physical_device::getQueueFamilyIndices() const
-        {
-                if (m_deviceInfo.device != VK_NULL_HANDLE)
-                {
-                        return queue_manager::findQueueFamilies(m_deviceInfo.device, m_surface);
-                }
-                return queue_family_indices();
-        }
-
-        bool physical_device::checkExtensionSupport(VkPhysicalDevice device)
-        {
-                // extensions enumeration
-                uint32_t extensionCount;
-                vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-                std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-                vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-                std::set<std::string> requiredExtensions;
-                for (const auto& ext : m_requirements.requiredExtensions)
-                {
-                        requiredExtensions.insert(std::string(ext));
-                }
-
-                for (const auto& extension : availableExtensions)
-                {
-                        requiredExtensions.erase(extension.extensionName);
-                }
-
-                if (!requiredExtensions.empty())
-                {
-                        IC_CORE_WARN("Missing extensions:");
-                        for (const auto& ext : requiredExtensions)
+                        if (pred(devices[i]))
                         {
-                                IC_CORE_WARN(" -> {}", ext);
+                                m_physicalDevice = devices[i].handle;
+                                m_selectedIndex  = i;
+                                return true;
                         }
                 }
-
-                return requiredExtensions.empty();
+                return false;
         }
 
-        uint32_t physical_device::rateDeviceSuitability(device_info& deviceInfo, device_requirements& requirements)
-        {
-                if (!isDeviceSuitable(deviceInfo, requirements))
-                {
-                        return 0;
-                }
-
-                const auto& properties = deviceInfo.properties;
-                const auto& features   = deviceInfo.features;
-                const auto& indices    = queue_manager::findQueueFamilies(deviceInfo.device, m_surface);
-
-                int score              = 0;
-
-                // Discrete GPUs have a significant performance advantage
-                if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-                {
-                        score += 1000;
-                        IC_CORE_INFO("  + 1000 points (Discrete GPU)");
-                }
-                else if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
-                {
-                        score += 100;
-                        IC_CORE_INFO("  + 100 points (Integrated GPU)");
-                }
-
-                // Maximum possible size of textures affects graphics quality
-                // Maximum possible size of textures affects graphics quality
-                int textureScore = static_cast<int>(properties.limits.maxImageDimension2D / 1000);
-                score += textureScore;
-                IC_CORE_INFO("  + {} points (Max texture size: {})",
-                             textureScore,
-                             properties.limits.maxImageDimension2D);
-
-                // Prefer devices with more memory
-                uint64_t totalMemory = 0;
-                vkGetPhysicalDeviceMemoryProperties(deviceInfo.device, &deviceInfo.memoryProperties);
-
-                for (uint32_t i = 0; i < deviceInfo.memoryProperties.memoryHeapCount; i++)
-                {
-                        if (deviceInfo.memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-                        {
-                                totalMemory += deviceInfo.memoryProperties.memoryHeaps[i].size;
-                        }
-                }
-                uint32_t memoryScore = static_cast<int>(totalMemory / (1024 * 1024 * 1024));  // score based on GB
-                score += memoryScore;
-                IC_CORE_INFO("  + {} points (Device memory: {:.2f} GB)",
-                             memoryScore,
-                             totalMemory / (1024.0 * 1024.0 * 1024.0));
-
-                // Check queue family uniqueness (dedicated queues are better)
-                std::set<uint32_t> uniqueQueueFamilies = indices.getUniqueQueueFamilies();
-                score += static_cast<int>(uniqueQueueFamilies.size()) * 100;
-                IC_CORE_INFO("   + {} * 100 points for each unique queue",
-                             static_cast<int>(uniqueQueueFamilies.size()));
-
-                return score;
-        }
-
-        void physical_device::logDeviceInfo() const
-        {
-                const auto& properties       = m_deviceInfo.properties;
-                const auto& memoryProperties = m_deviceInfo.memoryProperties;
-                const auto& indices          = queue_manager::findQueueFamilies(m_deviceInfo.device, m_surface);
-
-                IC_CORE_INFO("Physical Device Info:");
-                IC_CORE_INFO("  Name: {}", properties.deviceName);
-                IC_CORE_INFO("  Type: {}",
-                             properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "Discrete GPU" : "Other");
-                IC_CORE_INFO("  API Version: {}.{}.{}",
-                             VK_VERSION_MAJOR(properties.apiVersion),
-                             VK_VERSION_MINOR(properties.apiVersion),
-                             VK_VERSION_PATCH(properties.apiVersion));
-                IC_CORE_INFO("  Driver Version: {}", properties.driverVersion);
-                IC_CORE_INFO("  Vendor ID: 0x{:X}", properties.vendorID);
-                IC_CORE_INFO("  Device ID: 0x{:X}", properties.deviceID);
-
-                // Log memory information
-                uint64_t totalVRAM = 0;
-                for (uint32_t i = 0; i < memoryProperties.memoryHeapCount; i++)
-                {
-                        if (memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-                        {
-                                totalVRAM += memoryProperties.memoryHeaps[i].size;
-                        }
-                }
-                IC_CORE_INFO("  VRAM: {:.1f} GB", static_cast<double>(totalVRAM) / (1024.0 * 1024.0 * 1024.0));
-
-                // Log queue families
-                IC_CORE_INFO("  Queue Families:");
-                IC_CORE_INFO("    Graphics: {}", indices.graphicsFamily.value_or(UINT32_MAX));
-                IC_CORE_INFO("    Present: {}", indices.presentFamily.value_or(UINT32_MAX));
-                if (indices.computeFamily.has_value())
-                {
-                        IC_CORE_INFO("    Compute: {}", indices.computeFamily.value());
-                }
-                if (indices.transferFamily.has_value())
-                {
-                        IC_CORE_INFO("    Transfer: {}", indices.transferFamily.value());
-                }
-
-                IC_CORE_INFO("  Supported Extensions: {}", m_deviceInfo.availableExtensions.size());
-        }
 }  // namespace ic

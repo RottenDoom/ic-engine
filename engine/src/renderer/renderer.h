@@ -22,8 +22,9 @@ namespace ic
                 renderer()          = default;
                 virtual ~renderer() = default;
 
-                bool init(GLFWwindow* window);
-                void renderFrame();
+                bool init(window* w);
+                void onEvent(event& e);
+                void renderFrame(float deltaTime);
                 void cleanUp();
         };
 }  // namespace ic

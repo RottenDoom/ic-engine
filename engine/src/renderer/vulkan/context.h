@@ -6,8 +6,6 @@
 #include "physical_device.h"
 #include "swapchain.h"
 
-// TODO: fix const references
-
 namespace ic
 {
         class vulkan_context
@@ -27,8 +25,7 @@ namespace ic
                 std::unique_ptr<VkInstance> m_vk_instance;
                 std::unique_ptr<vulkan_surface> m_surface;
                 std::unique_ptr<vkdevice> m_device;
-                std::unique_ptr<swapchain> m_swapchain;
-                std::unique_ptr<render_pass> m_renderpass;
+                window& m_window;
 
                 VkDebugUtilsMessengerEXT m_debugMessenger   = VK_NULL_HANDLE;
 
@@ -44,7 +41,7 @@ namespace ic
 
                 } settings;
 
-                vulkan_context() = default;
+                vulkan_context(window& w);
 
                 // Move semantics
                 vulkan_context(const vulkan_context&)            = delete;
@@ -54,21 +51,23 @@ namespace ic
 
                 virtual ~vulkan_context();
 
-                bool initialize(GLFWwindow* window, bool enableValidation = true);
+                bool initialize(bool enableValidation = true);
 
                 void cleanUp();
-                void recreateSwapChain();
 
                 vulkan_surface getSurface() const { return *m_surface; }
-                vkdevice* getVulkanDevice() const { return m_device.get(); }
+                vkdevice& getVulkanDevice() const { return *m_device; }
                 VkDevice getDevice() const { return m_device->logicalDevice; }
                 VkPhysicalDevice getPhysicalDevice() const { return m_device->physicalDevice; }
-                swapchain* getSwapChain() const { return m_swapchain.get(); }
-                render_pass* getRenderpass() const { return m_renderpass.get(); }
-
-                // void waitIdle() { if (m_device) m_device->waitIdle(); } // TODO get this somewhere else.
 
                 VkInstance* getInstance() const { return m_vk_instance.get(); }
+                VkExtent2D getWindowExtent() const
+                {
+                        VkExtent2D extentOut;
+                        extentOut.width  = m_window.getWidth();
+                        extentOut.height = m_window.getHeight();
+                        return extentOut;
+                }
 
                 static vulkan_context* s_context;
                 static vulkan_context* get() { return s_context; }  // getter for context;
@@ -77,7 +76,5 @@ namespace ic
                 bool createInstance();
                 bool createSurface(GLFWwindow* window);
                 bool createDevice();
-                bool createSwapChain();
-                bool createRenderPass();
         };
 }  // namespace ic

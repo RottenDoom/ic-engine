@@ -23,11 +23,11 @@ namespace ic
 
         private:
                 bool onWindowClose(WindowClosedEvent& e);
-                bool onWindowResize(WindowResizedEvent& e);
 
                 bool m_Running = true;
                 window* m_Window;
                 renderer* m_renderer;
                 static application* s_Instance;
+                float m_lastFrameTime = 0.0f;
         };
 }  // namespace ic

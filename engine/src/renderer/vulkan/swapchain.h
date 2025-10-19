@@ -5,60 +5,57 @@
 namespace ic
 {
 
-        struct swap_chain_support_details
-        {
-                VkSurfaceCapabilitiesKHR capabilities;
-                std::vector<VkSurfaceFormatKHR> formats;
-                std::vector<VkPresentModeKHR> presentModes;
-
-                bool isAdequate() const { return !formats.empty() && !presentModes.empty(); }
-        };
-
-        // RAII wrapper for swap chain with builder pattern for configuration
-        class swapchain
+        class SwapChain
         {
         public:
-                VkSwapchainKHR swapchainHandle = VK_NULL_HANDLE;
+                SwapChain(ic::vkdevice& deviceRef, VkExtent2D extent);
+                SwapChain(ic::vkdevice& deviceRef, VkExtent2D extent, SwapChain* oldSwapChain);
+                ~SwapChain()                           = default;
+
+                SwapChain(const SwapChain&)            = delete;
+                SwapChain& operator=(const SwapChain&) = delete;
+
+                VkSwapchainKHR& getSwapChain() { return swapChain; }
+                VkImageView getImageView(int index) { return swapChainImageViews[index]; }
+                size_t imageCount() { return swapChainImages.size(); }
+                VkFormat getSwapChainImageFormat() { return swapChainImageFormat; }
+                VkExtent2D getSwapChainExtent() { return swapChainExtent; }
+                uint32_t width() { return swapChainExtent.width; }
+                uint32_t height() { return swapChainExtent.height; }
+
+                float extentAspectRatio()
+                {
+                        return static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
+                }
+                VkFormat findDepthFormat();
+
+                void destroy(VkDevice& device, const VkAllocationCallbacks* alloc = nullptr);
 
         private:
-                std::vector<VkImage> m_images;
-                std::vector<VkImageView> m_imageViews;
-                VkPresentModeKHR m_presentMode;
-                VkSurfaceFormatKHR m_imageFormat;
-                VkFormat m_format;
-                VkExtent2D m_extent;
+                void init();
+                void createSwapChain();
+                void createImageViews();
+                void createDepthResources();
 
-                vkdevice m_device;
-                VkSurfaceKHR m_surface;
-
-        public:
-                swapchain(vkdevice& device, VkSurfaceKHR surface);
-                ~swapchain();
-
-                bool create(VkSwapchainKHR oldSwapChain = VK_NULL_HANDLE);
-                void destroy();
-
-                void recreate();
-
-                const std::vector<VkImage>& getImages() const { return m_images; }
-                const std::vector<VkImageView>& getImageViews() const { return m_imageViews; }
-                VkFormat getImageFormat() const { return m_format; }
-                VkExtent2D getExtent() const { return m_extent; }
-
-                uint32_t getImageCount() const { return static_cast<uint32_t>(m_images.size()); }
-
-                // Static helper
-                static swap_chain_support_details querySupport(VkPhysicalDevice device, VkSurfaceKHR surface);
+                VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+                VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+                VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
         private:
-                bool createImageViews();
+                VkFormat swapChainImageFormat;
+                VkFormat swapChainDepthFormat;
+                VkExtent2D swapChainExtent;
 
-                VkSurfaceFormatKHR
-                chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const;
-                VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const;
-                VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const;
+                std::vector<VkImage> depthImages;
+                std::vector<VkDeviceMemory> depthImageMemorys;
+                std::vector<VkImageView> depthImageViews;
+                std::vector<VkImage> swapChainImages;
+                std::vector<VkImageView> swapChainImageViews;
 
-                void cleanUp();
+                vkdevice& device;
+                VkExtent2D windowExtent;
+
+                VkSwapchainKHR swapChain;
+                std::shared_ptr<SwapChain> oldSwapChain;
         };
-
 }  // namespace ic

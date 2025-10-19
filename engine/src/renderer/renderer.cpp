@@ -3,7 +3,7 @@
 namespace ic
 {
 
-        bool renderer::init(GLFWwindow* window)
+        bool renderer::init(window* w)
         {
                 if (m_initialized)
                 {
@@ -11,15 +11,15 @@ namespace ic
                         return false;
                 }
 
-                m_context = std::make_unique<vulkan_context>();
+                m_context = std::make_unique<vulkan_context>(*w);
 
-                if (!m_context->initialize(window, true))
+                if (!m_context->initialize(true))
                 {
                         IC_CORE_ERROR("Failed to initialize context!");
                         return false;
                 }
 
-                m_renderer = std::make_unique<vulkan_renderer>(m_context.get());
+                m_renderer = std::make_unique<vulkan_renderer>(m_context.get(), m_context->getVulkanDevice());
                 if (!m_renderer->init())
                 {
                         IC_CORE_ERROR("Failed to initialize renderer!");
@@ -31,12 +31,17 @@ namespace ic
                 return true;
         }
 
-        void renderer::renderFrame()
+        void renderer::onEvent(event& e)
+        {
+                m_renderer->onEvent(e);
+        }
+
+        void renderer::renderFrame(float deltaTime)
         {
                 IC_CORE_FATAL_IF(!m_initialized,
                                  "Render called before Initialization!");  // TODO: fix that if renderer not initialized
                                                                            // it never comes here
-                m_renderer->render();
+                m_renderer->render(deltaTime);
                 // IC_INFO("Renderer Called!");
         }
 
