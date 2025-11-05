@@ -25,7 +25,7 @@ namespace ic
                 std::unique_ptr<VkInstance> m_vk_instance;
                 std::unique_ptr<vulkan_surface> m_surface;
                 std::unique_ptr<vkdevice> m_device;
-                window& m_window;
+                Window& m_window;
 
                 VkDebugUtilsMessengerEXT m_debugMessenger   = VK_NULL_HANDLE;
 
@@ -41,7 +41,7 @@ namespace ic
 
                 } settings;
 
-                vulkan_context(window& w);
+                vulkan_context(Window& w);
 
                 // Move semantics
                 vulkan_context(const vulkan_context&)            = delete;

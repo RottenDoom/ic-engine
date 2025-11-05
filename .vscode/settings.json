@@ -109,6 +109,14 @@
 		"cinttypes": "cpp",
 		"variant": "cpp",
 		"*.tcc": "cpp",
-		"tiny_gltf.h": "c"
+		"tiny_gltf.h": "c",
+		"any": "cpp",
+		"cfenv": "cpp",
+		"forward_list": "cpp",
+		"list": "cpp",
+		"ranges": "cpp",
+		"shared_mutex": "cpp",
+		"typeindex": "cpp",
+		"valarray": "cpp"
 	}
 }

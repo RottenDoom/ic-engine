@@ -1,4 +1,5 @@
 #pragma once
+#include "ic_api.h"
 #include "events/application_event.h"
 #include "events/event.h"
 #include "renderer/renderer.h"
@@ -19,13 +20,13 @@ namespace ic
                 bool applicationCreate(game* game_inst);
 
                 static application& get();
-                static GLFWwindow* getWindow() { return (GLFWwindow*)s_Instance->m_Window->getNativeWindow(); }
+                Window& getWindow() { return *m_Window; }
 
         private:
                 bool onWindowClose(WindowClosedEvent& e);
 
                 bool m_Running = true;
-                window* m_Window;
+                std::unique_ptr<Window> m_Window;
                 renderer* m_renderer;
                 static application* s_Instance;
                 float m_lastFrameTime = 0.0f;

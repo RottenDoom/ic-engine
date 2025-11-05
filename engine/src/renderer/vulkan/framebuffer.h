@@ -1,6 +1,8 @@
 #pragma once
 #include "defines.h"
 
+#include <vulkan/vulkan.h>
+
 namespace ic
 {
         class framebuffer

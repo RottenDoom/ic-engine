@@ -1,6 +1,8 @@
 #pragma once
 #include "defines.h"
 #include "shader.h"
+
+#include <vulkan/vulkan.h>
 #include <cstddef>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

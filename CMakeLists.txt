@@ -16,6 +16,9 @@ list(APPEND CMAKE_MODULE_PATH
     ${PROJECT_SOURCE_DIR}/cmake/cmake-compiler
 )
 
+# Keep this for exceptions
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+
 # Set gcc as the compiler
 include(cmake/version.cmake)
 include(cmake/macros.cmake)

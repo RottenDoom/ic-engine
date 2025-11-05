@@ -1,93 +1,35 @@
-# setup of the cmake engine directories
-set(IC_SOURCES
-    src/defines.h
-    src/entry.h
-
-    src/core/application.h
-    src/core/application.cpp
-    src/core/window.h
-    src/core/logger.h
-    src/core/logger.cpp
-    src/core/input.h
-    src/core/mousecodes.h
-    src/core/keycodes.h
-    src/core/events/event.h
-    src/core/events/application_event.h
-    src/core/events/key_event.h
-    src/core/events/mouse_event.h
-
-    # renderer
-    src/renderer/renderer.h
-    src/renderer/renderer.cpp
-    src/renderer/camera.h
-    src/renderer/camera.cpp
-
-    # vulkan
-    src/renderer/vulkan/context.h
-    src/renderer/vulkan/context.cpp
-    src/renderer/vulkan/surface.h
-    src/renderer/vulkan/surface.cpp
-    src/renderer/vulkan/debug.h
-    src/renderer/vulkan/extensions.h
-    src/renderer/vulkan/extensions.cpp
-    src/renderer/vulkan/physical_device.h
-    src/renderer/vulkan/physical_device.cpp
-    src/renderer/vulkan/device.h
-    src/renderer/vulkan/device.cpp
-    src/renderer/vulkan/swapchain.h
-    src/renderer/vulkan/swapchain.cpp
-    src/renderer/vulkan/pipeline_config.h
-    src/renderer/vulkan/pipeline_config.cpp
-    src/renderer/vulkan/shader.h
-    src/renderer/vulkan/shader.cpp
-    src/renderer/vulkan/vulkan_renderer.h
-    src/renderer/vulkan/vulkan_renderer.cpp
-    src/renderer/vulkan/renderpass.h
-    src/renderer/vulkan/renderpass.cpp
-    src/renderer/vulkan/framebuffer.h
-    src/renderer/vulkan/framebuffer.cpp
-    src/renderer/vulkan/sync_objects.h
-    src/renderer/vulkan/sync_objects.cpp
-    src/renderer/vulkan/buffer.h
-    src/renderer/vulkan/buffer.cpp
-
-    # TODO: How to not include tests
-    # src/tests/rendering/base.h
-
-    # src/renderer/*
-
-    src/platform/Win32/window_win32.h
-    src/platform/Win32/window_win32.cpp
-    src/platform/Win32/input_win32.cpp
-)
-
 set(OBJ_DIR ${PROJECT_BINARY_DIR}/obj)
 get_subdirectories(SUBDIRS ${CMAKE_CURRENT_LIST_DIR})
 
-# build library (create target)
-add_library(engine SHARED ${IC_SOURCES})
-set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
-
-# Find and link Vulkan
 find_package(Vulkan REQUIRED)
 
-# Set include directories BEFORE linking libraries
+# build library (create target)
+add_subdirectory(src/core)
+add_subdirectory(src/renderer)
+add_subdirectory(src/renderer/vulkan)
+
+# Main engine shared library
+add_library(engine SHARED
+    src/entry.h
+    src/defines.h
+)
+set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
+
 target_include_directories(engine
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/engine/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src  # For public API headers
     PRIVATE
-        $ENV{VULKAN_SDK}/Include
+        ${IC_INTERNAL_HEADERS}
 )
 
-# Link libraries AFTER setting include directories
-target_link_libraries(engine 
+target_link_libraries(engine
     PUBLIC
-        spdlog::spdlog
-        # todo: fix this public api expose
-        glfw
-        Vulkan::Vulkan
+	spdlog::spdlog
     PRIVATE
-        glm::glm
+    	dependencies
+        engine-core
+        engine-renderer
+        engine-vulkan
 )
 
 # Set compiler flags and definitions
@@ -103,8 +45,8 @@ target_link_options(engine PRIVATE
 
 # Define macros for Debug mode
 target_compile_definitions(engine PRIVATE
-    $<$<CONFIG:Debug>:_DEBUG IC_ENABLE_ASSERTS>
-    $<$<CONFIG:Release>:NDEBUG>
+	$<$<CONFIG:Debug>:_DEBUG;IC_ENABLE_ASSERTS;IC_EXPORT>
+    	$<$<CONFIG:Release>:NDEBUG;IC_EXPORT>
 )
 
 set_target_properties(engine PROPERTIES

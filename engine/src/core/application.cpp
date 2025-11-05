@@ -2,6 +2,9 @@
 #include "defines.h"
 #include "input.h"
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 // TODO: add a linux build with wayland to start building with valgrind memory checks
 // TODO: maybe write a memory effecient class for checking how much memory is being used. I suspect that memory of
 // Validation layers of vilkan engine is being leaked
@@ -17,11 +20,11 @@ namespace ic
                 ic::logger::init();
                 s_Instance = this;
 
-                m_Window   = window::create();
+                m_Window   = Window::create();
                 m_Window->setEventCallback(BIND_EVENT_FN(onEvent));
 
                 m_renderer = new renderer();
-                m_renderer->init(m_Window);
+                m_renderer->init(m_Window.get());
                 IC_CORE_INFO("Application Initialized!");
         }
 
@@ -29,7 +32,6 @@ namespace ic
         {
                 m_renderer->cleanUp();
                 delete m_renderer;
-                delete m_Window;
         }
 
         bool application::run()

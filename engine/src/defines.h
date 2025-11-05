@@ -45,10 +45,6 @@
 #error "Unsupported platform!"
 #endif
 
-// TODO: Remove this
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
 // Properly define static assertions.
 #if defined(__clang__) || defined(__gcc__)
 #define STATIC_ASSERT _Static_assert
@@ -75,21 +71,6 @@ STATIC_ASSERT(sizeof(int8_t) == 1, "Expected int8_t to be 1 byte.");
 STATIC_ASSERT(sizeof(int16_t) == 2, "Expected int16_t to be 2 bytes.");
 STATIC_ASSERT(sizeof(int32_t) == 4, "Expected int32_t to be 4 bytes.");
 STATIC_ASSERT(sizeof(int64_t) == 8, "Expected int64_t to be 8 bytes.");
-
-#if defined(IC_EXPORT)
-#if defined(_MSC_VER)
-#define IC_API __declspec(dllexport)
-#else
-#define IC_API __attribute__((visibility("default")))
-#endif
-#else
-
-#if defined(_MSC_VER)
-#define IC_API __declspec(dllimport)
-#else
-#define IC_API
-#endif
-#endif
 
 #if defined(_MSC_VER)
 #define IC_INLINE __forceinline

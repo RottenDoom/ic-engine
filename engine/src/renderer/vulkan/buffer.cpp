@@ -32,7 +32,7 @@ namespace ic
 
         void buffer::copyTo(void* data, VkDeviceSize size)
         {
-                assert(mapped);
+                IC_ASSERT(mapped == nullptr, "Buffer Mapping does not exist.");
                 memcpy(mapped, data, size);
         }
 

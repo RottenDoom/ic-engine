@@ -1,6 +1,7 @@
 #pragma once
 #include "defines.h"
 
+#include <vulkan/vulkan.h>
 namespace ic
 {
         struct buffer

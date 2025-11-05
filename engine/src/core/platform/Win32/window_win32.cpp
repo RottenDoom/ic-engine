@@ -1,5 +1,8 @@
 #include "window_win32.h"
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 namespace ic
 {
 
@@ -10,9 +13,9 @@ namespace ic
                 IC_CORE_ERROR("GLFW Error ({0}): {1}", error, description);
         }
 
-        window* window::create(const window_props& props)
+        std::unique_ptr<Window> Window::create(const window_props& props)
         {
-                return new win32_window(props);
+                return std::make_unique<win32_window>(props);
         }
 
         win32_window::win32_window(const window_props& props)
