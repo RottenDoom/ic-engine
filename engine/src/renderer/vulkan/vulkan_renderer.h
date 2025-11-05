@@ -7,33 +7,22 @@
 #include "pipeline_config.h"
 #include "framebuffer.h"
 #include "device.h"
+#include "model.h"
+#include "vkutils/vertex.h"
 
 #include "core/events/application_event.h"
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-
 namespace ic
 {
+
         class vulkan_renderer
         {
 
         public:
+                vkLoad::Model scene;
                 /** @brief The basic uniform buffer structs and uniform buffer */
-                struct Vertex
-                {
-                        glm::vec3 pos;
-                        glm::vec3 color;
-                        // glm::vec3 normal;
-                        // glm::vec2 uv;
-                        // glm::vec4 tangent;
 
-                        static std::vector<VkVertexInputBindingDescription> getBindingDescriptions();
-                        static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
-                };
-
-                const std::vector<Vertex> vertices = {
+                const std::vector<ic::Vertex> vertices = {
                     // Face 1: Front (Z = -1.0f) - Color: Red (1, 0, 0)
                     {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},  // 0: Bottom-left
                     {{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},   // 1: Bottom-right
@@ -182,6 +171,8 @@ namespace ic
                 std::unique_ptr<RenderPass> m_renderPass;
                 std::unique_ptr<SwapChain> m_swapChain;
 
+                std::vector<VkShaderModule> m_shaderModules;
+
                 /** @brief Camera for now is just a basic implementation with events later multiple camera types will be
                  * available that I might use with this engine outside just the renderer but with scenes */
                 Camera camera;
@@ -200,6 +191,7 @@ namespace ic
 
         private:
                 void loadAssets();  // this should be an api for users to use (somehow)
+                VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage);
                 void setupDescriptors(VkDevice& device);
 
                 void createSwapChain();

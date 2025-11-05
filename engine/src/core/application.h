@@ -8,7 +8,7 @@ class game;
 
 namespace ic
 {
-        class application
+        class IC_API application
         {
         public:
                 application();

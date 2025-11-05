@@ -17,11 +17,14 @@ cmake --preset="gcc-debug"
 cmake --build --preset="gcc-debug"
 ```
 
+I am going to update the shaders later.
+
 The executable can be found inside `build/build-gcc/bin/Debug/`. You can also use clang compiler now. I use vscode for now but configurations for other IDEs can be easily developed.
 
 ### TODO
 
-- DLL imports and exports and live reloads
+- Export and API after creating model loading for users to use in the library
+- DLL imports and exports and live reloads {CURR}
 - Start rendering meshes
 - Create an actual game
 - Workflows and Tests
@@ -34,4 +37,4 @@ The executable can be found inside `build/build-gcc/bin/Debug/`. You can also us
 
 - Modularity
 
-The project is largely based on the game engine by the cherno and kofi engine.<p>
+The project is largely based on the game engine by the cherno.<p>

@@ -34,8 +34,8 @@
 	"C_Cpp.default.compileCommands": "${workspaceFolder}/build/build-gcc/compile_commands.json",
 	"C_Cpp.default.compilerPath": "C:/mingw64/bin/g++.exe",
 	"files.associations": {
-		"*.tsx": "typescriptreact",
 		"*.cpp": "cpp",
+		"*.tsx": "typescriptreact",
 		"defines.h": "c",
 		"logger.h": "c",
 		"functional": "cpp",
@@ -108,6 +108,7 @@
 		"thread": "cpp",
 		"cinttypes": "cpp",
 		"variant": "cpp",
-		"*.tcc": "cpp"
+		"*.tcc": "cpp",
+		"tiny_gltf.h": "c"
 	}
 }
