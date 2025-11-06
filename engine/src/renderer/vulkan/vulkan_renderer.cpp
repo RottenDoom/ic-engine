@@ -49,8 +49,8 @@ namespace ic
                 // pipeline cache
                 createFramebuffers(device);
                 loadAssets();
-                createVertexBuffer();
-                createIndexedBuffer();
+                // createVertexBuffer();
+                // createIndexedBuffer();
                 prepareUniformBuffers();
                 setupDescriptors(device);
                 createGraphicsPipeline(device);
@@ -91,7 +91,7 @@ namespace ic
         void vulkan_renderer::loadAssets()
         {
 
-                scene.loadFromFile("fireplace.gltf", &m_device, m_device.queues.transfer.handle);
+                scene.loadFromFile("treasure_smooth.gltf", &m_device, m_device.queues.transfer.handle);
         }
 
         VkPipelineShaderStageCreateInfo vulkan_renderer::loadShader(std::string fileName, VkShaderStageFlagBits stage)
@@ -168,12 +168,6 @@ namespace ic
                                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                                (const void*)(&uniformBuffers[i].descriptor));
 
-                        // writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                        // writeDescriptorSet.dstSet          = descriptorSets[i];
-                        // writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                        // writeDescriptorSet.dstBinding      = 0;
-                        // writeDescriptorSet.pBufferInfo     = &uniformBuffers[i].descriptor;
-                        // writeDescriptorSet.descriptorCount = 1;  // TODO see if this works with more than one counts
                         std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
                             writeDescriptorSet,
                         };
@@ -298,7 +292,6 @@ namespace ic
                 CI.flags               = 0;
                 CI.basePipelineIndex   = -1;
                 CI.basePipelineHandle  = VK_NULL_HANDLE;
-                CI.stageCount          = 2;
 
                 CI.pInputAssemblyState = &config.inputAssembly;
                 CI.pRasterizationState = &config.rasterizer;
@@ -313,12 +306,12 @@ namespace ic
                 CI.flags = VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
 
                 std::vector<VkPipelineShaderStageCreateInfo> shaderStages(2);
+                shaderStages[0] = loadShader("pipelines/phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+                shaderStages[1] = loadShader("pipelines/phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
                 CI.stageCount   = static_cast<uint32_t>(shaderStages.size());
                 CI.pStages      = shaderStages.data();
 
-                shaderStages[0] = loadShader("pipelines/phong.frag.spv", VK_SHADER_STAGE_VERTEX_BIT);
-                shaderStages[1] = loadShader("pipelines/phong.vert.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
                 VkPipelineCacheCreateInfo cacheCreateInfo{};
                 cacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
@@ -341,6 +334,10 @@ namespace ic
                 // Toon shading pipeline
                 shaderStages[0] = loadShader("pipelines/toon.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
                 shaderStages[1] = loadShader("pipelines/toon.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+                CI.stageCount   = static_cast<uint32_t>(shaderStages.size());
+                CI.pStages      = shaderStages.data();
+
                 if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &CI, nullptr, &pipelines.toon) != VK_SUCCESS)
                 {
                         IC_CORE_ERROR("Failed to create Graphics Pipeline");
@@ -353,6 +350,10 @@ namespace ic
                         config.rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
                         shaderStages[0] = loadShader("pipelines/wireframe.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
                         shaderStages[1] = loadShader("pipelines/wireframe.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+                        CI.stageCount   = static_cast<uint32_t>(shaderStages.size());
+                        CI.pStages      = shaderStages.data();
+
                         if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &CI, nullptr, &pipelines.wireFrame) !=
                             VK_SUCCESS)
                         {
@@ -702,16 +703,16 @@ namespace ic
                 auto currentTime      = std::chrono::high_resolution_clock::now();
                 float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-                ubo.modelMatrix       = glm::mat4(1.0f);
+                glm::mat4 model       = glm::mat4(1.0f);
 
                 float rotationSpeed   = glm::radians(45.0f);
 
-                ubo.viewMatrix        = camera.matrices.view;
+                ubo.modelView         = model * camera.matrices.view;
                 ubo.projection        = camera.projection;
 
                 ubo.projection[1][1] *= -1;
                 if (currentImageIndex != UINT32_MAX)
-                        memcpy(uniformBuffers[currentImageIndex].mapped, &ubo, sizeof(ubo));
+                        memcpy(uniformBuffers[currentImageIndex].mapped, &ubo, sizeof(UniformData));
                 else
                 {
                         IC_CORE_TRACE("Skipping Uniform Buffer Update");

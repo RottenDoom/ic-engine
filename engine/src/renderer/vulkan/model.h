@@ -268,6 +268,7 @@ namespace vkLoad
                         glm::uvec4 joint0;
                         glm::vec4 weight0;
                         glm::vec4 color;
+                        glm::vec4 tangent;
                 };
 
                 struct Vertices

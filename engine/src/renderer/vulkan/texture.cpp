@@ -36,6 +36,7 @@ namespace vkLoad
                                     ic::vkdevice* device,
                                     VkQueue copyQueue)
         {
+                IC_CORE_INFO("Loading Texture from path: {}", path);
                 this->device = device;
                 bool isKTX   = false;
 

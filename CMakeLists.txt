@@ -26,6 +26,7 @@ include(cmake/macros.cmake)
 project(ic_engine VERSION ${IC_ENGINE_VERSION} LANGUAGES C CXX)
 print(PROJECT_VERSION)
 
+option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 include(cmake/options.cmake)
 
 # Include dependencies

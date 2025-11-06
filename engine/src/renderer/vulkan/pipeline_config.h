@@ -32,6 +32,7 @@ namespace ic
                 VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
                 VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
                 VkPipelineRasterizationStateCreateInfo rasterizer{};
+                VkPipelineColorBlendAttachmentState colorBlendAttachment{};
                 VkPipelineViewportStateCreateInfo viewportState{};
                 VkPipelineMultisampleStateCreateInfo multisampling{};
                 VkPipelineDepthStencilStateCreateInfo depthStencil{};

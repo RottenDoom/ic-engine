@@ -10,8 +10,9 @@ add_subdirectory(src/renderer/vulkan)
 
 # Main engine shared library
 add_library(engine SHARED
-    src/entry.h
-    src/defines.h
+	$<TARGET_OBJECTS:engine-core>
+	$<TARGET_OBJECTS:engine-renderer>
+	$<TARGET_OBJECTS:engine-vulkan>
 )
 set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
 
@@ -32,24 +33,10 @@ target_link_libraries(engine
         engine-vulkan
 )
 
-# Set compiler flags and definitions
-target_compile_options(engine PRIVATE
-    $<$<CONFIG:Debug>:-g>
-    $<$<CONFIG:Release>:-O2>
-)
 
-target_link_options(engine PRIVATE
-    $<$<CONFIG:Debug>:-g>
-    $<$<CONFIG:Release>:-s>  # Strip symbols
-)
-
-# Define macros for Debug mode
-target_compile_definitions(engine PRIVATE
-	$<$<CONFIG:Debug>:_DEBUG;IC_ENABLE_ASSERTS;IC_EXPORT>
-    	$<$<CONFIG:Release>:NDEBUG;IC_EXPORT>
-)
 
 set_target_properties(engine PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
     RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_BINARY_DIR}/bin/Debug
     RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
 )

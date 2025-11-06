@@ -22,10 +22,11 @@ namespace ic
         {
                 glm::vec3 pos;
                 glm::vec3 normal;
-                glm::vec2 uv;
-                glm::vec4 color;
+                glm::vec2 uv0;
+                glm::vec2 uv1;
                 glm::vec4 joint0;
                 glm::vec4 weight0;
+                glm::vec4 color;
                 glm::vec4 tangent;
 
                 static VkVertexInputBindingDescription vertexInputBindingDescription;
@@ -51,7 +52,7 @@ namespace ic
                                     {location, binding, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal)});
                         case VertexComponent::UV:
                                 return VkVertexInputAttributeDescription(
-                                    {location, binding, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv)});
+                                    {location, binding, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv0)});
                         case VertexComponent::Color:
                                 return VkVertexInputAttributeDescription(
                                     {location, binding, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, color)});

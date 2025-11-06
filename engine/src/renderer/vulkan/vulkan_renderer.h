@@ -109,10 +109,10 @@ namespace ic
                 struct UniformData
                 {
                         glm::mat4 projection;
-                        glm::mat4 modelMatrix;
-                        glm::mat4 viewMatrix;
-                        // glm::vec4 lightPos{0.0f, 2.0f, 1.0f, 0.0f};
-                } uniformData;
+                        glm::mat4 modelView;
+                        glm::vec4 lightPos{0.0f, 2.0f, 1.0f, 0.0f};
+                };
+
                 std::vector<buffer> uniformBuffers;
                 buffer vertexBuffer;
                 buffer indexBuffer;

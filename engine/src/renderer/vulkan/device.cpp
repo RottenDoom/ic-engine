@@ -382,7 +382,7 @@ namespace ic
                 }
 
                 // Attach the memory to the buffer object
-                IC_CORE_ASSERT(vkBindBufferMemory(logicalDevice, *buffer, *memory, 0) != VK_SUCCESS,
+                IC_CORE_ASSERT(vkBindBufferMemory(logicalDevice, *buffer, *memory, 0) == VK_SUCCESS,
                                "Couldn't Bind Memory");
 
                 return VK_SUCCESS;

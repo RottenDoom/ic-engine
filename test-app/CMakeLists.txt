@@ -10,6 +10,7 @@ add_executable(app ${TEST_SOURCES})
 # Only need to add test-app local headers
 target_include_directories(app PRIVATE
     ${CMAKE_SOURCE_DIR}/test-app/src
+    ${CMAKE_SOURCE_DIR}/engine/src/
 )
 
 # Compiler flags
@@ -25,8 +26,8 @@ target_link_libraries(app PRIVATE
 
 # Preprocessor defs (IC_IMPORT so __declspec(dllimport) is used)
 target_compile_definitions(app PRIVATE
-    $<$<CONFIG:Debug>:DEBUG;IC_ENABLE_ASSERTS;IC_IMPORT>
-    $<$<CONFIG:Release>:NDEBUG;IC_IMPORT>
+    $<$<CONFIG:Debug>:DEBUG;IC_ENABLE_ASSERTS>
+    $<$<CONFIG:Release>:NDEBUG>
 )
 
 # Linker flags

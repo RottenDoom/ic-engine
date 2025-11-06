@@ -23,9 +23,10 @@ The executable can be found inside `build/build-gcc/bin/Debug/`. You can also us
 
 ### TODO
 
-- Export and API after creating model loading for users to use in the library
+- Export API after creating model loading for users to use in the library
 - DLL imports and exports and live reloads {CURR}
-- Start rendering meshes
+- Start rendering meshes {CURR}
+- Vector Template for printing in defines.
 - Create an actual game
 - Workflows and Tests
 - Make a release.

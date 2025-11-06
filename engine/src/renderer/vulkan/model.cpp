@@ -400,6 +400,7 @@ namespace vkLoad
                              LoaderInfo& loaderInfo,
                              float globalscale)
         {
+                IC_CORE_INFO("Loading Mesh Node!");
                 vkLoad::Node* newNode = new Node();
                 newNode->index        = nodeIndex;
                 newNode->parent       = parent;
@@ -906,6 +907,7 @@ namespace vkLoad
                         sampler.addressModeW = sampler.addressModeV;
                         textureSamplers.push_back(sampler);
                 }
+                IC_CORE_INFO("Texture Sampler Count: {}", textureSamplers.size());
         }
 
         void Model::loadMaterials(tinygltf::Model& gltfModel)
@@ -1043,6 +1045,8 @@ namespace vkLoad
                 }
                 // Push a default material at the end of the list for meshes with no material assigned
                 materials.push_back(Material(device));
+
+                IC_CORE_INFO("Loaded {} Materials!", materials.size());
         }
 
         void Model::loadAnimations(tinygltf::Model& gltfModel)
@@ -1212,12 +1216,23 @@ namespace vkLoad
                 }
                 filePath = filename.substr(0, pos);
 
+                IC_CORE_INFO("FilePath to Model:{}", filePath);
+
                 // @todo
                 gltfContext.SetImageLoader(vkLoad::loadImageDataFunc, nullptr);
 
-                bool fileLoaded = binary
-                                      ? gltfContext.LoadBinaryFromFile(&gltfModel, &error, &warning, filename.c_str())
-                                      : gltfContext.LoadASCIIFromFile(&gltfModel, &error, &warning, filename.c_str());
+                bool fileLoaded = false;
+                if (binary)
+                {
+                        IC_CORE_INFO("Loading binary data");
+                        fileLoaded = gltfContext.LoadBinaryFromFile(&gltfModel, &error, &warning, filename.c_str());
+                }
+                else
+                {
+                        IC_CORE_INFO("Loading ASCII data");
+                        fileLoaded = gltfContext.LoadASCIIFromFile(&gltfModel, &error, &warning, filename.c_str());
+                }
+                IC_CORE_INFO("Buffer Size: {}", gltfModel.buffers.size());
 
                 LoaderInfo loaderInfo{};
                 size_t vertexCount = 0;
@@ -1249,6 +1264,11 @@ namespace vkLoad
                         {
                                 getNodeProps(gltfModel.nodes[scene.nodes[i]], gltfModel, vertexCount, indexCount);
                         }
+
+                        IC_CORE_INFO("Total Vertex Count: {}", vertexCount);
+                        IC_CORE_INFO("Total Index Count: {}", indexCount);
+                        IC_CORE_INFO("Loading {} Nodes!", scene.nodes.size());
+
                         loaderInfo.vertexBuffer = new Vertex[vertexCount];
                         loaderInfo.indexBuffer  = new uint32_t[indexCount];
 
@@ -1256,6 +1276,7 @@ namespace vkLoad
                         for (size_t i = 0; i < scene.nodes.size(); i++)
                         {
                                 const tinygltf::Node node = gltfModel.nodes[scene.nodes[i]];
+                                IC_CORE_INFO("Loading Node: {}", node.name);
                                 loadNode(nullptr, node, scene.nodes[i], gltfModel, loaderInfo, scale);
                         }
                         if (gltfModel.animations.size() > 0)
@@ -1283,7 +1304,7 @@ namespace vkLoad
                 else
                 {
                         // TODO: throw
-                        std::cerr << "Could not load gltf file: " << error << std::endl;
+                        IC_CORE_CRITICAL("Could not load gltf file: {}", error);
                         return;
                 }
 
