@@ -51,18 +51,18 @@ namespace vkLoad
                         ALPHAMODE_MASK,
                         ALPHAMODE_BLEND
                 };
-                AlphaMode alphaMode       = ALPHAMODE_OPAQUE;
-                float alphaCutoff         = 1.0f;
-                float metallicFactor      = 1.0f;
-                float roughnessFactor     = 1.0f;
+                AlphaMode alphaMode                       = ALPHAMODE_OPAQUE;
+                float alphaCutoff                         = 1.0f;
+                float metallicFactor                      = 1.0f;
+                float roughnessFactor                     = 1.0f;
 
-                glm::vec4 baseColorFactor = glm::vec4(1.0f);
-                glm::vec4 emissiveFactor  = glm::vec4(0.0f);
-                vkLoad::Texture* baseColorTexture;
-                vkLoad::Texture* metallicRoughnessTexture;
-                vkLoad::Texture* normalTexture;
-                vkLoad::Texture* occlusionTexture;
-                vkLoad::Texture* emissiveTexture;
+                glm::vec4 baseColorFactor                 = glm::vec4(1.0f);
+                glm::vec4 emissiveFactor                  = glm::vec4(0.0f);
+                vkLoad::Texture* baseColorTexture         = nullptr;
+                vkLoad::Texture* metallicRoughnessTexture = nullptr;
+                vkLoad::Texture* normalTexture            = nullptr;
+                vkLoad::Texture* occlusionTexture         = nullptr;
+                vkLoad::Texture* emissiveTexture          = nullptr;
 
                 enum DescriptorBindingFlags
                 {
@@ -83,10 +83,10 @@ namespace vkLoad
 
                 struct Extension
                 {
-                        vkLoad::Texture* specularGlossinessTexture;
-                        vkLoad::Texture* diffuseTexture;
-                        glm::vec4 diffuseFactor  = glm::vec4(1.0f);
-                        glm::vec3 specularFactor = glm::vec3(0.0f);
+                        vkLoad::Texture* specularGlossinessTexture = nullptr;
+                        vkLoad::Texture* diffuseTexture            = nullptr;
+                        glm::vec4 diffuseFactor                    = glm::vec4(1.0f);
+                        glm::vec3 specularFactor                   = glm::vec3(0.0f);
                 } extension;
 
                 struct PbrWorkflows
@@ -113,6 +113,7 @@ namespace vkLoad
         {
                 uint32_t firstIndex;
                 uint32_t indexCount;
+                uint32_t firstVertex;
                 uint32_t vertexCount;
                 Material& material;
                 bool hasIndices;
@@ -239,6 +240,29 @@ namespace vkLoad
                 float end   = std::numeric_limits<float>::min();
         };
 
+        enum FileLoadingFlags
+        {
+                None                    = 0x00000000,
+                PreTransformVertices    = 0x00000001,
+                PreMultiplyVertexColors = 0x00000002,
+                FlipY                   = 0x00000004,
+                DontLoadImages          = 0x00000008
+        };
+
+        enum RenderFlags
+        {
+                BindImages              = 0x00000001,
+                RenderOpaqueNodes       = 0x00000002,
+                RenderAlphaMaskedNodes  = 0x00000004,
+                RenderAlphaBlendedNodes = 0x00000008
+        };
+
+        enum DescriptorBindingFlags
+        {
+                ImageBaseColor = 0x00000001,
+                ImageNormalMap = 0x00000002
+        };
+
         /** @brief Before understandiing the Model that loads the buffer we have to understand gltf as a whole. Since
          * for now this is just a gltf loader and that is the standard loader and any other loader would later be
          * implemented in the API using some kind of overlaoding function. So gltf contains buffers. Buffers are just
@@ -250,16 +274,29 @@ namespace vkLoad
          * converting the binary data to readable data and accessing it through the binary. Now its our turn to load it
          * into the Scene graph. */
 
+        extern VkDescriptorSetLayout descriptorSetLayoutImage;
+        extern VkDescriptorSetLayout descriptorSetLayoutUbo;
+        extern VkMemoryPropertyFlags memoryPropertyFlags;
+        extern uint32_t descriptorBindingFlags;
+
         struct Model
         {
 
                 ic::vkdevice* device;
+                VkDescriptorPool descriptorPool;  // TODO desciptors need to be setup in descriptors section not in
+                                                  // model
+                // but at some point I am going to make my own model loader so this is just for practice.
+                // Honestly speaking this part of the engine is for planning out the engine. I am going to test out
+                // different features and going to plan them out in the engine as I move forward.
+                // My main goal is to be able to render cool graphics. Once that is done in vulkan I am gonna do the
+                // same for OpenGL. Once that is done I am going to plan out my engine and write the overall classes and
+                // loading for the engine with UI inbuilt.
 
                 /** @brief A vertex is just location of vertex for connections in 3D representation that computer (we in
                  * the vulkan) converts it into the screen coordinates Ussually a position and RGBA values suffices. But
                  * for materials and textures we have normals and uvs. Joints and weights are for animation and physics.
                  */
-                struct Vertex
+                struct alignas(16) Vertex
                 {
                         glm::vec3 pos;
                         glm::vec3 normal;
@@ -325,6 +362,7 @@ namespace vkLoad
                                   const tinygltf::Model& model,
                                   size_t& vertexCount,
                                   size_t& indexCount);
+                void loadImages(tinygltf::Model& gltfModel, ic::vkdevice* device, VkQueue transferQueue);
                 void loadSkins(tinygltf::Model& gltfModel);
                 void loadTextures(tinygltf::Model& gltfModel, ic::vkdevice* device, VkQueue transferQueue);
                 VkSamplerAddressMode getVkWrapMode(int32_t wrapMode);
@@ -332,7 +370,11 @@ namespace vkLoad
                 void loadTextureSamplers(tinygltf::Model& gltfModel);
                 void loadMaterials(tinygltf::Model& gltfModel);
                 void loadAnimations(tinygltf::Model& gltfModel);
-                void loadFromFile(std::string filename, ic::vkdevice* device, VkQueue transferQueue, float scale = 1.0f);
+                void loadFromFile(std::string filename,
+                                  ic::vkdevice* device,
+                                  VkQueue transferQueue,
+                                  uint32_t fileLoadingFlags,
+                                  float scale = 1.0f);
                 void drawNode(Node* node, VkCommandBuffer commandBuffer);
                 void draw(VkCommandBuffer commandBuffer);
                 void calculateBoundingBox(Node* node, Node* parent);
@@ -340,6 +382,7 @@ namespace vkLoad
                 void updateAnimation(uint32_t index, float time);
                 Node* findNode(Node* parent, uint32_t index);
                 Node* nodeFromIndex(uint32_t index);
+                void prepareNodeDescriptor(Node* node, VkDescriptorSetLayout descriptorSetLayout);
         };
 
 }  // namespace vkLoad

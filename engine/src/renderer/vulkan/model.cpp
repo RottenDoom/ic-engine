@@ -1,8 +1,12 @@
 #include "model.h"
 #include "buffer.h"
 
+VkDescriptorSetLayout vkLoad::descriptorSetLayoutImage = VK_NULL_HANDLE;
+VkMemoryPropertyFlags vkLoad::memoryPropertyFlags      = 0;
+VkDescriptorSetLayout vkLoad::descriptorSetLayoutUbo   = VK_NULL_HANDLE;
 namespace vkLoad
 {
+
         bool loadImageDataFunc(tinygltf::Image* image,
                                const int imageIndex,
                                std::string* error,
@@ -24,6 +28,20 @@ namespace vkLoad
 
                 return tinygltf::LoadImageData(
                     image, imageIndex, error, warning, req_width, req_height, bytes, size, userData);
+        }
+
+        bool loadImageDataFuncEmpty(tinygltf::Image* image,
+                                    const int imageIndex,
+                                    std::string* error,
+                                    std::string* warning,
+                                    int req_width,
+                                    int req_height,
+                                    const unsigned char* bytes,
+                                    int size,
+                                    void* userData)
+        {
+                // This function will be used for samples that don't require images to be loaded
+                return true;
         }
 
         BoundingBox::BoundingBox() {}
@@ -84,7 +102,7 @@ namespace vkLoad
                         VkWriteDescriptorSet writeDescriptorSet{};
                         writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                         writeDescriptorSet.dstSet          = descriptorSet;
-                        writeDescriptorSet.dstBinding      = static_cast<uint32_t>(writeDescriptorSets.size());
+                        writeDescriptorSet.dstBinding      = 1;
                         writeDescriptorSet.descriptorCount = 1;
                         writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                         writeDescriptorSet.pImageInfo      = &baseColorTexture->descriptor;
@@ -96,7 +114,7 @@ namespace vkLoad
                         VkWriteDescriptorSet writeDescriptorSet{};
                         writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                         writeDescriptorSet.dstSet          = descriptorSet;
-                        writeDescriptorSet.dstBinding      = static_cast<uint32_t>(writeDescriptorSets.size());
+                        writeDescriptorSet.dstBinding      = 1;
                         writeDescriptorSet.descriptorCount = 1;
                         writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                         writeDescriptorSet.pImageInfo      = &normalTexture->descriptor;
@@ -189,6 +207,7 @@ namespace vkLoad
                         return cachedMatrix;
                 }
         }
+
         void Node::update()
         {
                 useCachedMatrix = false;
@@ -223,6 +242,7 @@ namespace vkLoad
                         child->update();
                 }
         }
+
         Node::~Node()
         {
                 if (mesh)
@@ -358,6 +378,7 @@ namespace vkLoad
                 }
                 }
         }
+
         void Model::destroy(VkDevice device)
         {
                 if (vertices.buffer != VK_NULL_HANDLE)
@@ -371,6 +392,21 @@ namespace vkLoad
                         vkDestroyBuffer(device, indices.buffer, nullptr);
                         vkFreeMemory(device, indices.memory, nullptr);
                         indices.buffer = VK_NULL_HANDLE;
+                }
+
+                if (descriptorSetLayoutImage != VK_NULL_HANDLE)
+                {
+                        vkDestroyDescriptorSetLayout(device, descriptorSetLayoutImage, nullptr);
+                }
+
+                if (descriptorSetLayoutUbo != VK_NULL_HANDLE)
+                {
+                        vkDestroyDescriptorSetLayout(device, descriptorSetLayoutUbo, nullptr);
+                }
+
+                if (descriptorPool != VK_NULL_HANDLE)
+                {
+                        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
                 }
                 for (auto texture : textures)
                 {
@@ -393,6 +429,7 @@ namespace vkLoad
                 }
                 skins.clear();
         }
+
         void Model::loadNode(vkLoad::Node* parent,
                              const tinygltf::Node& node,
                              uint32_t nodeIndex,
@@ -400,7 +437,6 @@ namespace vkLoad
                              LoaderInfo& loaderInfo,
                              float globalscale)
         {
-                IC_CORE_INFO("Loading Mesh Node!");
                 vkLoad::Node* newNode = new Node();
                 newNode->index        = nodeIndex;
                 newNode->parent       = parent;
@@ -408,6 +444,7 @@ namespace vkLoad
                 newNode->skinIndex    = node.skin;
                 newNode->matrix       = glm::mat4(1.0f);
 
+                IC_CORE_INFO("Loading Mesh Node: {}", node.name);
                 // generate local node matrix
                 glm::vec3 translation = glm::vec3(0.0f);
                 if (node.translation.size() == 3)
@@ -445,7 +482,7 @@ namespace vkLoad
                                          globalscale);
                         }
                 }
-
+                IC_CORE_INFO("For Node {} found:", node.name);
                 // Node contains mesh data
                 if (node.mesh > -1)
                 {
@@ -483,7 +520,10 @@ namespace vkLoad
                                         int jointComponentType;
 
                                         // Position attribute is required
-                                        assert(primitive.attributes.find("POSITION") != primitive.attributes.end());
+                                        IC_CORE_ASSERT(primitive.attributes.find("POSITION") !=
+                                                           primitive.attributes.end(),
+                                                       "    Couldn't Find POSITION attribute for the primitive {}",
+                                                       node.name);
 
                                         const tinygltf::Accessor& posAccessor =
                                             model.accessors[primitive.attributes.find("POSITION")->second];
@@ -501,9 +541,13 @@ namespace vkLoad
                                         posByteStride = posAccessor.ByteStride(posView)
                                                             ? (posAccessor.ByteStride(posView) / sizeof(float))
                                                             : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+                                        IC_CORE_INFO("    Found {} vertex Position_0s with stride {}",
+                                                     vertexCount,
+                                                     posByteStride);
 
                                         if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
                                         {
+                                                IC_CORE_INFO("    Model contains Normal attributes!");
                                                 const tinygltf::Accessor& normAccessor =
                                                     model.accessors[primitive.attributes.find("NORMAL")->second];
                                                 const tinygltf::BufferView& normView =
@@ -515,11 +559,14 @@ namespace vkLoad
                                                     normAccessor.ByteStride(normView)
                                                         ? (normAccessor.ByteStride(normView) / sizeof(float))
                                                         : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC3);
+                                                IC_CORE_INFO("    Found Normal stride {} for normal buffer",
+                                                             normByteStride);
                                         }
 
                                         // UVs
                                         if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
                                         {
+                                                IC_CORE_INFO("    Model contains Texture_0 attributes!");
                                                 const tinygltf::Accessor& uvAccessor =
                                                     model.accessors[primitive.attributes.find("TEXCOORD_0")->second];
                                                 const tinygltf::BufferView& uvView =
@@ -531,9 +578,11 @@ namespace vkLoad
                                                                     ? (uvAccessor.ByteStride(uvView) / sizeof(float))
                                                                     : tinygltf::GetNumComponentsInType(
                                                                           TINYGLTF_TYPE_VEC2);
+                                                IC_CORE_INFO("    Found Texture_0 attrib of stride {}", uv0ByteStride);
                                         }
                                         if (primitive.attributes.find("TEXCOORD_1") != primitive.attributes.end())
                                         {
+                                                IC_CORE_INFO("    Model contains Texture_1 attributes!");
                                                 const tinygltf::Accessor& uvAccessor =
                                                     model.accessors[primitive.attributes.find("TEXCOORD_1")->second];
                                                 const tinygltf::BufferView& uvView =
@@ -545,11 +594,13 @@ namespace vkLoad
                                                                     ? (uvAccessor.ByteStride(uvView) / sizeof(float))
                                                                     : tinygltf::GetNumComponentsInType(
                                                                           TINYGLTF_TYPE_VEC2);
+                                                IC_CORE_INFO("    Found Texture_0 attrib of stride {}", uv1ByteStride);
                                         }
 
                                         // Vertex colors
                                         if (primitive.attributes.find("COLOR_0") != primitive.attributes.end())
                                         {
+                                                IC_CORE_INFO("    Model contains Color_0 attributes");
                                                 const tinygltf::Accessor& accessor =
                                                     model.accessors[primitive.attributes.find("COLOR_0")->second];
                                                 const tinygltf::BufferView& view =
@@ -561,12 +612,14 @@ namespace vkLoad
                                                                        ? (accessor.ByteStride(view) / sizeof(float))
                                                                        : tinygltf::GetNumComponentsInType(
                                                                              TINYGLTF_TYPE_VEC3);
+                                                IC_CORE_INFO("    Found Color_0 attrib of stride {}", color0ByteStride);
                                         }
 
                                         // Skinning
                                         // Joints
                                         if (primitive.attributes.find("JOINTS_0") != primitive.attributes.end())
                                         {
+                                                IC_CORE_INFO("    Model contains Joint_0 attributes");
                                                 const tinygltf::Accessor& jointAccessor =
                                                     model.accessors[primitive.attributes.find("JOINTS_0")->second];
                                                 const tinygltf::BufferView& jointView =
@@ -580,10 +633,12 @@ namespace vkLoad
                                                         ? (jointAccessor.ByteStride(jointView) /
                                                            tinygltf::GetComponentSizeInBytes(jointComponentType))
                                                         : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC4);
+                                                IC_CORE_INFO("    Found Joint_0 attrib of stride {}", jointByteStride);
                                         }
 
                                         if (primitive.attributes.find("WEIGHTS_0") != primitive.attributes.end())
                                         {
+                                                IC_CORE_INFO("    Model contains Weight_0 attributes");
                                                 const tinygltf::Accessor& weightAccessor =
                                                     model.accessors[primitive.attributes.find("WEIGHTS_0")->second];
                                                 const tinygltf::BufferView& weightView =
@@ -595,9 +650,15 @@ namespace vkLoad
                                                     weightAccessor.ByteStride(weightView)
                                                         ? (weightAccessor.ByteStride(weightView) / sizeof(float))
                                                         : tinygltf::GetNumComponentsInType(TINYGLTF_TYPE_VEC4);
+                                                IC_CORE_INFO("    Found Weight_0 attrib of stride {}",
+                                                             weightByteStride);
                                         }
 
                                         hasSkin = (bufferJoints && bufferWeights);
+                                        if (hasSkin)
+                                        {
+                                                IC_CORE_INFO("Model Contains a skin");
+                                        }
 
                                         for (size_t v = 0; v < posAccessor.count; v++)
                                         {
@@ -609,10 +670,10 @@ namespace vkLoad
                                                                   : glm::vec3(0.0f)));
                                                 vert.uv0     = bufferTexCoordSet0
                                                                    ? glm::make_vec2(&bufferTexCoordSet0[v * uv0ByteStride])
-                                                                   : glm::vec3(0.0f);
+                                                                   : glm::vec2(0.0f);
                                                 vert.uv1     = bufferTexCoordSet1
                                                                    ? glm::make_vec2(&bufferTexCoordSet1[v * uv1ByteStride])
-                                                                   : glm::vec3(0.0f);
+                                                                   : glm::vec2(0.0f);
                                                 vert.color   = bufferColorSet0
                                                                    ? glm::make_vec4(
                                                                        &bufferColorSet0[v * color0ByteStride])
@@ -714,12 +775,14 @@ namespace vkLoad
                                                 return;
                                         }
                                 }
-                                Primitive* newPrimitive = new Primitive(indexStart,
+                                Primitive* newPrimitive   = new Primitive(indexStart,
                                                                         indexCount,
                                                                         vertexCount,
                                                                         primitive.material > -1
-                                                                            ? materials[primitive.material]
-                                                                            : materials.back());
+                                                                              ? materials[primitive.material]
+                                                                              : materials.back());
+                                newPrimitive->firstVertex = vertexStart;
+                                newPrimitive->vertexCount = vertexCount;
                                 newPrimitive->setBoundingBox(posMin, posMax);
                                 newMesh->primitives.push_back(newPrimitive);
                         }
@@ -773,6 +836,8 @@ namespace vkLoad
                         }
                 }
         }
+
+        void Model::loadImages(tinygltf::Model& gltfModel, ic::vkdevice* device, VkQueue transferQueue) {}
 
         void Model::loadSkins(tinygltf::Model& gltfModel)
         {
@@ -912,17 +977,21 @@ namespace vkLoad
 
         void Model::loadMaterials(tinygltf::Model& gltfModel)
         {
+                IC_CORE_INFO("Loading Materials!");
                 for (tinygltf::Material& mat : gltfModel.materials)
                 {
+                        IC_CORE_INFO("Loading material {}", mat.name);
                         vkLoad::Material material(device);
                         material.doubleSided = mat.doubleSided;
                         if (mat.values.find("baseColorTexture") != mat.values.end())
                         {
+                                IC_CORE_INFO("    Found baseColorTexture attrib");
                                 material.baseColorTexture = &textures[mat.values["baseColorTexture"].TextureIndex()];
                                 material.texCoordSets.baseColor = mat.values["baseColorTexture"].TextureTexCoord();
                         }
                         if (mat.values.find("metallicRoughnessTexture") != mat.values.end())
                         {
+                                IC_CORE_INFO("    Found metallicRoughnessTexture attrib");
                                 material.metallicRoughnessTexture =
                                     &textures[mat.values["metallicRoughnessTexture"].TextureIndex()];
                                 material.texCoordSets.metallicRoughness =
@@ -930,24 +999,29 @@ namespace vkLoad
                         }
                         if (mat.values.find("roughnessFactor") != mat.values.end())
                         {
+                                IC_CORE_INFO("    Found roughnessFactor attrib");
                                 material.roughnessFactor = static_cast<float>(mat.values["roughnessFactor"].Factor());
                         }
                         if (mat.values.find("metallicFactor") != mat.values.end())
                         {
+                                IC_CORE_INFO("    Found metallicFactor attrib");
                                 material.metallicFactor = static_cast<float>(mat.values["metallicFactor"].Factor());
                         }
                         if (mat.values.find("baseColorFactor") != mat.values.end())
                         {
+                                IC_CORE_INFO("    Found baseColorFactor attrib");
                                 material.baseColorFactor = glm::make_vec4(
                                     mat.values["baseColorFactor"].ColorFactor().data());
                         }
                         if (mat.additionalValues.find("normalTexture") != mat.additionalValues.end())
                         {
+                                IC_CORE_INFO("    Found normalTexture attrib");
                                 material.normalTexture = &textures[mat.additionalValues["normalTexture"].TextureIndex()];
                                 material.texCoordSets.normal = mat.additionalValues["normalTexture"].TextureTexCoord();
                         }
                         if (mat.additionalValues.find("emissiveTexture") != mat.additionalValues.end())
                         {
+                                IC_CORE_INFO("    Found emissiveTexture attrib");
                                 material.emissiveTexture =
                                     &textures[mat.additionalValues["emissiveTexture"].TextureIndex()];
                                 material.texCoordSets.emissive =
@@ -955,6 +1029,7 @@ namespace vkLoad
                         }
                         if (mat.additionalValues.find("occlusionTexture") != mat.additionalValues.end())
                         {
+                                IC_CORE_INFO("    Found occlusionTexture attrib");
                                 material.occlusionTexture =
                                     &textures[mat.additionalValues["occlusionTexture"].TextureIndex()];
                                 material.texCoordSets.occlusion =
@@ -962,6 +1037,7 @@ namespace vkLoad
                         }
                         if (mat.additionalValues.find("alphaMode") != mat.additionalValues.end())
                         {
+                                IC_CORE_INFO("    Found alphaMode attrib");
                                 tinygltf::Parameter param = mat.additionalValues["alphaMode"];
                                 if (param.string_value == "BLEND")
                                 {
@@ -975,10 +1051,12 @@ namespace vkLoad
                         }
                         if (mat.additionalValues.find("alphaCutoff") != mat.additionalValues.end())
                         {
+                                IC_CORE_INFO("    Found alphaCutoff attrib");
                                 material.alphaCutoff = static_cast<float>(mat.additionalValues["alphaCutoff"].Factor());
                         }
                         if (mat.additionalValues.find("emissiveFactor") != mat.additionalValues.end())
                         {
+                                IC_CORE_INFO("    Found emissiveFactor attrib");
                                 material.emissiveFactor = glm::vec4(
                                     glm::make_vec3(mat.additionalValues["emissiveFactor"].ColorFactor().data()), 1.0);
                         }
@@ -986,6 +1064,7 @@ namespace vkLoad
                         // Extensions
                         if (mat.extensions.find("KHR_materials_pbrSpecularGlossiness") != mat.extensions.end())
                         {
+                                IC_CORE_INFO("    Found pbrSpecularGlossiness extension");
                                 auto ext = mat.extensions.find("KHR_materials_pbrSpecularGlossiness");
                                 if (ext->second.Has("specularGlossinessTexture"))
                                 {
@@ -1192,13 +1271,23 @@ namespace vkLoad
                 }
         }
 
-        void Model::loadFromFile(std::string filename, ic::vkdevice* device, VkQueue transferQueue, float scale)
+        void Model::loadFromFile(
+            std::string filename, ic::vkdevice* device, VkQueue transferQueue, uint32_t fileLoadingFlags, float scale)
         {
                 tinygltf::Model gltfModel;
                 tinygltf::TinyGLTF gltfContext;
 
-                std::string error;
-                std::string warning;
+                // @todo
+                if (fileLoadingFlags & FileLoadingFlags::DontLoadImages)
+                {
+                        gltfContext.SetImageLoader(loadImageDataFuncEmpty, nullptr);
+                }
+                else
+                {
+                        gltfContext.SetImageLoader(loadImageDataFunc, nullptr);
+                }
+
+                std::string error, warning;
 
                 this->device  = device;
 
@@ -1217,9 +1306,6 @@ namespace vkLoad
                 filePath = filename.substr(0, pos);
 
                 IC_CORE_INFO("FilePath to Model:{}", filePath);
-
-                // @todo
-                gltfContext.SetImageLoader(vkLoad::loadImageDataFunc, nullptr);
 
                 bool fileLoaded = false;
                 if (binary)
@@ -1240,14 +1326,19 @@ namespace vkLoad
 
                 if (fileLoaded)
                 {
+                        if (!(fileLoadingFlags & FileLoadingFlags::DontLoadImages))
+                        {
+                                loadImages(gltfModel, device, transferQueue);
+                        }
                         extensions = gltfModel.extensionsUsed;
                         for (auto& extension : extensions)
                         {
-                                // If this model uses basis universal compressed textures, we need to transcode them
-                                // So we need to initialize that transcoder once
+                                // If this model uses basis universal compressed textures, we need to transcode
+                                // them So we need to initialize that transcoder once
                                 if (extension == "KHR_texture_basisu")
                                 {
-                                        std::cout << "Model uses KHR_texture_basisu, initializing basisu transcoder\n";
+                                        std::cout << "Model uses KHR_texture_basisu, initializing basisu "
+                                                     "transcoder\n";
                                         basist::basisu_transcoder_init();
                                 }
                         }
@@ -1306,6 +1397,51 @@ namespace vkLoad
                         // TODO: throw
                         IC_CORE_CRITICAL("Could not load gltf file: {}", error);
                         return;
+                }
+
+                // Pre-Calculations for requested features
+                if ((fileLoadingFlags & FileLoadingFlags::PreTransformVertices) ||
+                    (fileLoadingFlags & FileLoadingFlags::PreMultiplyVertexColors) ||
+                    (fileLoadingFlags & FileLoadingFlags::FlipY))
+                {
+                        const bool preTransform     = fileLoadingFlags & FileLoadingFlags::PreTransformVertices;
+                        const bool preMultiplyColor = fileLoadingFlags & FileLoadingFlags::PreMultiplyVertexColors;
+                        const bool flipY            = fileLoadingFlags & FileLoadingFlags::FlipY;
+                        for (Node* node : linearNodes)
+                        {
+                                if (node->mesh)
+                                {
+                                        const glm::mat4 localMatrix = node->getMatrix();
+                                        for (Primitive* primitive : node->mesh->primitives)
+                                        {
+                                                for (uint32_t i = 0; i < primitive->vertexCount; i++)
+                                                {
+                                                        Vertex& vertex =
+                                                            loaderInfo.vertexBuffer[primitive->firstVertex + i];
+                                                        // Pre-transform vertex positions by node-hierarchy
+                                                        if (preTransform)
+                                                        {
+                                                                vertex.pos    = glm::vec3(localMatrix *
+                                                                                       glm::vec4(vertex.pos, 1.0f));
+                                                                vertex.normal = glm::normalize(glm::mat3(localMatrix) *
+                                                                                               vertex.normal);
+                                                        }
+                                                        // Flip Y-Axis of vertex positions
+                                                        if (flipY)
+                                                        {
+                                                                vertex.pos.y    *= -1.0f;
+                                                                vertex.normal.y *= -1.0f;
+                                                        }
+                                                        // Pre-Multiply vertex colors with material base color
+                                                        if (preMultiplyColor)
+                                                        {
+                                                                vertex.color = primitive->material.baseColorFactor *
+                                                                               vertex.color;
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
                 }
 
                 size_t vertexBufferSize = vertexCount * sizeof(Vertex);
@@ -1391,6 +1527,131 @@ namespace vkLoad
                 delete[] loaderInfo.indexBuffer;
 
                 getSceneDimensions();
+
+                // Setup descriptors
+                uint32_t uboCount{0};
+                uint32_t imageCount{0};
+                for (auto& node : linearNodes)
+                {
+                        if (node->mesh)
+                        {
+                                uboCount++;
+                        }
+                }
+                for (auto& material : materials)
+                {
+                        // Only check texture properties if the material has a texture
+                        if (material.baseColorTexture)
+                        {
+                                IC_CORE_ASSERT(material.baseColorTexture->descriptor.imageView != VK_NULL_HANDLE,
+                                               "Imageview was corrupt");
+                                IC_CORE_ASSERT(material.baseColorTexture->descriptor.imageLayout ==
+                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                               "Layout not set properly");
+                        }
+                        if (material.baseColorTexture != nullptr)
+                        {
+                                imageCount++;
+                        }
+                }
+
+                IC_CORE_INFO("Creating descriptor Pools for {} UBOs and {} materials", uboCount, imageCount);
+                std::vector<VkDescriptorPoolSize> poolSizes = {
+                    {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, uboCount},
+                };
+
+                // TODO put this as a changeable property.
+                uint32_t descriptorBindingFlags = vkLoad::DescriptorBindingFlags::ImageBaseColor;
+                if (imageCount > 0)
+                {
+                        if (descriptorBindingFlags & DescriptorBindingFlags::ImageBaseColor)
+                        {
+                                poolSizes.push_back({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, imageCount});
+                        }
+                        if (descriptorBindingFlags & DescriptorBindingFlags::ImageNormalMap)
+                        {
+                                poolSizes.push_back({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, imageCount});
+                        }
+                }
+
+                VkDescriptorPoolCreateInfo descriptorPoolCI{.sType   = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                                                            .maxSets = uboCount + imageCount,
+                                                            .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+                                                            .pPoolSizes    = poolSizes.data()};
+                IC_CORE_ASSERT(vkCreateDescriptorPool(
+                                   device->logicalDevice, &descriptorPoolCI, nullptr, &descriptorPool) == VK_SUCCESS,
+                               "Failed to create descriptor Pool");
+
+                // Descriptors for per-node uniform buffers
+                {
+                        // Layout is global, so only create if it hasn't already been created before
+                        if (descriptorSetLayoutUbo == VK_NULL_HANDLE)
+                        {
+                                IC_CORE_INFO("Creating Descriptor Layout for UBO");
+                                VkDescriptorSetLayoutBinding setLayoutBinding{.binding = 0,
+                                                                              .descriptorType =
+                                                                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                                              .descriptorCount = 1,
+                                                                              .stageFlags = VK_SHADER_STAGE_VERTEX_BIT};
+                                VkDescriptorSetLayoutCreateInfo descriptorLayoutCI{
+                                    .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                                    .bindingCount = 1,
+                                    .pBindings    = &setLayoutBinding};
+                                IC_CORE_ASSERT(vkCreateDescriptorSetLayout(device->logicalDevice,
+                                                                           &descriptorLayoutCI,
+                                                                           nullptr,
+                                                                           &descriptorSetLayoutUbo) == VK_SUCCESS,
+                                               "Failed to create Descriptor Layouts");
+                        }
+                        for (auto node : nodes)
+                        {
+                                prepareNodeDescriptor(node, descriptorSetLayoutUbo);
+                        }
+                }
+
+                // Descriptors for per-material images
+                {
+                        // Layout is global, so only create if it hasn't already been created before
+                        if (descriptorSetLayoutImage == VK_NULL_HANDLE)
+                        {
+                                std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings{};
+                                if (descriptorBindingFlags & DescriptorBindingFlags::ImageBaseColor)
+                                {
+                                        setLayoutBindings.push_back(
+                                            {.binding         = 1,
+                                             .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             .descriptorCount = 1,
+                                             .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT});
+                                }
+                                if (descriptorBindingFlags & DescriptorBindingFlags::ImageNormalMap)
+                                {
+                                        setLayoutBindings.push_back(
+                                            {.binding         = 1,
+                                             .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             .descriptorCount = 1,
+                                             .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT});
+                                }
+                                VkDescriptorSetLayoutCreateInfo descriptorLayoutCI{
+                                    .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                                    .bindingCount = static_cast<uint32_t>(setLayoutBindings.size()),
+                                    .pBindings    = setLayoutBindings.data(),
+                                };
+                                IC_CORE_ASSERT(vkCreateDescriptorSetLayout(device->logicalDevice,
+                                                                           &descriptorLayoutCI,
+                                                                           nullptr,
+                                                                           &descriptorSetLayoutImage) == VK_SUCCESS,
+                                               "Failed to create Descriptr sets layout for images.");
+                        }
+                        for (auto& material : materials)
+                        {
+                                if (material.baseColorTexture != nullptr)
+                                {
+                                        material.createDescriptorSet(descriptorPool,
+                                                                     vkLoad::descriptorSetLayoutImage,
+                                                                     descriptorBindingFlags);
+                                }
+                        }
+                }
         }
 
         void Model::drawNode(Node* node, VkCommandBuffer commandBuffer)
@@ -1399,7 +1660,12 @@ namespace vkLoad
                 {
                         for (Primitive* primitive : node->mesh->primitives)
                         {
-                                vkCmdDrawIndexed(commandBuffer, primitive->indexCount, 1, primitive->firstIndex, 0, 0);
+                                vkCmdDrawIndexed(commandBuffer,
+                                                 primitive->indexCount,
+                                                 1,
+                                                 primitive->firstIndex,
+                                                 primitive->firstVertex,
+                                                 0);
                         }
                 }
                 for (auto& child : node->children)
@@ -1563,5 +1829,32 @@ namespace vkLoad
                         }
                 }
                 return nodeFound;
+        }
+
+        void Model::prepareNodeDescriptor(Node* node, VkDescriptorSetLayout descriptorSetLayout)
+        {
+                if (node->mesh)
+                {
+                        VkDescriptorSetAllocateInfo descriptorSetAllocInfo{
+                            .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                            .descriptorPool     = descriptorPool,
+                            .descriptorSetCount = 1,
+                            .pSetLayouts        = &descriptorSetLayout};
+                        IC_CORE_ASSERT(vkAllocateDescriptorSets(device->logicalDevice,
+                                                                &descriptorSetAllocInfo,
+                                                                &node->mesh->uniformBuffer.descriptorSet) == VK_SUCCESS,
+                                       "Failed to allocate descriptors!");
+                        VkWriteDescriptorSet writeDescriptorSet{.sType      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                                                .dstSet     = node->mesh->uniformBuffer.descriptorSet,
+                                                                .dstBinding = 0,
+                                                                .descriptorCount = 1,
+                                                                .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                                .pBufferInfo = &node->mesh->uniformBuffer.descriptor};
+                        vkUpdateDescriptorSets(device->logicalDevice, 1, &writeDescriptorSet, 0, nullptr);
+                }
+                for (auto& child : node->children)
+                {
+                        prepareNodeDescriptor(child, descriptorSetLayout);
+                }
         }
 }  // namespace vkLoad

@@ -90,8 +90,11 @@ namespace ic
 
         void vulkan_renderer::loadAssets()
         {
+                const uint32_t glTFLoadingFlags = vkLoad::FileLoadingFlags::PreTransformVertices |
+                                                  vkLoad::FileLoadingFlags::PreMultiplyVertexColors |
+                                                  vkLoad::FileLoadingFlags::FlipY;
 
-                scene.loadFromFile("treasure_smooth.gltf", &m_device, m_device.queues.transfer.handle);
+                scene.loadFromFile("treasure_smooth.gltf", &m_device, m_device.queues.transfer.handle, glTFLoadingFlags);
         }
 
         VkPipelineShaderStageCreateInfo vulkan_renderer::loadShader(std::string fileName, VkShaderStageFlagBits stage)
@@ -836,10 +839,16 @@ namespace ic
                         vkDestroyBuffer(device, uniformBuffers[i].handle, nullptr);
                         vkFreeMemory(device, uniformBuffers[i].memory, nullptr);
                 }
+                scene.destroy(device);
                 vertexBuffer.destroy();
                 indexBuffer.destroy();
 
                 vkDestroyPipeline(device, pipelines.phong, nullptr);
+                if (enabledFeatures.fillModeNonSolid)
+                {
+                        vkDestroyPipeline(device, pipelines.wireFrame, nullptr);
+                }
+                vkDestroyPipeline(device, pipelines.toon, nullptr);
                 vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
                 vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 

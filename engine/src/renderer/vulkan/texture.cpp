@@ -166,48 +166,59 @@ namespace vkLoad
                                        "Couldn't Bind the Image Memory.");
 
                         VkCommandBuffer copyCmd = device->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-                        ic::utils::transitionImageLayout(
-                            copyCmd, image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                        ic::utils::transitionLayout(copyCmd,
+                                                    image,
+                                                    VK_IMAGE_LAYOUT_UNDEFINED,
+                                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                    ic::utils::mipRange(0));
 
-                        ic::utils::copyBufferToImage(copyCmd, stagingBuffer, image, width, height);
-
-                        ic::utils::transitionImageLayout(copyCmd,
-                                                         image,
-                                                         format,
-                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-                        device->flushCommandBuffer(copyCmd, copyQueue, true);
+                        ic::utils::copyBufferToImage(copyCmd, stagingBuffer, image, width, height, 0);
+                        // Transition to shader read optimal layout
+                        ic::utils::transitionLayout(copyCmd,
+                                                    image,
+                                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                    ic::utils::mipRange(0, mipLevels));  // Transition all mip levels
+                                                                                         // device->flushCommandBuffer(copyCmd,
+                                                                                         // copyQueue, true);
                         vkDestroyBuffer(device->logicalDevice, stagingBuffer, nullptr);
                         vkFreeMemory(device->logicalDevice, stagingMemory, nullptr);
 
                         // Generate the mip chain (glTF uses jpg and png, so we need to create this manually)
                         VkCommandBuffer blitCmd = device->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
+                        uint32_t mipW           = width;
+                        uint32_t mipH           = height;
+
                         for (uint32_t i = 0; i < mipLevels; i++)
                         {
+                                // transition dst mip level i: UNDEFINED -> TRANSFER_DST
+                                ic::utils::transitionLayout(blitCmd,
+                                                            image,
+                                                            VK_IMAGE_LAYOUT_UNDEFINED,
+                                                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                            ic::utils::mipRange(i));
+
                                 VkImageBlit imageBlit{};
-                                imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                                imageBlit.srcSubresource.mipLevel   = i - 1;
-                                imageBlit.srcSubresource.layerCount = 1;
+                                imageBlit.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                                imageBlit.srcSubresource.mipLevel       = i - 1;
+                                imageBlit.srcSubresource.layerCount     = 1;
+                                imageBlit.srcSubresource.baseArrayLayer = 0;
 
-                                imageBlit.srcOffsets[1].x           = int32_t(width >> (i - 1));
-                                imageBlit.srcOffsets[1].y           = int32_t(height >> (i - 1));
-                                imageBlit.srcOffsets[1].z           = 1;
+                                imageBlit.srcOffsets[0]                 = {0, 0, 0};
+                                imageBlit.srcOffsets[1].x               = int32_t(width >> (i - 1));
+                                imageBlit.srcOffsets[1].y               = int32_t(height >> (i - 1));
+                                imageBlit.srcOffsets[1].z               = 1;
 
-                                imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                                imageBlit.dstSubresource.mipLevel   = i;
-                                imageBlit.dstSubresource.layerCount = 1;
+                                imageBlit.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                                imageBlit.dstSubresource.mipLevel       = i;
+                                imageBlit.dstSubresource.layerCount     = 1;
+                                imageBlit.dstSubresource.baseArrayLayer = 0;
 
-                                imageBlit.dstOffsets[1].x           = int32_t(width >> i);
-                                imageBlit.dstOffsets[1].y           = int32_t(height >> i);
-                                imageBlit.dstOffsets[1].z           = 1;
-
-                                ic::utils::transitionImageLayout(blitCmd,
-                                                                 image,
-                                                                 format,
-                                                                 VK_IMAGE_LAYOUT_UNDEFINED,
-                                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                                imageBlit.dstOffsets[0]                 = {0, 0, 0};
+                                imageBlit.dstOffsets[1].x               = int32_t(width >> i);
+                                imageBlit.dstOffsets[1].y               = int32_t(height >> i);
+                                imageBlit.dstOffsets[1].z               = 1;
 
                                 vkCmdBlitImage(blitCmd,
                                                image,
@@ -218,37 +229,22 @@ namespace vkLoad
                                                &imageBlit,
                                                VK_FILTER_LINEAR);
 
-                                ic::utils::transitionImageLayout(blitCmd,
-                                                                 image,
-                                                                 format,
-                                                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                                // old src mip (i-1): TRANSFER_SRC -> SHADER_READ_ONLY
+                                ic::utils::transitionLayout(blitCmd,
+                                                            image,
+                                                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                            ic::utils::mipRange(i - 1));
                         }
 
-                        // [TODO: Improve the transition layout function with more optimality and cases instead]
-                        VkImageSubresourceRange subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                                                 .levelCount = mipLevels,
-                                                                 .layerCount = 1};
-
-                        VkImageMemoryBarrier imageMemoryBarrier{.sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                                                .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
-                                                                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                                                                .oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                                .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                                .image     = image,
-                                                                .subresourceRange = subresourceRange};
+                        // last mip level (mipLevels - 1): TRANSFER_DST -> SHADER_READ_ONLY
+                        ic::utils::transitionLayout(blitCmd,
+                                                    image,
+                                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                    ic::utils::mipRange(mipLevels - 1));
 
                         imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                        vkCmdPipelineBarrier(blitCmd,
-                                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                             0,
-                                             0,
-                                             nullptr,
-                                             0,
-                                             nullptr,
-                                             1,
-                                             &imageMemoryBarrier);
                         if (deleteBuffer)
                         {
                                 delete[] buffer;
@@ -377,20 +373,27 @@ namespace vkLoad
                         IC_CORE_ASSERT(vkBindImageMemory(device->logicalDevice, image, deviceMemory, 0) == VK_SUCCESS,
                                        "Failed to Bind Image memory");
 
-                        ic::utils::transitionImageLayout(
-                            copyCmd, image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                        ic::utils::transitionLayout(copyCmd,
+                                                    image,
+                                                    VK_IMAGE_LAYOUT_UNDEFINED,
+                                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                    ic::utils::mipRange(0));
+
                         vkCmdCopyBufferToImage(copyCmd,
                                                stagingBuffer,
                                                image,
                                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                static_cast<uint32_t>(bufferCopyRegions.size()),
                                                bufferCopyRegions.data());
-                        ic::utils::transitionImageLayout(copyCmd,
-                                                         image,
-                                                         format,
-                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+                        ic::utils::transitionLayout(copyCmd,
+                                                    image,
+                                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                    ic::utils::mipRange(0));
+
                         device->flushCommandBuffer(copyCmd, copyQueue);
+
                         this->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
                         vkDestroyBuffer(device->logicalDevice, stagingBuffer, nullptr);
