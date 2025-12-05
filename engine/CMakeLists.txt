@@ -33,10 +33,37 @@ target_link_libraries(engine
         engine-vulkan
 )
 
+set(ENGINE_SHADERS
+	${CMAKE_SOURCE_DIR}/shaders/*.vert
+	${CMAKE_SOURCE_DIR}/shaders/*.frag
+)
 
+target_link_spv_shaders(engine ${ENGINE_SHADERS})
+
+set(ENGINE_GENERATED_SPVS ${engine_GENERATED_SPVS})
 
 set_target_properties(engine PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_BINARY_DIR}/bin/Debug
     RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
+)
+
+install(TARGETS engine 
+	EXPORT ic_engineTargets
+	RUNTIME DESTINATION bin
+	LIBRARY DESTINATION lib
+	ARCHIVE DESTINATION lib
+	INCLUDES DESTINATION includes # make sure these are all the .h files instead of this or change the directory structure.
+)
+
+install(DIRECTORY ${CMAKE_CURRECT_SOURCE_DIR}/src/
+	DESTINATION include/ic_engine
+	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+	# exclude internal headers maybe
+	# PATTERN "internal" EXCLUDE
+)
+
+install(FILES ${ENGINE_GENERATED_SPVS}
+	DESTINATION ${CMAKE_INSTALL_DATADIR}/ic_engine/shaders
+	OPTIONAL
 )

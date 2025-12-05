@@ -29,6 +29,12 @@ print(PROJECT_VERSION)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 include(cmake/options.cmake)
 
+include(cmake/shaders.cmake)
+
+configure_file(${CMAKE_SOURCE_DIR}/cmake/config.h.in
+		${CMAKE_BINARY_DIR}/generated/config.h @ONLY)
+include_directories(${CMAKE_BINARY_DIR}/generated)
+
 # Include dependencies
 include(cmake/dependencies.cmake)
 
