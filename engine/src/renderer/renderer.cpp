@@ -1,9 +1,15 @@
 #include "renderer.h"
 
+#include "vulkan/context.h"
+#include "vulkan/vulkan_renderer.h"
+
 namespace ic
 {
+        renderer::renderer() {}
 
-        bool renderer::init(window* w)
+        renderer::~renderer() {}
+
+        bool renderer::init(Window* w)
         {
                 if (m_initialized)
                 {

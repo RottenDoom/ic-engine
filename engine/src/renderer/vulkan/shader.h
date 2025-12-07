@@ -1,6 +1,8 @@
 #pragma once
 #include "defines.h"
 
+#include <vulkan/vulkan.h>
+
 namespace ic
 {
         class shader
@@ -32,4 +34,4 @@ namespace ic
                 void moveFrom(shader&& other) noexcept;
                 void reset() noexcept;
         };
-} // namespace ic
+}  // namespace ic

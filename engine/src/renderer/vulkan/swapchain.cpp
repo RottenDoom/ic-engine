@@ -242,7 +242,10 @@ namespace ic
                 else
                 {
                         int width, height;
-                        glfwGetFramebufferSize(application::getWindow(), &width, &height);
+                        glfwGetFramebufferSize(static_cast<GLFWwindow*>(
+                                                   application::get().getWindow().getNativeWindow()),
+                                               &width,
+                                               &height);
 
                         VkExtent2D actualExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 

@@ -1,7 +1,6 @@
 #pragma once
 #include "defines.h"
 #include "events/event.h"
-
 namespace ic
 {
 
@@ -20,12 +19,12 @@ namespace ic
         };
 
         // Interface representing a desktop system based Window
-        class window
+        class Window
         {
         public:
                 using eventCallbackFn                  = std::function<void(event&)>;
 
-                virtual ~window()                      = default;
+                virtual ~Window()                      = default;
 
                 virtual void onUpdate()                = 0;
 
@@ -39,10 +38,7 @@ namespace ic
 
                 virtual void* getNativeWindow() const                          = 0;
 
-                static window* create(const window_props& props = window_props());
-
-        private:
-                GLFWwindow* m_Window;
+                static std::unique_ptr<Window> create(const window_props& props = window_props());
         };
 
 }  // namespace ic

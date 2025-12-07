@@ -1,6 +1,8 @@
 #pragma once
 #include "defines.h"
 
+#include <vulkan/vulkan.h>
+
 namespace ic
 {
         struct fences
@@ -21,4 +23,4 @@ namespace ic
                 void create(const VkDevice& device, const uint32_t& maxFramesInFlight);
                 void destroy(const VkDevice& device);
         };
-} // namespace ic
+}  // namespace ic

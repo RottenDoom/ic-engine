@@ -15,7 +15,7 @@ namespace ic
                 }
         }
 
-        vulkan_context::vulkan_context(window& w) : m_window(w) {}
+        vulkan_context::vulkan_context(Window& w) : m_window(w) {}
 
         vulkan_context::vulkan_context(vulkan_context&& other) noexcept
             : m_initialized(other.m_initialized), m_vk_instance(std::move(other.m_vk_instance)),

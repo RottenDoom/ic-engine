@@ -2,7 +2,6 @@
 
 #include "defines.h"
 
-#include "GLFW/glfw3.h"
 #include "core/window.h"
 
 #include "core/events/event.h"
@@ -15,11 +14,11 @@ struct GLFWwindow;
 namespace ic
 {
 
-        class win32_window : public window
+        class win32_window : public Window
         {
         public:
                 win32_window(const window_props& props);
-                virtual ~win32_window();
+                ~win32_window() override;
 
                 void onUpdate() override;
 
@@ -31,7 +30,7 @@ namespace ic
                 void setVSync(bool enabled) override;
                 bool isVSync() const override;
 
-                inline virtual void* getNativeWindow() const { return m_Window; }
+                void* getNativeWindow() const override { return static_cast<void*>(m_Window); }
 
                 bool wasWindowResized() { return framebufferResized; }
                 static void framebufferResizeCallback(GLFWwindow* handle, int width, int height);
@@ -39,8 +38,8 @@ namespace ic
                 bool framebufferResized = false;
 
         private:
-                virtual void init(const window_props& props);
-                virtual void shutdown();
+                void init(const window_props& props);
+                void shutdown();
 
         private:
                 GLFWwindow* m_Window;

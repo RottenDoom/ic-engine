@@ -1,10 +1,16 @@
 #include "vulkan_renderer.h"
+
 #include "shader.h"
+#include "vkutils/descriptors.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace ic
 {
+        VkVertexInputBindingDescription Vertex::vertexInputBindingDescription{};
+        std::vector<VkVertexInputAttributeDescription> Vertex::vertexInputAttributeDescriptions{};
+        VkPipelineVertexInputStateCreateInfo Vertex::pipelineVertexInputStateCreateInfo{};
+
         vulkan_renderer::vulkan_renderer(vulkan_context* pContext, vkdevice& device) noexcept
             : m_device(device), vertexBuffer(device.logicalDevice), indexBuffer(device.logicalDevice)
         {
@@ -43,8 +49,8 @@ namespace ic
                 // pipeline cache
                 createFramebuffers(device);
                 loadAssets();
-                createVertexBuffer();
-                createIndexedBuffer();
+                // createVertexBuffer();
+                // createIndexedBuffer();
                 prepareUniformBuffers();
                 setupDescriptors(device);
                 createGraphicsPipeline(device);
@@ -82,14 +88,42 @@ namespace ic
                 submitFrame(m_device.logicalDevice);
         }
 
-        void vulkan_renderer::loadAssets() {}
+        void vulkan_renderer::loadAssets()
+        {
+                const uint32_t glTFLoadingFlags = vkLoad::FileLoadingFlags::PreTransformVertices |
+                                                  vkLoad::FileLoadingFlags::PreMultiplyVertexColors |
+                                                  vkLoad::FileLoadingFlags::FlipY;
+
+                scene.loadFromFile("treasure_smooth.gltf", &m_device, m_device.queues.transfer.handle, glTFLoadingFlags);
+        }
+
+        VkPipelineShaderStageCreateInfo vulkan_renderer::loadShader(std::string fileName, VkShaderStageFlagBits stage)
+        {
+                shader s = shader(m_device.logicalDevice, fileName);
+                VkPipelineShaderStageCreateInfo ShaderStageCreateInfo{};
+                ShaderStageCreateInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                ShaderStageCreateInfo.stage  = stage;
+
+                ShaderStageCreateInfo.module = s.getModule();
+                ShaderStageCreateInfo.pName  = "main";
+
+                m_shaderModules.push_back(s.getModule());  // can move or copy errors
+
+                return ShaderStageCreateInfo;
+        }
 
         void vulkan_renderer::setupDescriptors(VkDevice& device)
         {
+
+                VkDescriptorPoolSize descriptorPoolSize{};
+                descriptorPoolSize.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptorPoolSize.descriptorCount = MAX_FRAME_IN_FLIGHT;
+
                 // pool
-                VkDescriptorPoolSize descriptorPoolSize{.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                                        .descriptorCount = MAX_FRAME_IN_FLIGHT};
-                std::vector<VkDescriptorPoolSize> poolSizes = {descriptorPoolSize};
+                std::vector<VkDescriptorPoolSize> poolSizes = {
+                    descriptorPoolSize,
+                };
+
                 VkDescriptorPoolCreateInfo descriptorCI{};
                 descriptorCI.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
                 descriptorCI.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
@@ -100,14 +134,13 @@ namespace ic
                                "Failed to Create Descriptor Pool");
 
                 // layout
-                VkDescriptorSetLayoutBinding setLayoutBinding{};
-                setLayoutBinding.descriptorType                             = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                setLayoutBinding.stageFlags                                 = VK_SHADER_STAGE_VERTEX_BIT;
-                setLayoutBinding.binding                                    = 0;
-                setLayoutBinding.descriptorCount                            = 1;
+                VkDescriptorSetLayoutBinding UBOLayoutBinding{};
+                UBOLayoutBinding = ic::descriptor::createDescriptorSetLayoutBinding(0,
+                                                                                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                                                    VK_SHADER_STAGE_VERTEX_BIT);
 
                 std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-                    setLayoutBinding,
+                    UBOLayoutBinding,
                 };
 
                 VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCI{};
@@ -131,12 +164,13 @@ namespace ic
                                        "Descriptor Set allocation failed!");
                         // Binding 0 : Vertex shader uniform buffer
                         VkWriteDescriptorSet writeDescriptorSet{};
-                        writeDescriptorSet.sType                              = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                        writeDescriptorSet.dstSet                             = descriptorSets[i];
-                        writeDescriptorSet.descriptorType                     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                        writeDescriptorSet.dstBinding                         = 0;
-                        writeDescriptorSet.pBufferInfo                        = &uniformBuffers[i].descriptor;
-                        writeDescriptorSet.descriptorCount                    = 1;
+                        writeDescriptorSet =
+                            ic::descriptor::writeDescriptorSet(descriptorSets[i],
+                                                               0,
+                                                               0,
+                                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                               (const void*)(&uniformBuffers[i].descriptor));
+
                         std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
                             writeDescriptorSet,
                         };
@@ -252,18 +286,7 @@ namespace ic
                 IC_CORE_ASSERT(vkCreatePipelineLayout(device, &layoutCI, nullptr, &pipelineLayout) == VK_SUCCESS,
                                "Failed to set pipeline layout");
 
-                // Make different types of pipeline based on enabled features
-                // Phong shading pipeline
-                shader phong_vert(device, "shader_scripts/bin/simple_shader.vert.spv");
-                shader phong_frag(device, "shader_scripts/bin/simple_shader.frag.spv");
-
-                auto bindingDescriptions  = Vertex::getBindingDescriptions();
-                auto attributeDesciptions = Vertex::getAttributeDescriptions();
-                config.create(phong_vert.getModule(),
-                              phong_frag.getModule(),
-                              context->getWindowExtent(),
-                              bindingDescriptions,
-                              attributeDesciptions);
+                config.create(context->getWindowExtent());
 
                 VkGraphicsPipelineCreateInfo CI{};
                 CI.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -272,7 +295,6 @@ namespace ic
                 CI.flags               = 0;
                 CI.basePipelineIndex   = -1;
                 CI.basePipelineHandle  = VK_NULL_HANDLE;
-                CI.stageCount          = 2;
 
                 CI.pInputAssemblyState = &config.inputAssembly;
                 CI.pRasterizationState = &config.rasterizer;
@@ -280,12 +302,18 @@ namespace ic
                 CI.pMultisampleState   = &config.multisampling;
                 CI.pViewportState      = &config.viewportState;
                 CI.pDepthStencilState  = &config.depthStencil;
-                CI.stageCount          = static_cast<uint32_t>(config.shaderStages.size());
-                CI.pStages             = config.shaderStages.data();
-                CI.pVertexInputState   = &config.vertexInputInfo;
-                CI.pDynamicState       = &config.dynamicStateInfo;
+                CI.pVertexInputState   = ic::Vertex::getPipelineVertexInputState(
+                    {ic::VertexComponent::Position, ic::VertexComponent::Normal, ic::VertexComponent::Color});
+                CI.pDynamicState = &config.dynamicStateInfo;
+                // This allows for derivatives of pipeline with this pipeline as base
+                CI.flags = VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
 
-                CI.flags               = VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
+                std::vector<VkPipelineShaderStageCreateInfo> shaderStages(2);
+                shaderStages[0] = loadShader("pipelines/phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+                shaderStages[1] = loadShader("pipelines/phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+                CI.stageCount   = static_cast<uint32_t>(shaderStages.size());
+                CI.pStages      = shaderStages.data();
 
                 VkPipelineCacheCreateInfo cacheCreateInfo{};
                 cacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -298,13 +326,44 @@ namespace ic
                         IC_CORE_ERROR("Failed to create Graphics Pipeline");
                 }
 
-                // subsequent pipelines are derivatives
-                CI.flags              = VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+                // All pipelines created after the base pipeline will be derivatives
+                CI.flags = VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+                // Base pipeline will be our first created pipeline
                 CI.basePipelineHandle = pipelines.phong;
-                CI.basePipelineIndex  = -1;
+                // It's only allowed to either use a handle or index for the base pipeline
+                // As we use the handle, we must set the index to -1 (see section 9.5 of the specification)
+                CI.basePipelineIndex = -1;
 
-                phong_frag.destroy();
-                phong_vert.destroy();
+                // Toon shading pipeline
+                shaderStages[0] = loadShader("pipelines/toon.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+                shaderStages[1] = loadShader("pipelines/toon.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+                CI.stageCount   = static_cast<uint32_t>(shaderStages.size());
+                CI.pStages      = shaderStages.data();
+
+                if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &CI, nullptr, &pipelines.toon) != VK_SUCCESS)
+                {
+                        IC_CORE_ERROR("Failed to create Graphics Pipeline");
+                }
+
+                // Pipeline for wire frame rendering
+                // Non solid rendering is not a mandatory Vulkan feature
+                if (enabledFeatures.fillModeNonSolid)
+                {
+                        config.rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+                        shaderStages[0] = loadShader("pipelines/wireframe.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+                        shaderStages[1] = loadShader("pipelines/wireframe.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+                        CI.stageCount   = static_cast<uint32_t>(shaderStages.size());
+                        CI.pStages      = shaderStages.data();
+
+                        if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &CI, nullptr, &pipelines.wireFrame) !=
+                            VK_SUCCESS)
+                        {
+                                IC_CORE_ERROR("Failed to create Graphics Pipeline");
+                        }
+                }
+
                 IC_CORE_TRACE("Pipeline Creation Successfull!");
         }
 
@@ -582,9 +641,8 @@ namespace ic
 
                 VkDeviceSize offsets[] = {0};
                 vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.phong);
-                vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &vertexBuffer.handle, offsets);
-                vkCmdBindIndexBuffer(cmdBuffer, indexBuffer.handle, 0, VK_INDEX_TYPE_UINT16);
-                vkCmdDrawIndexed(cmdBuffer, indexCount, 1, 0, 0, 0);
+                vkCmdSetLineWidth(cmdBuffer, 1.0f);
+                scene.draw(cmdBuffer);
 
                 /* The scene and other things can be done later for now main target is to get something to show
                  * on screen.*/
@@ -648,16 +706,16 @@ namespace ic
                 auto currentTime      = std::chrono::high_resolution_clock::now();
                 float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-                ubo.modelMatrix       = glm::mat4(1.0f);
+                glm::mat4 model       = glm::mat4(1.0f);
 
                 float rotationSpeed   = glm::radians(45.0f);
 
-                ubo.viewMatrix        = camera.matrices.view;
+                ubo.modelView         = model * camera.matrices.view;
                 ubo.projection        = camera.projection;
 
                 ubo.projection[1][1] *= -1;
                 if (currentImageIndex != UINT32_MAX)
-                        memcpy(uniformBuffers[currentImageIndex].mapped, &ubo, sizeof(ubo));
+                        memcpy(uniformBuffers[currentImageIndex].mapped, &ubo, sizeof(UniformData));
                 else
                 {
                         IC_CORE_TRACE("Skipping Uniform Buffer Update");
@@ -758,6 +816,11 @@ namespace ic
                 }
                 swapchainFramebuffers.clear();
 
+                for (auto& shaderModule : m_shaderModules)
+                {
+                        vkDestroyShaderModule(device, shaderModule, nullptr);
+                }
+
                 vkDestroyPipelineCache(device, pipelineCache, nullptr);
                 vkDestroyCommandPool(device, cmdPool, nullptr);
 
@@ -776,10 +839,16 @@ namespace ic
                         vkDestroyBuffer(device, uniformBuffers[i].handle, nullptr);
                         vkFreeMemory(device, uniformBuffers[i].memory, nullptr);
                 }
+                scene.destroy(device);
                 vertexBuffer.destroy();
                 indexBuffer.destroy();
 
                 vkDestroyPipeline(device, pipelines.phong, nullptr);
+                if (enabledFeatures.fillModeNonSolid)
+                {
+                        vkDestroyPipeline(device, pipelines.wireFrame, nullptr);
+                }
+                vkDestroyPipeline(device, pipelines.toon, nullptr);
                 vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
                 vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
@@ -811,31 +880,5 @@ namespace ic
                 {
                         enabledFeatures.wideLines = VK_TRUE;
                 }
-        }
-
-        std::vector<VkVertexInputBindingDescription> vulkan_renderer::Vertex::getBindingDescriptions()
-        {
-                std::vector<VkVertexInputBindingDescription> bindingDescription(1);
-                bindingDescription[0].binding   = 0;  // first binding
-                bindingDescription[0].stride    = sizeof(Vertex);
-                bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-                return bindingDescription;
-        }
-
-        std::vector<VkVertexInputAttributeDescription> vulkan_renderer::Vertex::getAttributeDescriptions()
-        {
-                std::vector<VkVertexInputAttributeDescription> attributeDescription(2);
-                attributeDescription[0].binding  = 0;
-                attributeDescription[0].location = 0;
-                attributeDescription[0].offset   = offsetof(Vertex, pos);
-                attributeDescription[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
-
-                attributeDescription[1].binding  = 0;
-                attributeDescription[1].location = 1;
-                attributeDescription[1].offset   = offsetof(Vertex, color);
-                attributeDescription[1].format   = VK_FORMAT_R32G32B32_SFLOAT;
-
-                return attributeDescription;
         }
 }  // namespace ic

@@ -1,7 +1,5 @@
 #pragma once
 #include "defines.h"
-#include "vulkan/context.h"
-#include "vulkan/vulkan_renderer.h"
 
 /*
  * The renderer class is nothing but a cross platformer frontend for my engine. I am writing this engine currently in
@@ -11,6 +9,10 @@
 
 namespace ic
 {
+        class vulkan_context;
+        class vulkan_renderer;
+        class Window;
+        class event;
         class renderer
         {
         private:
@@ -19,10 +21,13 @@ namespace ic
                 std::unique_ptr<vulkan_renderer> m_renderer;
 
         public:
-                renderer()          = default;
-                virtual ~renderer() = default;
+                explicit renderer();
+                ~renderer();
 
-                bool init(window* w);
+                renderer(const renderer&)            = delete;
+                renderer& operator=(const renderer&) = delete;
+
+                bool init(Window* w);
                 void onEvent(event& e);
                 void renderFrame(float deltaTime);
                 void cleanUp();

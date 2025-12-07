@@ -3,36 +3,8 @@
 namespace ic
 {
         // TODO: make sure config struct creation gets split and configurable
-        void pipeline_config::create(const VkShaderModule& vertShaderModule,
-                                     const VkShaderModule& fragShaderModule,
-                                     const VkExtent2D& swapchainExtent,
-                                     const std::vector<VkVertexInputBindingDescription>& bindingDescriptions,
-                                     const std::vector<VkVertexInputAttributeDescription>& attributeDescriptions)
+        void pipeline_config::create(const VkExtent2D& swapchainExtent)
         {
-                VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-                vertShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                vertShaderStageInfo.stage  = VK_SHADER_STAGE_VERTEX_BIT;
-
-                vertShaderStageInfo.module = vertShaderModule;
-                vertShaderStageInfo.pName  = "main";
-
-                VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-                fragShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                fragShaderStageInfo.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-                fragShaderStageInfo.module = fragShaderModule;
-                fragShaderStageInfo.pName  = "main";
-
-                // shader stages
-                shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
-
-                // create vertex input info
-                vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-                vertexInputInfo.vertexBindingDescriptionCount   = static_cast<uint32_t>(bindingDescriptions.size());
-                vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-                vertexInputInfo.pVertexBindingDescriptions      = bindingDescriptions.data();
-                vertexInputInfo.pVertexAttributeDescriptions    = attributeDescriptions.data();
-
                 // create input assembly info
                 inputAssembly.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
                 inputAssembly.topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -55,8 +27,8 @@ namespace ic
 
                 // dynamic state creation info
                 dynamicStateInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-                dynamicStateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-                dynamicStateInfo.pDynamicStates    = dynamicStates.data();
+                dynamicStateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
+                dynamicStateInfo.pDynamicStates    = dynamicStateEnables.data();
 
                 // viewport state creation
                 viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -70,7 +42,8 @@ namespace ic
                 // rendering).
                 // set face culling and depth testiing here.
                 rasterizer.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-                rasterizer.cullMode                = VK_CULL_MODE_NONE;
+                rasterizer.cullMode                = VK_CULL_MODE_BACK_BIT;
+                rasterizer.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
                 rasterizer.depthClampEnable        = VK_FALSE;
                 rasterizer.rasterizerDiscardEnable = VK_FALSE;
                 rasterizer.polygonMode = VK_POLYGON_MODE_FILL;  // this is responsible for different kind of modes for
@@ -98,7 +71,7 @@ namespace ic
                 depthStencil.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
                 depthStencil.depthTestEnable       = VK_TRUE;
                 depthStencil.depthWriteEnable      = VK_TRUE;
-                depthStencil.depthCompareOp        = VK_COMPARE_OP_LESS;
+                depthStencil.depthCompareOp        = VK_COMPARE_OP_LESS_OR_EQUAL;
                 depthStencil.depthBoundsTestEnable = VK_FALSE;
                 depthStencil.stencilTestEnable     = VK_FALSE;
 

@@ -5,6 +5,8 @@ build-ninja/
 /shader_scripts
 /logs
 /gen
+/out
 compile_shader.bat
 GEMINI.md
 dummy/
+todo
