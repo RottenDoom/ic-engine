@@ -1,5 +1,9 @@
 #pragma once
 
+// TODO remove this and use ic_engine/config.h
+#define IC_ENGINE_USE_OPENGL 1
+#define IC_ENGINE_USE_VULKAN 0
+
 #include <algorithm>
 #include <array>
 #include <cstdint>

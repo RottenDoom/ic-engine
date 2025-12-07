@@ -14,9 +14,7 @@ set_target_properties(engine-renderer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # The renderer depends on Vulkan backend internally
 target_link_libraries(engine-renderer
     PRIVATE
-	Vulkan::Vulkan
 	renderer_dependencies
-	engine-vulkan
     	dependencies
 )
 

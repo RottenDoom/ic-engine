@@ -23,7 +23,6 @@ PUBLIC
 	spdlog::spdlog
 	glfw
 PRIVATE
-	Vulkan::Vulkan
 	dependencies
 )
 

@@ -6,7 +6,7 @@ ColumnLimit: 120
 IndentWidth: 8
 UseTab: Never
 SortIncludes: false
-NamespaceIndentation: All
+NamespaceIndentation: None
 AccessModifierOffset: -8
 ArrayInitializerAlignmentStyle: Right
 

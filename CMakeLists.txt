@@ -16,38 +16,40 @@ list(APPEND CMAKE_MODULE_PATH
     ${PROJECT_SOURCE_DIR}/cmake/cmake-compiler
 )
 
-# Keep this for exceptions
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
 
-# Set gcc as the compiler
+# set the compiler and version
 include(cmake/version.cmake)
 include(cmake/macros.cmake)
 
 project(ic_engine VERSION ${IC_ENGINE_VERSION} LANGUAGES C CXX)
-print(PROJECT_VERSION)
+message(STATUS "Current Project Version: ${PROJECT_VERSION}")
 
 # Try to find Vulkan and shader compiler early so config.h can reflect availability
-find_package(Vulkan QUIET)
-find_program(GLSLC_EXECUTABLE NAMES glslc)
+if (IC_ENGINE_USE_VULKAN)
+    message(STATUS "Using Vulkan Backend.")
+    find_package(Vulkan QUIET)
+    if (NOT Vulkan_FOUND)
+        message(FATAL_ERROR "IC_ENGINE_USE_VULKAN=ON but Vulkan was not found")
+    endif()
 
-if (Vulkan_FOUND)
-    set(IC_ENGINE_USE_VULKAN 1)
+    find_program(GLSLC_EXECUTABLE NAMES glslc)
+    if (GLSLC_EXECUTABLE)
+        set(IC_ENGINE_USE_GLSLC 1)
+    else()
+        set(IC_ENGINE_USE_GLSLC 0)
+    endif()
 else()
-    set(IC_ENGINE_USE_VULKAN 0)
-endif()
-
-if (GLSLC_EXECUTABLE)
-    set(IC_ENGINE_USE_GLSLC 1)
-else()
-    set(IC_ENGINE_USE_GLSLC 0)
+    message(STATUS "Using OpenGL Backend")
 endif()
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 include(cmake/options.cmake)
 
-configure_file(${CMAKE_SOURCE_DIR}/cmake/config.h.in
-		${CMAKE_BINARY_DIR}/generated/config.h @ONLY)
-include_directories(${CMAKE_BINARY_DIR}/generated)
+configure_file(
+    ${CMAKE_SOURCE_DIR}/cmake/config.h.in
+    ${CMAKE_BINARY_DIR}/generated/ic_engine/config.h
+)
 
 # Include dependencies
 include(cmake/dependencies.cmake)
