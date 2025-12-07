@@ -28,17 +28,9 @@ IF /I "%COMPILER%"=="gcc" (
     exit /b 1
 )
 
-REM Run cmake commands from project root, not from build directory
-cmake --preset=%PRESET%
+REM Note that this is for clang and gcc only and does not work for other compilation which is not yet supported
+cmake --build --preset=%PRESET% -j8
 IF %ERRORLEVEL% NEQ 0 (
     echo Configure failed with error code %ERRORLEVEL%.
     exit /b %ERRORLEVEL%
 )
-
-cmake --build --preset=%PRESET% -j8
-IF %ERRORLEVEL% NEQ 0 (
-    echo Build failed with error code %ERRORLEVEL%.
-    exit /b %ERRORLEVEL%
-)
-
-ECHO Build complete: %COMPILER% (%BUILDTYPE%)

@@ -9,14 +9,17 @@ else()
 endif ()
 
 # compiles and installs the shaders.
-function(target_link_spv_shaders TARGET SCOPE)
-    set(oneValueArgs TARGET_ENV)
-    set(multiValueArgs MACRO_DEFS FILES)
-    cmake_parse_arguments(arg "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    if (NOT arg_TARGET_ENV)
-        set(arg_TARGET_ENV "vulkan1.0")
+function(target_link_spv_shaders TARGET)
+    # usage: target_link_spv_shaders(<target> <file1> <file2> ...)
+    if (NOT ARGN)
+        message(WARNING "target_link_spv_shaders called with no shader files for target ${TARGET}")
+        return()
     endif()
+
+    # files passed positionally in ARGN
+    set(arg_FILES ${ARGN})
+
+    set(arg_TARGET_ENV "vulkan1.0")
 
     # collect the generated spv paths
     set(generated_spv_files "")
@@ -60,9 +63,10 @@ function(target_link_spv_shaders TARGET SCOPE)
         else()
             message(FATAL_ERROR "No shader compiler available")
         endif()
-    endforeach()
+        endforeach()
 
-    add_custom_target(shaders DEPENDS ${generated_spv})
+    # create a target that depends on the generated spv files
+    add_custom_target(shaders DEPENDS ${generated_spv_files})
     add_dependencies(${TARGET} shaders)
 
     # expose the list back to the caller

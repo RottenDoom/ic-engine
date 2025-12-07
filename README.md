@@ -23,7 +23,6 @@ The executable can be found inside `build/build-gcc/bin/Debug/`. You can also us
 
 ### TODO
 
-- TODO: Shader compilation along while compiling the project
 - TODO: OpenGL pipeline and filesystem for better model and shader loading.
 - TODO: Make builds for both shared and static libraries since I am going to test out both thus going to use both.
 - TODO: Use ifdefs and defines better.

@@ -34,11 +34,3 @@ IF %ERRORLEVEL% NEQ 0 (
     echo Configure failed with error code %ERRORLEVEL%.
     exit /b %ERRORLEVEL%
 )
-
-cmake --build --preset=%PRESET% -j8
-IF %ERRORLEVEL% NEQ 0 (
-    echo Build failed with error code %ERRORLEVEL%.
-    exit /b %ERRORLEVEL%
-)
-
-ECHO Build complete: %COMPILER% (%BUILDTYPE%)

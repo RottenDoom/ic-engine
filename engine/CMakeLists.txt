@@ -3,6 +3,8 @@ get_subdirectories(SUBDIRS ${CMAKE_CURRENT_LIST_DIR})
 
 find_package(Vulkan REQUIRED)
 
+include(${CMAKE_SOURCE_DIR}/cmake/shaders.cmake)
+
 # build library (create target)
 add_subdirectory(src/core)
 add_subdirectory(src/renderer)
@@ -33,10 +35,12 @@ target_link_libraries(engine
         engine-vulkan
 )
 
-set(ENGINE_SHADERS
+file(GLOB_RECURSE ENGINE_SHADERS
 	${CMAKE_SOURCE_DIR}/shaders/*.vert
 	${CMAKE_SOURCE_DIR}/shaders/*.frag
 )
+
+message(ENGINE_SHADERS=${ENGINE_SHADERS})
 
 target_link_spv_shaders(engine ${ENGINE_SHADERS})
 
@@ -53,7 +57,7 @@ install(TARGETS engine
 	RUNTIME DESTINATION bin
 	LIBRARY DESTINATION lib
 	ARCHIVE DESTINATION lib
-	INCLUDES DESTINATION includes # make sure these are all the .h files instead of this or change the directory structure.
+	INCLUDES DESTINATION includes
 )
 
 install(DIRECTORY ${CMAKE_CURRECT_SOURCE_DIR}/src/
