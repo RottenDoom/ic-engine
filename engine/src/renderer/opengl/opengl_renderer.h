@@ -8,7 +8,8 @@ namespace ic
 class OpenGLRenderer
 {
 private:
-        void resize_callback();
+        void resizeCallback();
+        void enableFeatures();
         // VBO VAO EBO etc
 public:
         bool init(Window& window);
