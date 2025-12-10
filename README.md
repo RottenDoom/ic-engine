@@ -22,7 +22,7 @@ I am going to update the shaders later.
 The executable can be found inside `build/build-gcc/bin/Debug/`. You can also use clang compiler now. I use vscode for now but configurations for other IDEs can be easily developed.
 
 ### TODO
-- TODO: Fix the pipeline.
+- TODO: Fix the pipeline. 7a29728
 - TODO: OpenGL pipeline and filesystem for better model and shader loading.
 - TODO: Make builds for both shared and static libraries since I am going to test out both thus going to use both.
 - TODO: Use ifdefs and defines better.

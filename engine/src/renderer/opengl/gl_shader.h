@@ -1,50 +1,39 @@
 #pragma once
+
 #include "defines.h"
 
-// TODO add glad and glm and glfw to a types.h or defines for renderer
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
 namespace ic
 {
 
-class GLShaderModule
-{
-        // TODO: Linemaps
-public:
-        GLShaderModule(const std::string& filename);
-        int getHandle() { return m_Handle; };
-        bool compilationFailed() { return m_errors.length() };
-        std::string& getFileName() { return m_filename; };
-        std::string& getError() { return m_errors; };
-
-private:
-        int m_Handle = -1;
-        std::string m_filename;
-        std::string m_errors;
-};
-
 class Shader
 {
 public:
-        Shader() = default;
-        Shader(std::vector<std::string> shaderPaths);
-        void Bind();
-        bool Load(std::vector<std::string> shaderPaths);
-        bool Hotload();
+        // the program ID
+        unsigned int ID;
 
+        // constructor reads and builds the shader
+        Shader(const char* vertexPath, const char* fragmentPath);
+        // use/activate the shader
+        void use();
+        // utility uniform functions
         void setBool(const std::string& name, bool value) const
         {
                 glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value);
         }
+        // ------------------------------------------------------------------------
         void setInt(const std::string& name, int value) const
         {
                 glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
         }
+        // ------------------------------------------------------------------------
         void setFloat(const std::string& name, float value) const
         {
                 glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
         }
+        // ------------------------------------------------------------------------
         void setVec2(const std::string& name, const glm::vec2& value) const
         {
                 glUniform2fv(glGetUniformLocation(ID, name.c_str()), 1, &value[0]);
@@ -53,6 +42,7 @@ public:
         {
                 glUniform2f(glGetUniformLocation(ID, name.c_str()), x, y);
         }
+        // ------------------------------------------------------------------------
         void setVec3(const std::string& name, const glm::vec3& value) const
         {
                 glUniform3fv(glGetUniformLocation(ID, name.c_str()), 1, &value[0]);
@@ -61,6 +51,7 @@ public:
         {
                 glUniform3f(glGetUniformLocation(ID, name.c_str()), x, y, z);
         }
+        // ------------------------------------------------------------------------
         void setVec4(const std::string& name, const glm::vec4& value) const
         {
                 glUniform4fv(glGetUniformLocation(ID, name.c_str()), 1, &value[0]);
@@ -69,35 +60,21 @@ public:
         {
                 glUniform4f(glGetUniformLocation(ID, name.c_str()), x, y, z, w);
         }
+        // ------------------------------------------------------------------------
         void setMat2(const std::string& name, const glm::mat2& mat) const
         {
                 glUniformMatrix2fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
         }
+        // ------------------------------------------------------------------------
         void setMat3(const std::string& name, const glm::mat3& mat) const
         {
                 glUniformMatrix3fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
         }
+        // ------------------------------------------------------------------------
         void setMat4(const std::string& name, const glm::mat4& mat) const
         {
                 glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
         }
-
-private:
-        void ParseFile(const std::string& filepath,
-                       std::string& outputString,
-                       std::vector<std::string>& lineToFile,
-                       std::vector<std::string>& includedPaths);
-        int GetErrorLineNumber(const std::string& error);
-        std::string GetErrorMessage(const std::string& line);
-        std::string GetLinkingErrors(unsigned int shader);
-        std::string GetShaderCompileErrors(unsigned int shader,
-                                           const std::string& filename,
-                                           const std::vector<std::string>& lineToFile);
-
-        // member variables
-        std::vector<std::string> m_shaderPaths;
-        std::unordered_map<std::string, int> m_uniformLocations;
-        int m_handle = -1;
-}
+};
 
 }  // namespace ic

@@ -9,27 +9,28 @@
 
 namespace ic
 {
-        class vulkan_context;
-        class vulkan_renderer;
-        class Window;
-        class event;
-        class renderer
-        {
-        private:
-                bool m_initialized = false;
-                std::unique_ptr<vulkan_context> m_context;
-                std::unique_ptr<vulkan_renderer> m_renderer;
+class Window;
+class event;
+class renderer
+{
+private:
+        struct backend_context;
+        struct backend_renderer;
 
-        public:
-                explicit renderer();
-                ~renderer();
+        bool m_initialized = false;
+        std::unique_ptr<backend_context> m_context;
+        std::unique_ptr<backend_renderer> m_renderer;
 
-                renderer(const renderer&)            = delete;
-                renderer& operator=(const renderer&) = delete;
+public:
+        explicit renderer();
+        ~renderer();
 
-                bool init(Window* w);
-                void onEvent(event& e);
-                void renderFrame(float deltaTime);
-                void cleanUp();
-        };
+        renderer(const renderer&)            = delete;
+        renderer& operator=(const renderer&) = delete;
+
+        bool init(Window* w);
+        void onEvent(event& e);
+        void renderFrame(float deltaTime);
+        void cleanUp();
+};
 }  // namespace ic

@@ -21,6 +21,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
 # set the compiler and version
 include(cmake/version.cmake)
 include(cmake/macros.cmake)
+include(cmake/options.cmake)
 
 project(ic_engine VERSION ${IC_ENGINE_VERSION} LANGUAGES C CXX)
 message(STATUS "Current Project Version: ${PROJECT_VERSION}")
@@ -44,7 +45,7 @@ else()
 endif()
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
-include(cmake/options.cmake)
+
 
 configure_file(
     ${CMAKE_SOURCE_DIR}/cmake/config.h.in

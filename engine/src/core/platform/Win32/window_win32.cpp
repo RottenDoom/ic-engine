@@ -1,8 +1,4 @@
 #include "window_win32.h"
-
-#ifdef IC_ENGINE_USE_VULKAN
-#define GLFW_INCLUDE_VULKAN
-#endif
 #include <GLFW/glfw3.h>
 
 namespace ic
@@ -40,13 +36,17 @@ void win32_window::init(const window_props& props)
         if (!s_GLFWInitialized)
         {
                 int success = glfwInit();
-#ifdef IC_ENGINE_USE_VULKAN
+#if IC_ENGINE_USE_VULKAN
+                IC_CORE_INFO("Using Vulkan API");
                 glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
                 glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 #elif IC_ENGINE_USE_OPENGL
+                IC_CORE_INFO("Using OpenGL API");
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
                 glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#else
+#error "No graphics backend defined"
 #endif
                 IC_CORE_ASSERT(success, "Could not initialize GLFW!");
                 glfwSetErrorCallback(GLFWErrorCallback);
