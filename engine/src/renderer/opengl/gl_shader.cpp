@@ -26,9 +26,10 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath)
                 vertexCode = vShaderStream.str();
                 fragCode   = fShaderStream.str();
         }
-        catch (std::ifstream::failure e)
+        catch (std::ifstream::failure& e)
         {
-                std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << e.what() << std::endl;
+                IC_CORE_ERROR("ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: {} and {}", vertexPath, fragmentPath);
+                IC_CORE_ERROR("std::ifstream exception: {}", e.what());
         }
         const char* vShaderCode = vertexCode.c_str();
         const char* fShaderCode = fragCode.c_str();
@@ -56,7 +57,7 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath)
         glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
         if (!success)
         {
-                glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+                glGetShaderInfoLog(fragment, 512, NULL, infoLog);
                 IC_CORE_ERROR("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n {}", infoLog);
         };
 
@@ -74,6 +75,7 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath)
         }
 
         // delete the shaders as they're linked into our program now and no longer necessary
+        IC_CORE_TRACE("Created shader program with ID: {}", ID);
         glDeleteShader(vertex);
         glDeleteShader(fragment);
 }

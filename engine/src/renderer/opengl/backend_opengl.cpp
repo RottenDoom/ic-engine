@@ -6,13 +6,13 @@ namespace ic
 
 struct renderer::backend_context
 {
-        backend_context(Window& win) {}
+        backend_context(Window& w) {}
 };
 
 struct renderer::backend_renderer
 {
         OpenGLRenderer renderer;
-        backend_renderer(backend_context* bc) {}
+        backend_renderer(Window& w) : renderer(w) {}
 };
 
 renderer::renderer()  = default;
@@ -28,12 +28,13 @@ bool renderer::init(Window* w)
         // if (!m_context->ctx.initialize())
         //         return false;
 
-        m_renderer = std::make_unique<backend_renderer>(m_context.get());
+        m_renderer = std::make_unique<backend_renderer>(*w);
 
-        if (!m_renderer->renderer.init(*w))
+        if (!m_renderer->renderer.init())
                 return false;
 
         m_initialized = true;
+        IC_CORE_INFO("Renderer Initialized");
         return true;
 }
 
@@ -44,7 +45,7 @@ void renderer::onEvent(event& e)
 
 void renderer::renderFrame(float dt)
 {
-        m_renderer->renderer.update(dt);
+        m_renderer->renderer.draw(dt);
 }
 
 void renderer::cleanUp()

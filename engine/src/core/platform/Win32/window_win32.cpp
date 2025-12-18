@@ -45,6 +45,9 @@ void win32_window::init(const window_props& props)
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
                 glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#if defined(DEBUG) || defined(_DEBUG)
+                glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#endif
 #else
 #error "No graphics backend defined"
 #endif
@@ -163,7 +166,12 @@ void win32_window::shutdown()
 void win32_window::onUpdate()
 {
         glfwPollEvents();
-        // m_Context->SwapBuffers();
+        // Present the backbuffer so rendered content becomes visible
+        // [TODO] Make a function for this since Vulkan doesnt has this
+        if (m_Window)
+        {
+                glfwSwapBuffers(m_Window);
+        }
 }
 
 void win32_window::setVSync(bool enabled)
