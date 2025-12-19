@@ -170,7 +170,7 @@ void OpenGLRenderer::loadAssets()
 {
         /** TODO: This is only for testing remove this */
         GLTFLoader loader;
-        if (!loader.loadModel("res/scene.gltf", &model))
+        if (!loader.loadModel("tree_house/scene.gltf", &model))
         {
                 IC_CORE_WARN("Model did not load bruh!");
                 return;

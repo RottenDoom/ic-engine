@@ -37,7 +37,7 @@ public:
         // void unloadModel();
 
 private:
-        bool loadGLTF(const char* path, GLTFModel* model);
+        bool loadGLTF(std::filesystem::path path, GLTFModel* model);
         bool loadMesh(GLTFModel* gltf, fastgltf::Mesh& mesh);
         // bool loadImage(GLTFModel* gltf, fastgltf::Image& image);
         // bool loadMaterial(GLTFModel* gltf, fastgltf::Material& material);

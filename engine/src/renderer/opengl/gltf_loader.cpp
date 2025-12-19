@@ -1,5 +1,17 @@
 #include "gltf_loader.h"
 
+/** TODO: remove all this  */
+#ifdef _WIN32
+#include <windows.h>
+#include <direct.h>
+#define getcwd _getcwd
+#else
+#include <unistd.h>
+#include <linux/limits.h>
+#endif
+
+#include <filesystem>
+
 ic::GLTFLoader::~GLTFLoader() {}
 
 bool ic::GLTFLoader::loadModel(const char* path, Model* model)
@@ -14,8 +26,23 @@ bool ic::GLTFLoader::loadModel(const char* path, Model* model)
         return loadGLTF(path, gltf);
 }
 
-bool ic::GLTFLoader::loadGLTF(const char* path, GLTFModel* gltf)
+bool ic::GLTFLoader::loadGLTF(std::filesystem::path path, GLTFModel* gltf)
 {
+        if (!std::filesystem::exists(path))
+        {
+                IC_CORE_WARN("Failed to find {}!", path.string());
+                return false;
+        }
+
+        if constexpr (std::is_same_v<std::filesystem::path::value_type, wchar_t>)
+        {
+                IC_CORE_INFO("Loading {}", path.string());
+        }
+        else
+        {
+                IC_CORE_INFO("Loading {}", path.string());
+        }
+
         static constexpr auto supportedExtensions = fastgltf::Extensions::KHR_mesh_quantization |
                                                     fastgltf::Extensions::KHR_texture_transform |
                                                     fastgltf::Extensions::KHR_materials_variants;
@@ -33,10 +60,12 @@ bool ic::GLTFLoader::loadGLTF(const char* path, GLTFModel* gltf)
                 return false;
         }
 
-        auto asset = parser.loadGltf(gltfFile.get(), path, gltfOptions);
+        auto asset = parser.loadGltf(gltfFile.get(), path.parent_path(), gltfOptions);
         if (asset.error() != fastgltf::Error::None)
         {
-                IC_CORE_WARN("Failed to load glTF: {}", fastgltf::getErrorMessage(asset.error()));
+                IC_CORE_WARN("Failed to load glTF: {}\nDirectory: {}",
+                             fastgltf::getErrorMessage(asset.error()),
+                             path.parent_path().generic_string());
                 return false;
         }
 
@@ -60,4 +89,6 @@ bool ic::GLTFLoader::loadMesh(GLTFModel* gltf, fastgltf::Mesh& mesh)
                                                                                   // hold the POSITION attribute.
                 IC_CORE_ASSERT(it->indicesAccessor.has_value(), "Mesh does not have index accessor");
         }
+
+        return true;
 }

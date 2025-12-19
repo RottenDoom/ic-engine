@@ -7,7 +7,7 @@ AssetManager* AssetManager::s_instance = nullptr;
 
 asset::ModelHandle asset::LoadModel(const char* path)
 {
-        AssetManager::Get()->modelManager.loadModel(path);
+        return AssetManager::Get()->modelManager.loadModel(path);
 }
 
 void asset::DrawModel(ModelHandle handle)
