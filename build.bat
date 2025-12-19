@@ -29,7 +29,7 @@ IF /I "%COMPILER%"=="gcc" (
 )
 
 REM Note that this is for clang and gcc only and does not work for other compilation which is not yet supported
-cmake --build --preset=%PRESET% -j8
+cmake --build --preset=%PRESET% -j4
 IF %ERRORLEVEL% NEQ 0 (
     echo Configure failed with error code %ERRORLEVEL%.
     exit /b %ERRORLEVEL%

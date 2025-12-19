@@ -11,6 +11,7 @@ set(OPENGL_SRC
 	opengl_renderer.cpp
 	backend_opengl.cpp
 	gl_shader.cpp
+	gltf_loader.cpp
 )
 
 add_library(engine-opengl OBJECT ${OPENGL_SRC}) # todo: fix objects

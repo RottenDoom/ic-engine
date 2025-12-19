@@ -3,6 +3,14 @@
 #include "defines.h"
 class game;
 
+struct game_state
+{
+        // ic::Model playerModel;
+        // ic::Model levelModel;
+
+        float time;
+};
+
 bool game_initialize(game* game_inst);
 
 bool game_update(game* game_inst, float delta_time);

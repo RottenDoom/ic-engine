@@ -52,8 +52,8 @@ FetchContent_Declare(
 
 # Build only the library (skip CLI tools and tests)
 set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_GL_UPLOAD OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_VK_UPLOAD ON CACHE BOOL "" FORCE)
+set(KTX_FEATURE_VK_UPLOAD OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_GL_UPLOAD ON CACHE BOOL "" FORCE)
 set(KTX_FEATURE_LOADTEST_APPS OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
@@ -61,13 +61,18 @@ set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(ktx)	
 
 # fastgltf
-# FetchContent_Declare(
-#     fastgltf
-#     GIT_REPOSITORY "https://github.com/spnda/fastgltf.git"
-#     GIT_TAG main
-# )
+FetchContent_Declare(
+    fastgltf
+    GIT_REPOSITORY "https://github.com/spnda/fastgltf.git"
+    GIT_TAG v0.9.0
+)
 
+set(FASTGLTF_ENABLE_SIMDJSON OFF CACHE BOOL "" FORCE) # turn this on for MSVC clangcl or Linux MacOS
+set(FASTGLTF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(FASTGLTF_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(FASTGLTF_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 
+FetchContent_MakeAvailable(fastgltf)
 
 add_library(dependencies INTERFACE)
 
@@ -84,8 +89,9 @@ target_link_libraries(dependencies
 INTERFACE
 	glm
 	ktx
+	glfw
 	spdlog::spdlog
-glfw
+	fastgltf
 )
 set(IC_INTERNAL_HEADERS
 	${CMAKE_SOURCE_DIR}/third-party/tiny_gltf

@@ -7,7 +7,7 @@
 
 #include "core/window.h"
 #include "core/events/event.h"
-
+#include "gltf_loader.h"
 struct PointLight
 {
         glm::vec3 position;
@@ -23,10 +23,11 @@ namespace ic
 class OpenGLRenderer
 {
 private:
-        bool m_IsMinimized = false;
+        bool m_IsMinimized = false;  //[TODO] handle minimized
 
         Camera m_camera;
         Window& m_window;
+        GLTFModel model;
 
         // TODO make this somewhere else
         GLuint VBO, VAO, EBO, cubeVAO;

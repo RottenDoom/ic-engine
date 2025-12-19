@@ -1,6 +1,7 @@
 #engine/src/renderer/CMakeLists.txt
 set(RENDERER_SRC
     camera.cpp
+    asset_manager.cpp
 )
 
 add_library(engine-renderer OBJECT ${RENDERER_SRC})

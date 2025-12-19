@@ -147,6 +147,7 @@ bool OpenGLRenderer::init()
 
         enableFeatures();
         createShader();
+        loadAssets();
         setupBuffers();
 
         IC_CORE_INFO("Initialized OpenGL!");
@@ -165,7 +166,17 @@ void OpenGLRenderer::onEvent(event& e)
         dispatcher.dispatch<WindowResizedEvent>(BIND_EVENT(OpenGLRenderer::onWindowResize));
 }
 
-void OpenGLRenderer::loadAssets() {}
+void OpenGLRenderer::loadAssets()
+{
+        /** TODO: This is only for testing remove this */
+        GLTFLoader loader;
+        if (!loader.loadModel("res/scene.gltf", &model))
+        {
+                IC_CORE_WARN("Model did not load bruh!");
+                return;
+        }
+        IC_CORE_INFO("Loaded The model somehow I need the name of the model as well here or UUID");
+}
 
 void OpenGLRenderer::draw(float deltaTime)
 {

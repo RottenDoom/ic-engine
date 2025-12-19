@@ -15,7 +15,7 @@ IF "%~2"=="" (
 set COMPILER=%~1
 set BUILDTYPE=%~2
 
-ECHO Building with %COMPILER% in %BUILDTYPE% mode...
+ECHO Configuring with %COMPILER% in %BUILDTYPE% mode...
 
 IF /I "%COMPILER%"=="gcc" (
     set PRESET=gcc-%BUILDTYPE%
