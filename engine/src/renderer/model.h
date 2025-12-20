@@ -6,7 +6,12 @@
 
 #include <glfw/glfw3.h>
 
+#define GLM_FORCE_RADIANS
+#define GLM_ENABLE_EXPERIMENTAL
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace ic
 {
@@ -71,10 +76,42 @@ struct Vertex
 
 struct Sampler
 {
-        int magFilter;
-        int minFilter;
-        int wrapS;
-        int wrapT;
+        enum class Filter : std::uint16_t
+        {
+                Nearest              = 9728,
+                Linear               = 9729,
+                NearestMipMapNearest = 9984,
+                LinearMipMapNearest  = 9985,
+                NearestMipMapLinear  = 9986,
+                LinearMipMapLinear   = 9987,
+                NoFilter             = 0
+        };
+
+        enum class Wrap : std::uint16_t
+        {
+                ClampToEdge    = 33071,
+                MirroredRepeat = 33648,
+                Repeat         = 10497,
+                NoWrap         = 0
+        };
+
+        Filter magFilter = Filter::NoFilter;
+        Filter minFilter = Filter::NoFilter;
+        Wrap wrapS       = Wrap::NoWrap;
+        Wrap wrapT       = Wrap::NoWrap;
+};
+
+struct ImageData
+{
+        uint32_t width    = 0;
+        uint32_t height   = 0;
+        uint32_t channels = 0;
+
+        // Raw decoded pixels (RGBA8, etc.)
+        std::vector<uint8_t> pixels;
+
+        // Optional metadata
+        bool srgb = false;
 };
 
 struct Texture
@@ -94,21 +131,34 @@ struct Texture
         buffer view. */
 };
 
+/** TODO: Make a texture class */
 struct Material
 {
         /* for gltf defualt model is metallic roughness model */
+
+        enum AlphaMode : uint8_t
+        {
+                ALPHAMODE_OPAQUE,
+                ALPHAMODE_MASK,
+                ALPHAMODE_BLEND
+        };
+
+        AlphaMode alphaMode = ALPHAMODE_OPAQUE;
+        float alphaCutoff   = 1.0f;
+
+        /** Make a texture class instead of this bro */
         typedef struct
         {
                 Index baseColorTextureIndex = INVALID_INDEX;
                 Index baseColorTextureCoord = INVALID_INDEX;
 
-                float baseColorFactor[4];  // RGBA
+                glm::vec4 baseColorFactor;  // RGBA
 
                 Index metallicRoughnessTextureIndex = INVALID_INDEX;
-                Index metallicRuughnessTextureCoord = INVALID_INDEX;
+                Index metallicRoughnessTextureCoord = INVALID_INDEX;
 
-                float metallicFactor;
-                float roughnessFactor;
+                float metallicFactor                = 1.0f;
+                float roughnessFactor               = 1.0f;
 
         } PbrMetallicRoughness;
 
@@ -134,36 +184,52 @@ struct Material
 
         PbrMetallicRoughness pbr;
         NormalTexture normal;
-        OcclusionTexture occlussion;
+        OcclusionTexture occlusion;
         EmissiveTexture emissive;
-        float emissiveFactor[3];  // RGB
+
+        glm::vec3 emissiveFactor;  // RGB
+
+        std::string name;
 };
 
 struct MeshPrimitive
 {
-        enum class Mode
+        enum class Mode : uint8_t
         {
-                POINTS,
-                LINES,
-                TRIANGLES
-        } mode;
+                POINTS        = 0,
+                LINES         = 1,
+                LINELOOP      = 2,
+                LINESTRIP     = 3,
+                TRIANGLES     = 4,
+                TRIANGLESTRIP = 5,
+                TRIANGLEFAN   = 6,
+        };
 
-        Index positionAccessor = INVALID_INDEX;
-        Index normalAccessor   = INVALID_INDEX;
-        Index uvAccessor       = INVALID_INDEX;
+        Mode mode = Mode::TRIANGLES;
 
-        /** TODO: Skinning Matrix */
-        Index jointAccessor  = INVALID_INDEX;
-        Index weightAccessor = INVALID_INDEX;
+        // core attributes
+        Index position = INVALID_INDEX;
+        Index normal   = INVALID_INDEX;
+        Index tangent  = INVALID_INDEX;
+        Index color    = INVALID_INDEX;
 
-        Index indexAccessor  = INVALID_INDEX;
-        Index material       = INVALID_INDEX;
+        // UV Texcoords
+        std::vector<Index> texcoords;
+
+        // Skinning
+        Index joints  = INVALID_INDEX;
+        Index weights = INVALID_INDEX;
+
+        // Indices & material
+        Index indices  = INVALID_INDEX;
+        Index material = INVALID_INDEX;
 
         // [TODO] targets
 };
 
 struct Mesh
 {
+        std::string name;
         std::vector<MeshPrimitive> meshPrimitives;
         std::vector<float> weights; /* somehow related to morph targets */
 };
@@ -172,16 +238,17 @@ struct Node
 {
         std::string name;
 
-        float translation[3];
-        float rotation[4];
-        float scale[3];
+        glm::vec3 translation;
+        glm::quat rotation;
+        glm::vec3 scale;
 
-        float matrix[16];
+        glm::mat4 localTransform = glm::mat4(1.0f);
 
-        Index mesh   = INVALID_INDEX;
-        Index skin   = INVALID_INDEX;
+        Index mesh               = INVALID_INDEX;
+        Index skin               = INVALID_INDEX;
+        Index light              = INVALID_INDEX;
 
-        Index camera = INVALID_INDEX;
+        Index camera             = INVALID_INDEX;
 
         std::vector<Index> children;
 };
@@ -259,6 +326,7 @@ struct Model
         std::vector<BufferView> bufferViews;
         std::vector<Accessor> accessors;
 
+        std::vector<ImageData> images;
         std::vector<Sampler> samplers;
         std::vector<Texture> textures;
         std::vector<Material> materials;

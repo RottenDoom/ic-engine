@@ -19,6 +19,7 @@ add_library(engine-opengl OBJECT ${OPENGL_SRC}) # todo: fix objects
 target_include_directories(engine-opengl PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/../..
 	${CMAKE_SOURCE_DIR}/third-party/glad/include
+	${CMAKE_SOURCE_DIR}/third-party/stb
 )
 
 target_link_libraries(engine-opengl PRIVATE

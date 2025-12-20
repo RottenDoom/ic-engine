@@ -37,14 +37,23 @@ public:
         // void unloadModel();
 
 private:
+        /** TODO: These functions need to be included in a asset submodule */
         bool loadGLTF(std::filesystem::path path, GLTFModel* model);
+        bool loadScene(GLTFModel* gltf, fastgltf::Scene& scene);
+        bool loadNode(GLTFModel* gltf, fastgltf::Node& node);
         bool loadMesh(GLTFModel* gltf, fastgltf::Mesh& mesh);
-        // bool loadImage(GLTFModel* gltf, fastgltf::Image& image);
-        // bool loadMaterial(GLTFModel* gltf, fastgltf::Material& material);
-        // bool loadCamera(GLTFModel* gltf, fastgltf::Camera& camera);
+        bool loadSamplers(GLTFModel* gltf, fastgltf::Sampler& sampler);
+        bool loadMaterial(GLTFModel* gltf, fastgltf::Material& material);
+
+        /** Loads using stb_image for now will later switch to KTX2 for GPU uploads */
+        bool loadImage(GLTFModel* gltf, fastgltf::Image& image);
+        bool loadTexture(GLTFModel* gltf, fastgltf::Texture& texture);
+        bool loadCamera(GLTFModel* gltf, fastgltf::Camera& camera);
 
         // void drawMesh(GLTFModel* gltf, std::vector<fastgltf::Node*>& cameraNodes, size_t nodeIndex);
         // void updateCameraNodes(GLTFModel* gltf, std::vector<fastgltf::Node*>& cameraNodes, size_t nodeIndex);
+
+        // void processNode(GLTFModel* gltf);
 
 public:
         ModelType type = GLTF;

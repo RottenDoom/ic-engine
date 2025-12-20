@@ -36,14 +36,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glm)
 
-# stb
-FetchContent_Declare(
-    stb
-    GIT_REPOSITORY "https://github.com/nothings/stb.git"
-    GIT_TAG master
-)
-FetchContent_MakeAvailable(stb)
-
 FetchContent_Declare(
     ktx
     GIT_REPOSITORY "https://github.com/KhronosGroup/KTX-Software.git"
