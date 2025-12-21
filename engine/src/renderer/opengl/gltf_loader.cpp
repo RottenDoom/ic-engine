@@ -1,4 +1,5 @@
 #include "gltf_loader.h"
+#include "gl_model.h"
 
 #include <filesystem>
 #include <string>
@@ -7,23 +8,24 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+namespace ic
+{
 #define toIndex(x) static_cast<ic::Index>(x)
 
-ic::GLTFLoader::~GLTFLoader() {}
+GLTFLoader::~GLTFLoader() {}
 
-bool ic::GLTFLoader::loadModel(const char* path, Model* model)
+bool GLTFLoader::loadModel(const char* path, Model* model)
 {
-        GLTFModel* gltf = static_cast<GLTFModel*>(model);
-        if (!gltf)
+        if (!model)
         {
                 IC_CORE_WARN("Invalid model type passed to GLTFLoader");
                 return false;
         }
 
-        return loadGLTF(path, gltf);
+        return loadGLTF(path, model);
 }
 
-bool ic::GLTFLoader::loadGLTF(std::filesystem::path path, GLTFModel* gltf)
+bool GLTFLoader::loadGLTF(std::filesystem::path path, Model* gltf)
 {
         if (!std::filesystem::exists(path))
         {
@@ -57,50 +59,74 @@ bool ic::GLTFLoader::loadGLTF(std::filesystem::path path, GLTFModel* gltf)
                 return false;
         }
 
-        auto asset = parser.loadGltf(gltfFile.get(), path.parent_path(), gltfOptions);
-        if (asset.error() != fastgltf::Error::None)
+        /** Sounds like some finance term */
+        auto expectedAsset = parser.loadGltf(gltfFile.get(), path.parent_path(), gltfOptions);
+        if (expectedAsset.error() != fastgltf::Error::None)
         {
                 IC_CORE_WARN("Failed to load glTF: {}\nDirectory: {}",
-                             fastgltf::getErrorMessage(asset.error()),
+                             fastgltf::getErrorMessage(expectedAsset.error()),
                              path.parent_path().generic_string());
                 return false;
         }
 
-        gltf->asset = std::move(asset.get());
-        for (auto& it : gltf->asset.scenes)
+        fastgltf::Asset* asset;
+        if (const auto assetPtr = expectedAsset.get_if())
+        {
+
+                asset = assetPtr;
+        }
+
+        for (auto& it : asset->scenes)
         {
                 loadScene(gltf, it);
         }
 
-        for (auto& it : gltf->asset.nodes)
+        for (auto& it : asset->nodes)
         {
                 loadNode(gltf, it);
         }
 
-        for (auto& it : gltf->asset.meshes)
+        for (auto& it : asset->meshes)
         {
                 loadMesh(gltf, it);
         }
 
-        for (auto& it : gltf->asset.samplers)
+        for (auto& it : asset->samplers)
         {
                 loadSamplers(gltf, it);
         }
 
-        for (auto& it : gltf->asset.images)
+        for (auto& it : asset->images)
         {
-                loadImage(gltf, it);
+                loadImage(gltf, *asset, it);
         }
 
-        for (auto& it : gltf->asset.textures)
+        for (auto& it : asset->textures)
         {
                 loadTexture(gltf, it);
         }
 
+        for (auto& it : asset->accessors)
+        {
+                loadAccessor(gltf, it);
+        }
+
+        for (auto& it : asset->bufferViews)
+        {
+                loadBufferView(gltf, it);
+        }
+
+        for (auto& it : asset->buffers)
+        {
+                loadBuffer(gltf, it, path); /** See if this path is correct */
+        }
+
+        /** TODO: remove these */
         IC_CORE_TRACE("Loaded {} Scenes", gltf->scenes.size());
         IC_CORE_TRACE("Loaded {} Nodes", gltf->nodes.size());
         IC_CORE_TRACE("Loaded {} Meshes", gltf->meshes.size());
-        // IC_CORE_TRACE("Loaded {} Images", gltf->images.size());
+        IC_CORE_TRACE("Loaded {} Images", gltf->images.size());
+        IC_CORE_TRACE("Loaded {} Textures", gltf->textures.size());
 
         /** TODO: handle this better */
         if (asset->defaultScene.has_value())
@@ -119,7 +145,7 @@ bool ic::GLTFLoader::loadGLTF(std::filesystem::path path, GLTFModel* gltf)
         return true;
 }
 
-bool ic::GLTFLoader::loadScene(GLTFModel* gltf, fastgltf::Scene& scene)
+bool GLTFLoader::loadScene(Model* gltf, fastgltf::Scene& scene)
 {
         ic::Scene engineScene{};
         engineScene.name = scene.name;
@@ -134,7 +160,7 @@ bool ic::GLTFLoader::loadScene(GLTFModel* gltf, fastgltf::Scene& scene)
         return true;
 }
 
-bool ic::GLTFLoader::loadNode(GLTFModel* gltf, fastgltf::Node& node)
+bool GLTFLoader::loadNode(Model* gltf, fastgltf::Node& node)
 {
         ic::Node gltfNode{};
         gltfNode.name = node.name; /** Node can also contain no name handle that too */
@@ -197,9 +223,8 @@ bool ic::GLTFLoader::loadNode(GLTFModel* gltf, fastgltf::Node& node)
         return true;
 }
 
-bool ic::GLTFLoader::loadMesh(GLTFModel* gltf, fastgltf::Mesh& mesh)
+bool GLTFLoader::loadMesh(Model* gltf, fastgltf::Mesh& mesh)
 {
-        fastgltf::Asset& asset = gltf->asset;
         ic::Mesh outMesh{};
         outMesh.meshPrimitives.reserve(mesh.primitives.size());
         outMesh.name = mesh.name;
@@ -272,7 +297,7 @@ bool ic::GLTFLoader::loadMesh(GLTFModel* gltf, fastgltf::Mesh& mesh)
         return true;
 }
 
-bool ic::GLTFLoader::loadSamplers(GLTFModel* gltf, fastgltf::Sampler& sampler)
+bool GLTFLoader::loadSamplers(Model* gltf, fastgltf::Sampler& sampler)
 {
         ic::Sampler tsampler{};
         tsampler.magFilter = static_cast<Sampler::Filter>(sampler.magFilter.value());
@@ -283,7 +308,7 @@ bool ic::GLTFLoader::loadSamplers(GLTFModel* gltf, fastgltf::Sampler& sampler)
         return true;
 }
 
-bool ic::GLTFLoader::loadMaterial(GLTFModel* gltf, fastgltf::Material& material)
+bool GLTFLoader::loadMaterial(Model* gltf, fastgltf::Material& material)
 {
         ic::Material mat;
         mat.name = material.name;
@@ -342,7 +367,146 @@ bool ic::GLTFLoader::loadMaterial(GLTFModel* gltf, fastgltf::Material& material)
         return false;
 }
 
-bool ic::GLTFLoader::loadImage(GLTFModel* gltf, fastgltf::Image& image)
+Accessor::Type GLTFLoader::convertAccessorType(fastgltf::AccessorType type)
+{
+
+        switch (type)
+        {
+        case fastgltf::AccessorType::Scalar:
+                return Accessor::Type::SCALAR;
+        case fastgltf::AccessorType::Vec2:
+                return Accessor::Type::VEC2;
+        case fastgltf::AccessorType::Vec3:
+                return Accessor::Type::VEC3;
+        case fastgltf::AccessorType::Vec4:
+                return Accessor::Type::VEC4;
+        case fastgltf::AccessorType::Mat4:
+                return Accessor::Type::MAT4;
+        default:
+                return Accessor::Type::UNKNOWN;
+        }
+}
+
+void GLTFLoader::loadBufferView(Model* gltf, fastgltf::BufferView& bufferView)
+{
+        ic::BufferView bufView;
+
+        bufView.buffer = bufferView.bufferIndex;
+        bufView.offset = bufferView.byteOffset;
+        bufView.size   = bufferView.byteLength;
+        bufView.stride = bufferView.byteStride.value_or(0);
+
+        bufView.name   = bufferView.name;
+}
+
+void GLTFLoader::loadBuffer(Model* gltf, const fastgltf::Buffer& buffer, const std::filesystem::path& basePath)
+{
+        ic::Buffer buf;
+        std::visit(fastgltf::visitor{[&](const fastgltf::sources::Array& array)
+                                     {
+                                             buf.data.resize(array.bytes.size());
+                                             memcpy(buf.data.data(), array.bytes.data(), array.bytes.size());
+                                     },
+                                     [&](const fastgltf::sources::Vector& vector)
+                                     {
+                                             buf.data.resize(vector.bytes.size());
+                                             memcpy(buf.data.data(), vector.bytes.data(), vector.bytes.size());
+                                     },
+                                     [&](const fastgltf::sources::ByteView& view)
+                                     {
+                                             buf.data.resize(view.bytes.size());
+                                             memcpy(buf.data.data(), view.bytes.data(), view.bytes.size());
+                                     },
+                                     [&](const fastgltf::sources::URI& uri)
+                                     {
+                                             // External file - need to load it
+                                             std::filesystem::path bufferPath = basePath / uri.uri.path();
+
+                                             std::ifstream file(bufferPath, std::ios::binary | std::ios::ate);
+                                             if (!file)
+                                             {
+                                                     IC_CORE_ERROR("Failed to open buffer file: {}",
+                                                                   bufferPath.string());
+                                                     return;
+                                             }
+
+                                             size_t fileSize = file.tellg();
+                                             file.seekg(0);
+
+                                             buf.data.resize(fileSize);
+                                             file.read(reinterpret_cast<char*>(buf.data.data()), fileSize);
+                                     },
+                                     [&](auto&& arg) { IC_CORE_WARN("Unsupported buffer source type"); }},
+                   buffer.data);
+        gltf->buffers.push_back(std::move(buf));
+}
+
+void GLTFLoader::loadAccessor(Model* gltf, fastgltf::Accessor& accessor)
+{
+        ic::Accessor acc;
+        acc.bufferView      = accessor.bufferViewIndex.has_value() ? toIndex(accessor.bufferViewIndex.value())
+                                                                   : INVALID_INDEX;
+        acc.offset          = accessor.byteOffset;
+        acc.count           = accessor.count;
+        acc.type            = convertAccessorType(accessor.type);
+
+        acc.componentType   = static_cast<GLenum>(accessor.componentType);
+        acc.normalized      = accessor.normalized;
+
+        uint32_t components = getAccessorComponentCount(acc.type);
+
+        // Extract min/max values from AccessorBoundsArray
+        if (accessor.min.has_value())
+        {
+                const auto& minArray = accessor.min.value();
+                acc.min.resize(minArray.size());
+
+                // Check which type the bounds array holds and extract accordingly
+                if (minArray.type() == fastgltf::AccessorBoundsArray::BoundsType::float64)
+                {
+                        const double* data = minArray.data<double>();
+                        for (size_t i = 0; i < minArray.size(); ++i)
+                        {
+                                acc.min[i] = data[i];
+                        }
+                }
+                else if (minArray.type() == fastgltf::AccessorBoundsArray::BoundsType::int64)
+                {
+                        const int64_t* data = minArray.data<int64_t>();
+                        for (size_t i = 0; i < minArray.size(); ++i)
+                        {
+                                acc.min[i] = static_cast<double>(data[i]);
+                        }
+                }
+        }
+
+        if (accessor.max.has_value())
+        {
+                const auto& maxArray = accessor.max.value();
+                acc.max.resize(maxArray.size());
+
+                if (maxArray.type() == fastgltf::AccessorBoundsArray::BoundsType::float64)
+                {
+                        const double* data = maxArray.data<double>();
+                        for (size_t i = 0; i < maxArray.size(); ++i)
+                        {
+                                acc.max[i] = data[i];
+                        }
+                }
+                else if (maxArray.type() == fastgltf::AccessorBoundsArray::BoundsType::int64)
+                {
+                        const int64_t* data = maxArray.data<int64_t>();
+                        for (size_t i = 0; i < maxArray.size(); ++i)
+                        {
+                                acc.max[i] = static_cast<double>(data[i]);
+                        }
+                }
+        }
+
+        gltf->accessors.push_back(std::move(acc));
+}
+
+bool GLTFLoader::loadImage(Model* gltf, fastgltf::Asset& asset, fastgltf::Image& image)
 {
         ic::ImageData imageData;
 
@@ -385,8 +549,8 @@ bool ic::GLTFLoader::loadImage(GLTFModel* gltf, fastgltf::Image& image)
                 },
                 [&](fastgltf::sources::BufferView& view)
                 {
-                        auto& bufferView = gltf->asset.bufferViews[view.bufferViewIndex];
-                        auto& buffer     = gltf->asset.buffers[bufferView.bufferIndex];
+                        auto& bufferView = asset.bufferViews[view.bufferViewIndex];
+                        auto& buffer     = asset.buffers[bufferView.bufferIndex];
                         std::visit(fastgltf::visitor{[](auto& arg) {},
                                                      [&](fastgltf::sources::Array& vector)
                                                      {
@@ -418,7 +582,7 @@ bool ic::GLTFLoader::loadImage(GLTFModel* gltf, fastgltf::Image& image)
         return true;
 }
 
-bool ic::GLTFLoader::loadTexture(GLTFModel* gltf, fastgltf::Texture& texture)
+bool GLTFLoader::loadTexture(Model* gltf, fastgltf::Texture& texture)
 {
         ic::Texture tex;
 
@@ -435,7 +599,8 @@ bool ic::GLTFLoader::loadTexture(GLTFModel* gltf, fastgltf::Texture& texture)
         gltf->textures.push_back(std::move(tex));
 }
 
-bool ic::GLTFLoader::loadCamera(GLTFModel* gltf, fastgltf::Camera& camera)
+bool GLTFLoader::loadCamera(Model* gltf, fastgltf::Camera& camera)
 {
         return false;
 }
+}  // namespace ic

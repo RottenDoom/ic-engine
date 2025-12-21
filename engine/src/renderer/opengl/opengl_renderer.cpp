@@ -115,6 +115,8 @@ void OpenGLRenderer::setupBuffers()
         /** stride */
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
+
+        gpuHandle.upload(model);
         IC_CORE_INFO("[TODO: Remove this] The array pointers are created!");
 }
 
@@ -258,6 +260,8 @@ void OpenGLRenderer::draw(float deltaTime)
 
                 glDrawArrays(GL_TRIANGLES, 0, 36);
         }
+
+        gpuHandle.draw(); /** TODO: look into this */
 }
 
 void OpenGLRenderer::destroy()

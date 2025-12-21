@@ -11,6 +11,7 @@ set(OPENGL_SRC
 	opengl_renderer.cpp
 	backend_opengl.cpp
 	gl_shader.cpp
+	gl_model.cpp
 	gltf_loader.cpp
 )
 

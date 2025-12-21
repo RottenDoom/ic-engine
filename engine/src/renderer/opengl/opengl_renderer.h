@@ -3,6 +3,7 @@
 
 #include "renderer/camera.h"
 #include "gl_shader.h"
+#include "gl_model.h"
 #include "core/events/application_event.h"
 
 #include "core/window.h"
@@ -27,7 +28,10 @@ private:
 
         Camera m_camera;
         Window& m_window;
-        GLTFModel model;
+
+        /** TODO: Make these a handle library */
+        Model model;
+        GLModel gpuHandle;
 
         // TODO make this somewhere else
         GLuint VBO, VAO, EBO, cubeVAO;

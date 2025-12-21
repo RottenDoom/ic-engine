@@ -4,8 +4,6 @@
 #include <string>  // [TODO] Make string class using std::vector or a custom dynamic array
 #include <vector>
 
-#include <glfw/glfw3.h>
-
 #define GLM_FORCE_RADIANS
 #define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -32,6 +30,8 @@ struct BufferView
         size_t size   = 0;
         size_t stride = 0;
 
+        std::string name;
+
         /* TODO OpenGL specific Target*/
 };
 
@@ -47,15 +47,16 @@ struct Accessor
                 VEC2,
                 VEC3,
                 VEC4,
-                Mat4,
+                MAT4,
                 UNKNOWN
         } type;
 
         /** OpenGL specific */
         GLenum componentType;
 
-        /** TODO: min and max handling */
-
+        std::vector<double> min;
+        std::vector<double> max;
+        bool normalized = false;
         /** TODO: Sparse accessor handling */
 };
 
@@ -118,20 +119,8 @@ struct Texture
 {
         Index image   = INVALID_INDEX;
         Index sampler = INVALID_INDEX;
-
-        /** The images define the image
-        data used for the texture.
-        This data can be given via
-        a URI that is the location of
-        an image file, or by a
-        reference to a bufferView
-        and a MIME type that
-        defines the type of the image
-        data that is stored in the
-        buffer view. */
 };
 
-/** TODO: Make a texture class */
 struct Material
 {
         /* for gltf defualt model is metallic roughness model */
