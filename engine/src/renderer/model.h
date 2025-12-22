@@ -11,6 +11,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <glad/glad.h>
+
 namespace ic
 {
 
@@ -52,7 +54,7 @@ struct Accessor
         } type;
 
         /** OpenGL specific */
-        GLenum componentType;
+        GLenum componentType = GL_BYTE;
 
         std::vector<double> min;
         std::vector<double> max;
@@ -117,8 +119,10 @@ struct ImageData
 
 struct Texture
 {
-        Index image   = INVALID_INDEX;
-        Index sampler = INVALID_INDEX;
+        Index idx      = INVALID_INDEX;
+        Index image    = INVALID_INDEX;
+        Index sampler  = INVALID_INDEX;
+        Index texCoord = INVALID_INDEX;
 };
 
 struct Material
@@ -138,45 +142,37 @@ struct Material
         /** Make a texture class instead of this bro */
         typedef struct
         {
-                Index baseColorTextureIndex = INVALID_INDEX;
-                Index baseColorTextureCoord = INVALID_INDEX;
+                Texture baseColorTexture{};
 
                 glm::vec4 baseColorFactor;  // RGBA
 
-                Index metallicRoughnessTextureIndex = INVALID_INDEX;
-                Index metallicRoughnessTextureCoord = INVALID_INDEX;
+                Texture metallicRoughnessTexture;
 
-                float metallicFactor                = 1.0f;
-                float roughnessFactor               = 1.0f;
+                float metallicFactor  = 1.0f;
+                float roughnessFactor = 1.0f;
 
         } PbrMetallicRoughness;
 
         typedef struct
         {
-                float scale;
-                Index index;
-                uint8_t texCoord;
+                float scale = 1.0f;
+                Texture normalTexture;
         } NormalTexture;
 
         typedef struct
         {
-                float strength;
-                Index index;
-                uint8_t texCoord;
+                float strength = 1.0f;
+                Texture occlusionTexture;
         } OcclusionTexture;
-
-        typedef struct
-        {
-                Index index;
-                uint8_t texCoord;
-        } EmissiveTexture;
 
         PbrMetallicRoughness pbr;
         NormalTexture normal;
         OcclusionTexture occlusion;
-        EmissiveTexture emissive;
+        Texture emissive;
 
         glm::vec3 emissiveFactor;  // RGB
+
+        bool doubleSided = false;
 
         std::string name;
 };

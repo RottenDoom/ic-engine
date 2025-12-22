@@ -48,7 +48,7 @@ private:
 
         /** Loads using stb_image for now will later switch to KTX2 for GPU uploads */
         bool loadImage(Model* gltf, fastgltf::Asset& asset, fastgltf::Image& image);
-        bool loadTexture(Model* gltf, fastgltf::Texture& texture);
+        void loadTexture(Model* gltf, fastgltf::Texture& texture);
         bool loadCamera(Model* gltf, fastgltf::Camera& camera);
 
 public:

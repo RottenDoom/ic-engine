@@ -43,7 +43,7 @@ void win32_window::init(const window_props& props)
 #elif IC_ENGINE_USE_OPENGL
                 IC_CORE_INFO("Using OpenGL API");
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
                 glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #if defined(DEBUG) || defined(_DEBUG)
                 glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);

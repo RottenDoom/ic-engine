@@ -1,5 +1,6 @@
 #include "gltf_loader.h"
 #include "gl_model.h"
+#include "gl_texture.h"
 
 #include <filesystem>
 #include <string>
@@ -96,6 +97,11 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model* gltf)
                 loadSamplers(gltf, it);
         }
 
+        for (auto& it : asset->materials)
+        {
+                loadMaterial(gltf, it);
+        }
+
         for (auto& it : asset->images)
         {
                 loadImage(gltf, *asset, it);
@@ -127,11 +133,15 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model* gltf)
         IC_CORE_TRACE("Loaded {} Meshes", gltf->meshes.size());
         IC_CORE_TRACE("Loaded {} Images", gltf->images.size());
         IC_CORE_TRACE("Loaded {} Textures", gltf->textures.size());
+        IC_CORE_TRACE("Loaded {} Buffers", gltf->buffers.size());
+        IC_CORE_TRACE("Loaded {} bufferViews", gltf->bufferViews.size());
+        IC_CORE_TRACE("Loaded {} accessors", gltf->accessors.size());
+        IC_CORE_TRACE("Loaded {} materials", gltf->materials.size());
 
         /** TODO: handle this better */
         if (asset->defaultScene.has_value())
         {
-                gltf->defaultScene = static_cast<ic::Index>(asset->defaultScene.value());
+                gltf->defaultScene = toIndex(asset->defaultScene.value());
         }
         else if (!gltf->scenes.empty())
         {
@@ -324,14 +334,15 @@ bool GLTFLoader::loadMaterial(Model* gltf, fastgltf::Material& material)
         if (material.pbrData.baseColorTexture.has_value())
         {
                 /** TODO: Texture transform */
-                mat.pbr.baseColorTextureIndex = material.pbrData.baseColorTexture.value().textureIndex;
-                mat.pbr.baseColorTextureCoord = material.pbrData.baseColorTexture.value().texCoordIndex;
+                mat.pbr.baseColorTexture.idx      = material.pbrData.baseColorTexture.value().textureIndex;
+                mat.pbr.baseColorTexture.texCoord = material.pbrData.baseColorTexture.value().texCoordIndex;
         }
 
         if (material.pbrData.metallicRoughnessTexture.has_value())
         {
-                mat.pbr.metallicRoughnessTextureIndex = material.pbrData.metallicRoughnessTexture.value().textureIndex;
-                mat.pbr.metallicRoughnessTextureCoord = material.pbrData.metallicRoughnessTexture.value().texCoordIndex;
+                mat.pbr.metallicRoughnessTexture.idx = material.pbrData.metallicRoughnessTexture.value().textureIndex;
+                mat.pbr.metallicRoughnessTexture.texCoord =
+                    material.pbrData.metallicRoughnessTexture.value().texCoordIndex;
         }
 
         mat.alphaCutoff = material.alphaCutoff;
@@ -341,30 +352,30 @@ bool GLTFLoader::loadMaterial(Model* gltf, fastgltf::Material& material)
         auto& emm          = material.emissiveFactor;
         mat.emissiveFactor = glm::vec3(emm[0], emm[1], emm[2]);
 
-        if (material.emissiveTexture.has_value())
-        {
-                mat.emissive.index    = material.emissiveTexture.value().textureIndex;
-                mat.emissive.texCoord = material.emissiveTexture.value().texCoordIndex;
-        }
-
         /** Normal */
         if (material.normalTexture.has_value())
         {
-                mat.normal.index    = material.normalTexture.value().textureIndex;
-                mat.normal.texCoord = material.normalTexture.value().texCoordIndex;
-                mat.normal.scale    = material.normalTexture.value().scale;
+                mat.normal.normalTexture.idx      = material.normalTexture.value().textureIndex;
+                mat.normal.normalTexture.texCoord = material.normalTexture.value().texCoordIndex;
+                mat.normal.scale                  = material.normalTexture.value().scale;
         }
 
         /** Occlusion */
         if (material.occlusionTexture.has_value())
         {
-                mat.occlusion.index    = material.occlusionTexture.value().textureIndex;
-                mat.occlusion.texCoord = material.occlusionTexture.value().texCoordIndex;
-                mat.occlusion.strength = material.occlusionTexture.value().strength;
+                mat.occlusion.occlusionTexture.idx      = material.occlusionTexture.value().textureIndex;
+                mat.occlusion.occlusionTexture.texCoord = material.occlusionTexture.value().texCoordIndex;
+                mat.occlusion.strength                  = material.occlusionTexture.value().strength;
+        }
+
+        if (material.emissiveTexture.has_value())
+        {
+                mat.emissive.idx      = material.emissiveTexture.value().textureIndex;
+                mat.emissive.texCoord = material.emissiveTexture.value().texCoordIndex;
         }
 
         gltf->materials.push_back(std::move(mat));
-        return false;
+        return true;
 }
 
 Accessor::Type GLTFLoader::convertAccessorType(fastgltf::AccessorType type)
@@ -397,6 +408,8 @@ void GLTFLoader::loadBufferView(Model* gltf, fastgltf::BufferView& bufferView)
         bufView.stride = bufferView.byteStride.value_or(0);
 
         bufView.name   = bufferView.name;
+
+        gltf->bufferViews.push_back(std::move(bufView));
 }
 
 void GLTFLoader::loadBuffer(Model* gltf, const fastgltf::Buffer& buffer, const std::filesystem::path& basePath)
@@ -582,7 +595,7 @@ bool GLTFLoader::loadImage(Model* gltf, fastgltf::Asset& asset, fastgltf::Image&
         return true;
 }
 
-bool GLTFLoader::loadTexture(Model* gltf, fastgltf::Texture& texture)
+void GLTFLoader::loadTexture(Model* gltf, fastgltf::Texture& texture)
 {
         ic::Texture tex;
 

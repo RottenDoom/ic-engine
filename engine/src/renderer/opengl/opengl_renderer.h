@@ -26,6 +26,20 @@ class OpenGLRenderer
 private:
         bool m_IsMinimized = false;  //[TODO] handle minimized
 
+        /** TODO: Remove all of this just for testing */
+        GLuint triangleVAO, triangleVBO;
+
+        float triangleVertices[9] = {  // positions (NDC)
+            -0.5f,
+            -0.5f,
+            0.0f,
+            0.5f,
+            -0.5f,
+            0.0f,
+            0.0f,
+            0.5f,
+            0.0f};
+
         Camera m_camera;
         Window& m_window;
 
@@ -33,15 +47,12 @@ private:
         Model model;
         GLModel gpuHandle;
 
-        // TODO make this somewhere else
-        GLuint VBO, VAO, EBO, cubeVAO;
-        GLuint texture;
-        GLuint lightVAO;
-        std::vector<PointLight> pointLights;
-        // TODO: end
+        /** TODO: Lighting class */
+        // std::vector<PointLight> pointLights;
 
         std::unique_ptr<Shader> shader;
-        std::unique_ptr<Shader> lightCubeShader;
+        std::unique_ptr<Shader> triangleShader;
+        // std::unique_ptr<Shader> lightCubeShader;
 
         bool onWindowResize(WindowResizedEvent& e);
         void enableFeatures();

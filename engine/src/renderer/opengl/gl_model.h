@@ -2,6 +2,8 @@
 #include "defines.h"
 
 #include "renderer/model.h"
+#include "gl_shader.h"
+#include "gl_texture.h"
 
 #include <glad/glad.h>
 
@@ -42,6 +44,7 @@ struct PackedVertex
         glm::vec4 tangent;
         glm::vec2 texcoord0;
         glm::vec2 texcoord1;
+        glm::vec2 texcoord2;
         glm::vec4 color;
         glm::uvec4 joints;
         glm::vec4 weights;
@@ -75,12 +78,6 @@ private:
         size_t getAttributeOffset(uint32_t flags, VertexAttributeFlags attrib);
 };
 
-struct GLTexture
-{
-        GLuint textureHandle;
-        void createTexture(Model& model, Texture& tex, ImageData& img);
-};
-
 struct GLMesh
 {
         std::vector<GLPrimitive> primitives;
@@ -98,9 +95,12 @@ struct GLModel
         void uploadMeshes();
 
         /** Need shader handle here as well */
-        void draw();
-        void drawNode(Index nodeIndex, glm::mat4 parentTransform);
-        void drawMesh(GLMesh glMesh, Mesh& mesh, glm::mat4 worldTransform); /*** TODO: GLMESH */
+        /** TODO: Make a material system */
+        void draw(Shader& shader);
+        void drawNode(Shader& shader, Index nodeIndex, glm::mat4 parentTransform);
+        void drawMesh(Shader& shader, GLMesh glMesh, Mesh& mesh, glm::mat4 worldTransform);
+
+        void bindMaterial(Shader& shader, Material& mat, GLPrimitive& primitive);
 };
 
 }  // namespace ic
