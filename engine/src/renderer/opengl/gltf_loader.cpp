@@ -13,6 +13,11 @@ namespace ic
 {
 #define toIndex(x) static_cast<ic::Index>(x)
 
+static GLenum toGLenum(fastgltf::ComponentType type)
+{
+        return static_cast<GLenum>(static_cast<uint16_t>(type) & 0x1FFF);
+}
+
 GLTFLoader::~GLTFLoader() {}
 
 bool GLTFLoader::loadModel(const char* path, Model* model)
@@ -402,12 +407,12 @@ void GLTFLoader::loadBufferView(Model* gltf, fastgltf::BufferView& bufferView)
 {
         ic::BufferView bufView;
 
-        bufView.buffer = bufferView.bufferIndex;
-        bufView.offset = bufferView.byteOffset;
-        bufView.size   = bufferView.byteLength;
-        bufView.stride = bufferView.byteStride.value_or(0);
+        bufView.bufferIndex = bufferView.bufferIndex;
+        bufView.byteOffset  = bufferView.byteOffset;
+        bufView.byteLength  = bufferView.byteLength;
+        bufView.byteStride  = bufferView.byteStride.value_or(0);
 
-        bufView.name   = bufferView.name;
+        bufView.name        = bufferView.name;
 
         gltf->bufferViews.push_back(std::move(bufView));
 }
@@ -463,7 +468,7 @@ void GLTFLoader::loadAccessor(Model* gltf, fastgltf::Accessor& accessor)
         acc.count           = accessor.count;
         acc.type            = convertAccessorType(accessor.type);
 
-        acc.componentType   = static_cast<GLenum>(accessor.componentType);
+        acc.componentType   = toGLenum(accessor.componentType);
         acc.normalized      = accessor.normalized;
 
         uint32_t components = getAccessorComponentCount(acc.type);

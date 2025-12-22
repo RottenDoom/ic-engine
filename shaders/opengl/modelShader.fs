@@ -4,6 +4,9 @@ in vec3 v_Position;
 in vec3 v_Normal;
 in vec2 v_TexCoord;
 
+uniform sampler2D u_defaultMaterial;
+uniform bool u_usedefaultMaterial;
+
 uniform sampler2D u_BaseColorTexture;
 uniform sampler2D u_MetallicRoughnessTexture;
 uniform sampler2D u_NormalTexture;

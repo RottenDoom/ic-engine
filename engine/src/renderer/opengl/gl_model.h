@@ -27,37 +27,23 @@ enum VertexAttributeFlags : uint32_t
 {
         ATTRIB_POSITION  = 1 << 0,
         ATTRIB_NORMAL    = 1 << 1,
-        ATTRIB_TANGENT   = 1 << 2,
-        ATTRIB_TEXCOORD0 = 1 << 3,
-        ATTRIB_TEXCOORD1 = 1 << 4,
-        ATTRIB_TEXCOORD2 = 1 << 5,
-        ATTRIB_COLOR     = 1 << 6,
+        ATTRIB_TEXCOORD0 = 1 << 2,
+        ATTRIB_TEXCOORD1 = 1 << 3,
+        ATTRIB_TEXCOORD2 = 1 << 4,
+        ATTRIB_COLOR     = 1 << 5,
+        ATTRIB_TANGENT   = 1 << 6,
         ATTRIB_JOINTS    = 1 << 7,
         ATTRIB_WEIGHTS   = 1 << 8,
 };
 
-// Packed vertex structure - only contains what's needed
-struct PackedVertex
-{
-        glm::vec3 position;
-        glm::vec3 normal;
-        glm::vec4 tangent;
-        glm::vec2 texcoord0;
-        glm::vec2 texcoord1;
-        glm::vec2 texcoord2;
-        glm::vec4 color;
-        glm::uvec4 joints;
-        glm::vec4 weights;
-};
-
 struct GLPrimitive
 {
-        GLuint VAO;
-        GLuint VBO;
-        GLuint EBO;
-        GLenum indexType;
+        GLuint VAO       = 0;
+        GLuint VBO       = 0;
+        GLuint EBO       = 0;
+        GLenum indexType = GL_UNSIGNED_BYTE;
         uint32_t attributeFlags;  // Which attributes are present
-        size_t vertexStride;      // Actual stride based on present attributes
+        size_t vertexStride = 0;  // Actual stride based on present attributes
         IndirectDrawCommand draw;
 
         void setupBuffers(Model& model, MeshPrimitive& primitive);

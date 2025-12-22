@@ -6,9 +6,10 @@ layout(location = 1) in vec3 a_Normal;
 layout(location = 2) in vec4 a_Tangent;
 layout(location = 3) in vec2 a_TexCoord0;
 layout(location = 4) in vec2 a_TexCoord1;
-layout(location = 5) in vec4 a_Color;
-layout(location = 6) in uvec4 a_Joints;
-layout(location = 7) in vec4 a_Weights;
+layout(location = 5) in vec2 a_TexCoord1;
+layout(location = 6) in vec4 a_Color;
+layout(location = 7) in uvec4 a_Joints;
+layout(location = 8) in vec4 a_Weights;
 
 // Your camera uniforms
 uniform mat4 model;

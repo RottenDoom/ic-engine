@@ -76,6 +76,18 @@ STATIC_ASSERT(sizeof(int16_t) == 2, "Expected int16_t to be 2 bytes.");
 STATIC_ASSERT(sizeof(int32_t) == 4, "Expected int32_t to be 4 bytes.");
 STATIC_ASSERT(sizeof(int64_t) == 8, "Expected int64_t to be 8 bytes.");
 
+/** Rare debug operator */
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, const std::vector<T>& other)
+{
+        for (auto& x : other)
+        {
+                stream << x << " ";
+        }
+        stream << "\n";
+        return stream;
+}
+
 #if defined(_MSC_VER)
 #define IC_INLINE __forceinline
 #define IC_NOINLINE __declspec(noinline)

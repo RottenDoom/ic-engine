@@ -45,25 +45,12 @@ void OpenGLRenderer::createShader()
         shader = std::make_unique<Shader>("shaders/opengl/testShader.vs", "shaders/opengl/testShader.fs");
 
         /** TODO: Important */
-        triangleShader = std::make_unique<Shader>("shaders/opengl/triangle.vs", "shaders/opengl/triangle.fs");
         // lightCubeShader = std::make_unique<Shader>("shaders/opengl/lightShader.vs", "shaders/opengl/lightShader.fs");
 }
 
 void OpenGLRenderer::setupBuffers()
 {
         gpuHandle.upload(model);
-
-        /** TODO: Remove all of this only for testing  */
-        glCreateVertexArrays(1, &triangleVAO);
-        glCreateBuffers(1, &triangleVBO);
-
-        glNamedBufferData(triangleVBO, sizeof(triangleVertices), triangleVertices, GL_STATIC_DRAW);
-
-        glVertexArrayVertexBuffer(triangleVAO, 0, triangleVBO, 0, sizeof(float) * 3);
-
-        glEnableVertexArrayAttrib(triangleVAO, 0);
-        glVertexArrayAttribFormat(triangleVAO, 0, 3, GL_FLOAT, GL_FALSE, 0);
-        glVertexArrayAttribBinding(triangleVAO, 0, 0);
 }
 
 bool OpenGLRenderer::init()
@@ -120,7 +107,7 @@ void OpenGLRenderer::loadAssets()
 {
         /** TODO: This is only for testing remove this */
         GLTFLoader loader;
-        if (!loader.loadModel("cube/bullcrap.gltf", &model))
+        if (!loader.loadModel("tree_house/scene.gltf", &model))
         {
                 IC_CORE_WARN("Model did not load bruh!");
                 return;
@@ -130,34 +117,26 @@ void OpenGLRenderer::loadAssets()
 
 void OpenGLRenderer::draw(float deltaTime)
 {
-        // background color
-        update(deltaTime);
-
-        /** TODO: Remove this bro dont need this shit */
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glDisable(GL_CULL_FACE);
-        glDisable(GL_DEPTH_TEST);
+        // background color
+        update(deltaTime); /** TODO: look into this */
 
-        // shader->use();
-        triangleShader->use();
-        glBindVertexArray(triangleVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        shader->use();
 
-        // shader->setMat4("projection", m_camera.projection);
-        // shader->setMat4("view", m_camera.matrices.view);
+        shader->setMat4("projection", m_camera.projection);
+        shader->setMat4("view", m_camera.matrices.view);
 
-        // gpuHandle.draw(*shader); /** TODO: look into this */
+        gpuHandle.draw(*shader); /** TODO: look into this */
 }
 
 void OpenGLRenderer::destroy() {}
 
 OpenGLRenderer::OpenGLRenderer(Window& window) : m_window(window)
 {
-        m_camera.type = Camera::CameraType::lookat;
-        // Position camera at (0, 0, 5) looking at origin (0, 0, 0) where the model should be
-        m_camera.setViewTarget(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+        m_camera.type = Camera::CameraType::firstperson;
+        m_camera.setViewDirection(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         // m_camera.setRotationSpeed(0.5f);
         m_camera.setPerspectiveProjection(45.0f, (float)m_window.getWidth() / (float)m_window.getHeight(), 0.1f, 256.0f);
 }

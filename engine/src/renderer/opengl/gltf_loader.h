@@ -17,13 +17,6 @@ struct VKModel : public Model
         fastgltf::Asset asset;
 };
 
-/** See into this later */
-// #if IC_ENGINE_USE_OPENGL
-// using GLTFModel = GLModel;
-// #elif IC_ENGINE_USE_VULKAN
-// using GLTFModel = VKModel;
-// #endif
-
 class GLTFLoader : IModelLoader
 {
 public:
