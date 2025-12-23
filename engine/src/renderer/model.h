@@ -19,6 +19,10 @@ namespace ic
 using Index                   = uint32_t;
 constexpr Index INVALID_INDEX = ~0u;
 
+struct TextureInfo;
+struct Texture;
+struct Material;
+
 /** GPU data with the actual buffer*/
 struct Buffer
 {
@@ -197,6 +201,46 @@ struct Animation
                 AnimationPath path;
                 AnimationSampler sampler;
         } Channel;
+};
+
+struct Sampler
+{
+        enum class Filter : std::uint16_t
+        {
+                Nearest              = 9728,  // GL_NEAREST
+                Linear               = 9729,  // GL_LINEAR
+                NearestMipMapNearest = 9984,  // GL_NEAREST_MIPMAP_NEAREST
+                LinearMipMapNearest  = 9985,  // GL_LINEAR_MIPMAP_NEAREST
+                NearestMipMapLinear  = 9986,  // GL_NEAREST_MIPMAP_LINEAR
+                LinearMipMapLinear   = 9987,  // GL_LINEAR_MIPMAP_LINEAR
+                NoFilter             = 0
+        };
+
+        enum class Wrap : std::uint16_t
+        {
+                ClampToEdge    = 33071,
+                MirroredRepeat = 33648,
+                Repeat         = 10497,
+                NoWrap         = 0
+        };
+
+        Filter magFilter = Filter::NoFilter;  // GL_TEXTURE_MAG_FILTER
+        Filter minFilter = Filter::NoFilter;  // GL_TEXTURE_MIN_FILTER
+        Wrap wrapS       = Wrap::NoWrap;
+        Wrap wrapT       = Wrap::NoWrap;
+};
+
+struct ImageData
+{
+        uint32_t width    = 0;
+        uint32_t height   = 0;
+        uint32_t channels = 0;
+
+        // Raw decoded pixels (RGBA8, etc.)
+        std::vector<uint8_t> pixels;
+
+        // Optional metadata
+        bool srgb = false;
 };
 
 struct Scene

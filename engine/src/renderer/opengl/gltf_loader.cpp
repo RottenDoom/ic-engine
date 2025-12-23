@@ -1,6 +1,6 @@
 #include "gltf_loader.h"
 #include "gl_model.h"
-#include "gl_texture.h"
+#include "gl_material.h"
 
 #include <filesystem>
 #include <string>
@@ -332,21 +332,24 @@ bool GLTFLoader::loadMaterial(Model* gltf, fastgltf::Material& material)
         auto& bCF = material.pbrData.baseColorFactor;
 
         /** TODO: better way of doing this */
-        mat.pbr.baseColorFactor = glm::vec4(bCF[0], bCF[1], bCF[2], bCF[3]);
-        mat.pbr.metallicFactor  = material.pbrData.metallicFactor;
-        mat.pbr.roughnessFactor = material.pbrData.roughnessFactor;
+        mat.pbrMaterial.baseColorFactor = glm::vec4(bCF[0], bCF[1], bCF[2], bCF[3]);
+        mat.pbrMaterial.metallicFactor  = material.pbrData.metallicFactor;
+        mat.pbrMaterial.roughnessFactor = material.pbrData.roughnessFactor;
 
         if (material.pbrData.baseColorTexture.has_value())
         {
                 /** TODO: Texture transform */
-                mat.pbr.baseColorTexture.idx      = material.pbrData.baseColorTexture.value().textureIndex;
-                mat.pbr.baseColorTexture.texCoord = material.pbrData.baseColorTexture.value().texCoordIndex;
+                mat.pbrMaterial.baseColorTexture.textureInfo.idx =
+                    material.pbrData.baseColorTexture.value().textureIndex;
+                mat.pbrMaterial.baseColorTexture.textureInfo.texCoord =
+                    material.pbrData.baseColorTexture.value().texCoordIndex;
         }
 
         if (material.pbrData.metallicRoughnessTexture.has_value())
         {
-                mat.pbr.metallicRoughnessTexture.idx = material.pbrData.metallicRoughnessTexture.value().textureIndex;
-                mat.pbr.metallicRoughnessTexture.texCoord =
+                mat.pbrMaterial.metallicRoughnessTexture.textureInfo.idx =
+                    material.pbrData.metallicRoughnessTexture.value().textureIndex;
+                mat.pbrMaterial.metallicRoughnessTexture.textureInfo.texCoord =
                     material.pbrData.metallicRoughnessTexture.value().texCoordIndex;
         }
 
@@ -360,23 +363,23 @@ bool GLTFLoader::loadMaterial(Model* gltf, fastgltf::Material& material)
         /** Normal */
         if (material.normalTexture.has_value())
         {
-                mat.normal.normalTexture.idx      = material.normalTexture.value().textureIndex;
-                mat.normal.normalTexture.texCoord = material.normalTexture.value().texCoordIndex;
-                mat.normal.scale                  = material.normalTexture.value().scale;
+                mat.normalTexture.textureInfo.idx      = material.normalTexture.value().textureIndex;
+                mat.normalTexture.textureInfo.texCoord = material.normalTexture.value().texCoordIndex;
+                mat.normalTexture.scale                = material.normalTexture.value().scale;
         }
 
         /** Occlusion */
         if (material.occlusionTexture.has_value())
         {
-                mat.occlusion.occlusionTexture.idx      = material.occlusionTexture.value().textureIndex;
-                mat.occlusion.occlusionTexture.texCoord = material.occlusionTexture.value().texCoordIndex;
-                mat.occlusion.strength                  = material.occlusionTexture.value().strength;
+                mat.occlusionTexture.textureInfo.idx      = material.occlusionTexture.value().textureIndex;
+                mat.occlusionTexture.textureInfo.texCoord = material.occlusionTexture.value().texCoordIndex;
+                mat.occlusionTexture.strength             = material.occlusionTexture.value().strength;
         }
 
         if (material.emissiveTexture.has_value())
         {
-                mat.emissive.idx      = material.emissiveTexture.value().textureIndex;
-                mat.emissive.texCoord = material.emissiveTexture.value().texCoordIndex;
+                mat.emissiveTexture.textureInfo.idx      = material.emissiveTexture.value().textureIndex;
+                mat.emissiveTexture.textureInfo.texCoord = material.emissiveTexture.value().texCoordIndex;
         }
 
         gltf->materials.push_back(std::move(mat));

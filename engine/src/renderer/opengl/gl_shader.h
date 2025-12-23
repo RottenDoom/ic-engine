@@ -75,6 +75,12 @@ public:
         {
                 glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
         }
+
+        void setTexture(const std::string& name, int unit, GLuint textureHandle)
+        {
+                glBindTextureUnit(unit, textureHandle);
+                setInt(name, unit);
+        }
 };
 
 }  // namespace ic

@@ -42,7 +42,7 @@ void OpenGLRenderer::enableFeatures()
 
 void OpenGLRenderer::createShader()
 {
-        shader = std::make_unique<Shader>("shaders/opengl/testShader.vs", "shaders/opengl/testShader.fs");
+        shader = std::make_unique<Shader>("shaders/opengl/modelShader.vs", "shaders/opengl/modelShader.fs");
 
         /** TODO: Important */
         // lightCubeShader = std::make_unique<Shader>("shaders/opengl/lightShader.vs", "shaders/opengl/lightShader.fs");
@@ -107,7 +107,7 @@ void OpenGLRenderer::loadAssets()
 {
         /** TODO: This is only for testing remove this */
         GLTFLoader loader;
-        if (!loader.loadModel("tree_house/scene.gltf", &model))
+        if (!loader.loadModel("shibahu/scene.gltf", &model))
         {
                 IC_CORE_WARN("Model did not load bruh!");
                 return;

@@ -3,7 +3,7 @@
 
 #include "renderer/model.h"
 #include "gl_shader.h"
-#include "gl_texture.h"
+#include "gl_material.h"
 
 #include <glad/glad.h>
 

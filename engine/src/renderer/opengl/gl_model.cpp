@@ -8,7 +8,7 @@ void GLModel::upload(Model& model)
         this->model = &model;
 
         /** Check if the textures exist first or not */
-        // uploadTextures();
+        uploadTextures();
 
         uploadMeshes();
 }
@@ -24,6 +24,13 @@ void GLModel::uploadTextures()
                 {
                         ImageData& img = model->images[tex.image];
                         textures[i].createTexture(*model, tex, img);
+                }
+
+                // Apply sampler if present
+                if (tex.sampler != INVALID_INDEX)
+                {
+                        Sampler& sampler = model->samplers[tex.sampler];
+                        textures[i].applySampler(sampler);
                 }
         }
 }
@@ -87,8 +94,8 @@ void GLModel::drawMesh(Shader& shader, GLMesh glMesh, Mesh& mesh, glm::mat4 worl
                 // Bind material if present
                 if (meshPrim.material != INVALID_INDEX)
                 {
-                        // Material& mat = model->materials[meshPrim.material];
-                        // bindMaterial(shader, mat, prim);
+                        Material& mat = model->materials[meshPrim.material];
+                        bindMaterial(shader, mat, prim);
                 }
 
                 glBindVertexArray(prim.VAO);
@@ -105,7 +112,102 @@ void GLModel::drawMesh(Shader& shader, GLMesh glMesh, Mesh& mesh, glm::mat4 worl
         }
 }
 
-void GLModel::bindMaterial(Shader& shader, Material& mat, GLPrimitive& primitive) {}
+void GLModel::bindMaterial(Shader& shader, Material& mat, GLPrimitive& primitive)
+{
+        /** TODO: default material handling */
+        shader.setInt("u_defaultMaterial", 0);
+        shader.setBool("u_usedefaultMaterial", false);
+
+        // base color
+        shader.setVec4("u_BaseColorFactor", mat.pbrMaterial.baseColorFactor);
+        if (mat.pbrMaterial.baseColorTexture.textureInfo.idx != INVALID_INDEX)
+        {
+                shader.setTexture("u_BaseColorTexture",
+                                  0,
+                                  textures[mat.pbrMaterial.baseColorTexture.textureInfo.idx].textureHandle);
+                shader.setBool("u_HasBaseColorTexture", true);
+        }
+        else
+        {
+                shader.setBool("u_HasBaseColorTexture", false);
+        }
+
+        shader.setFloat("u_MetallicFactor", mat.pbrMaterial.metallicFactor);
+        shader.setFloat("u_RoughnessFactor", mat.pbrMaterial.roughnessFactor);
+        if (mat.pbrMaterial.metallicRoughnessTexture.textureInfo.idx != INVALID_INDEX)
+        {
+                shader.setTexture("u_MetallicRoughnessTexture",
+                                  1,
+                                  textures[mat.pbrMaterial.metallicRoughnessTexture.textureInfo.idx].textureHandle);
+                shader.setBool("u_HasMetallicRoughnessTexture", true);
+        }
+        else
+        {
+                shader.setBool("u_HasMetallicRoughnessTexture", false);
+        }
+
+        // Normal
+        if (mat.normalTexture.textureInfo.idx != INVALID_INDEX)
+        {
+                shader.setTexture("u_NormalTexture", 2, textures[mat.normalTexture.textureInfo.idx].textureHandle);
+                shader.setFloat("u_NormalScale", mat.normalTexture.scale);
+                shader.setBool("u_HasNormalTexture", true);
+        }
+        else
+        {
+                shader.setBool("u_HasNormalTexture", false);
+        }
+
+        // Occlusion
+        if (mat.occlusionTexture.textureInfo.idx != INVALID_INDEX)
+        {
+                shader.setTexture("u_OcclusionTexture",
+                                  3,
+                                  textures[mat.occlusionTexture.textureInfo.idx].textureHandle);
+                shader.setFloat("u_OcclusionStrength", mat.occlusionTexture.strength);
+                shader.setBool("u_HasOcclusionTexture", true);
+        }
+        else
+        {
+                shader.setBool("u_HasOcclusionTexture", false);
+        }
+
+        // Emissive
+        shader.setVec3("u_EmissiveFactor", mat.emissiveFactor);
+
+        if (mat.emissiveTexture.textureInfo.idx != INVALID_INDEX)
+        {
+                shader.setTexture("u_EmissiveTexture", 4, textures[mat.emissiveTexture.textureInfo.idx].textureHandle);
+                shader.setBool("u_HasEmissiveTexture", true);
+        }
+        else
+        {
+                shader.setBool("u_HasEmissiveTexture", false);
+        }
+
+        // Alpha
+        shader.setFloat("u_AlphaCutoff", mat.alphaCutoff);
+
+        // Set render state based on material
+        if (mat.alphaMode == Material::AlphaMode::BLEND)
+        {
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        }
+        else
+        {
+                glDisable(GL_BLEND);
+        }
+
+        if (mat.doubleSided)
+        {
+                glDisable(GL_CULL_FACE);
+        }
+        else
+        {
+                glEnable(GL_CULL_FACE);
+        }
+}
 
 void GLPrimitive::setupBuffers(Model& model, MeshPrimitive& primitive)
 {
