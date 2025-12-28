@@ -75,13 +75,10 @@ struct GLModel
         std::vector<GLMesh> meshes;
         std::vector<GLTexture> textures;
 
-        /** TODO: Const correctness */
         void upload(Model& model);
         void uploadTextures();
         void uploadMeshes();
 
-        /** Need shader handle here as well */
-        /** TODO: Make a material system */
         void draw(Shader& shader);
         void drawNode(Shader& shader, Index nodeIndex, glm::mat4 parentTransform);
         void drawMesh(Shader& shader, GLMesh glMesh, Mesh& mesh, glm::mat4 worldTransform);

@@ -33,7 +33,7 @@ int main(void)
         }
 
         // initialization
-        ic::application app;
+        ic::Application app;
         if (!app.applicationCreate(&game_inst))
         {
                 IC_CORE_ERROR("Application failed to create!");

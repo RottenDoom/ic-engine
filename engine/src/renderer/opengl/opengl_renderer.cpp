@@ -44,7 +44,7 @@ void OpenGLRenderer::createShader()
 {
         shader = std::make_unique<Shader>("shaders/opengl/modelShader.vs", "shaders/opengl/modelShader.fs");
 
-        /** TODO: Important */
+        /** TODO: Write a lighting system */
         // lightCubeShader = std::make_unique<Shader>("shaders/opengl/lightShader.vs", "shaders/opengl/lightShader.fs");
 }
 
@@ -64,7 +64,7 @@ bool OpenGLRenderer::init()
                 return false;
         }
 
-        /** TODO: This is giving me a hint for creating my own logger. */
+        /** TODO: create a better logger using fmt maybe for handling everytype of string */
         std::cout << "GL Version: " << glGetString(GL_VERSION) << std::endl;
         // IC_CORE_INFO("GL VERSION: {}", static_cast<const unsigned char*>(glGetString(GL_VERSION)));
 
@@ -106,13 +106,13 @@ void OpenGLRenderer::onEvent(event& e)
 void OpenGLRenderer::loadAssets()
 {
         /** TODO: This is only for testing remove this */
-        GLTFLoader loader;
-        if (!loader.loadModel("shibahu/scene.gltf", &model))
-        {
-                IC_CORE_WARN("Model did not load bruh!");
-                return;
-        }
-        IC_CORE_INFO("Loaded the Model successfully");
+        // GLTFLoader loader;
+        // if (!loader.loadModel("shibahu/scene.gltf", &model))
+        // {
+        //         IC_CORE_WARN("Model did not load bruh!");
+        //         return;
+        // }
+        // IC_CORE_INFO("Loaded the Model successfully");
 }
 
 void OpenGLRenderer::draw(float deltaTime)
@@ -121,14 +121,14 @@ void OpenGLRenderer::draw(float deltaTime)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // background color
-        update(deltaTime); /** TODO: look into this */
+        update(deltaTime);
 
         shader->use();
 
         shader->setMat4("projection", m_camera.projection);
         shader->setMat4("view", m_camera.matrices.view);
 
-        gpuHandle.draw(*shader); /** TODO: look into this */
+        // gpuHandle.draw(*shader);
 }
 
 void OpenGLRenderer::destroy() {}

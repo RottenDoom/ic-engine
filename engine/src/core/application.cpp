@@ -1,6 +1,7 @@
 #include "application.h"
 #include "defines.h"
 #include "input.h"
+#include "entry.h"
 
 #include <GLFW/glfw3.h>
 
@@ -10,36 +11,39 @@
 
 namespace ic
 {
-#define BIND_EVENT_FN(x) std::bind(&application::x, this, std::placeholders::_1)
 
-application* application::s_Instance = nullptr;
+Application* Application::s_Instance = nullptr;
 
-application::application()
+Application::Application()
 {
         ic::logger::init();
         s_Instance = this;
 
         m_Window   = Window::create();
-        m_Window->setEventCallback(BIND_EVENT_FN(onEvent));
+        m_Window->setEventCallback(BIND_EVENT(onEvent));
 
         m_renderer = new renderer();
         m_renderer->init(m_Window.get());
         IC_CORE_INFO("Application Initialized!");
 }
 
-application::~application()
+Application::~Application()
 {
         m_renderer->cleanUp();
         delete m_renderer;
 }
 
-bool application::run()
+bool Application::run()
 {
         while (m_Running)
         {
                 float time      = glfwGetTime();
                 float delta     = time - m_lastFrameTime;
                 m_lastFrameTime = time;
+
+                /** TODO: not sure if it works like this  */
+                m_game->update(m_game, delta);
+                m_game->render(m_game, delta);
 
                 m_Window->onUpdate();
                 m_renderer->renderFrame(delta);
@@ -48,26 +52,30 @@ bool application::run()
         return true;
 }
 
-void application::onEvent(event& e)
+void Application::onEvent(event& e)
 {
         eventDispatcher dispatcher(e);
-        dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT_FN(onWindowClose));
+        dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT(onWindowClose));
 
         m_renderer->onEvent(e);
-
-        // IC_CORE_TRACE("{0}", e.toString()); TODO: get a better understanding of this
 }
 
-bool application::applicationCreate(game* game_inst)
+bool Application::applicationCreate(game* game_inst)
 {
+        m_game = game_inst;
+
+        if (!m_game->initialize(m_game))
+        {
+                return false;
+        }
         return true;
 }
 
-application& application::get()
+Application& Application::get()
 {
         return *s_Instance;
 }
-bool application::onWindowClose(WindowClosedEvent& e)
+bool Application::onWindowClose(WindowClosedEvent& e)
 {
         m_Running = false;
         return true;

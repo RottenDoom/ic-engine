@@ -265,15 +265,12 @@ void GLPrimitive::setupBuffers(Model& model, MeshPrimitive& primitive)
 
         // Calculate vertex stride based on present attributes
         vertexStride = calculateStride(attributeFlags);
-        IC_CORE_TRACE("Vertex Stride: {}", vertexStride);
 
         // Get vertex count from position accessor
         size_t vertexCount = 0;
-        /** TODO: Component type is wrong */
         if (primitive.position != INVALID_INDEX)
         {
                 vertexCount = model.accessors[primitive.position].count;
-                IC_CORE_TRACE("POSITION0 vertices count: {}", vertexCount);
         }
         else
         {
@@ -406,10 +403,7 @@ void GLPrimitive::setupBuffers(Model& model, MeshPrimitive& primitive)
                               indexBuffer.size(),
                               indexBuffer.size() * sizeof(uint32_t));
 
-                indexType           = GL_UNSIGNED_INT;
-
-                auto [minIt, maxIt] = std::minmax_element(indexBuffer.begin(), indexBuffer.end());
-                IC_CORE_TRACE("Index range: min={}, max={}", *minIt, *maxIt);
+                indexType  = GL_UNSIGNED_INT;
                 draw.count = static_cast<uint32_t>(indexBuffer.size());
         }
         else
@@ -720,7 +714,7 @@ size_t GLPrimitive::calculateStride(uint32_t flags)
 
         return stride;
 }
-/** TODO: write this function better */
+
 size_t GLPrimitive::getAttributeOffset(uint32_t flags, VertexAttributeFlags attrib)
 {
         size_t offset = 0;

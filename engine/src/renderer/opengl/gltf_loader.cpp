@@ -154,7 +154,7 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model* gltf)
         }
         else
         {
-                gltf->defaultScene = ic::INVALID_INDEX;
+                gltf->defaultScene = INVALID_INDEX;
         }
 
         return true;
@@ -329,9 +329,8 @@ bool GLTFLoader::loadMaterial(Model* gltf, fastgltf::Material& material)
         mat.name = material.name;
 
         /** PBR Data */
-        auto& bCF = material.pbrData.baseColorFactor;
+        auto& bCF                       = material.pbrData.baseColorFactor;
 
-        /** TODO: better way of doing this */
         mat.pbrMaterial.baseColorFactor = glm::vec4(bCF[0], bCF[1], bCF[2], bCF[3]);
         mat.pbrMaterial.metallicFactor  = material.pbrData.metallicFactor;
         mat.pbrMaterial.roughnessFactor = material.pbrData.roughnessFactor;
@@ -531,7 +530,6 @@ bool GLTFLoader::loadImage(Model* gltf, fastgltf::Asset& asset, fastgltf::Image&
 {
         ic::ImageData imageData;
 
-        /** TODO: Gotta remove the std::variant things */
         std::visit(
             fastgltf::visitor{
                 [](auto& arg) {},

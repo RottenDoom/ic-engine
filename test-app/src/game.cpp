@@ -1,14 +1,22 @@
 #include "game.h"
+#include "renderer/asset_manager.h"
 
 bool game_initialize(game* game_inst)
 {
         game_state* state = (game_state*)malloc(sizeof(game_state));
         memset(state, 0, sizeof(game_state));
 
-        // game_inst->state    = state;
+        game_inst->state = state;
 
-        // state->player_model = ic::Assets::LoadModel("assets/player.glb");
-        // state->level_model  = ic::Assets::LoadModel("assets/level.gltf");
+        /** TODO: this is game_inst asset */
+        game_inst->playerModel = ic::asset::LoadModel("shibahu/scenc.gltf");
+
+        if (game_inst->playerModel == -1) /** TODO: get the invalid model handle here too */
+        {
+                IC_ERROR("The model handle genrated was invalid");
+                return false;
+        }
+        // state->level_model  = ic::asset::LoadModel("assets/level.gltf");
 
         return true;
 }
@@ -26,8 +34,8 @@ bool game_render(game* game_inst, float delta_time)
 {
         // game_state* state = (game_state*)game_inst->state;
 
-        // ic::renderer::drawModel(state->level_model);
-        // ic::renderer::drawModel(state->player_model);
+        // ic::renderer::drawaModel(state->level_model);
+        ic::asset::DrawModel(game_inst->state->player_model);
 
         // update model????
         return true;

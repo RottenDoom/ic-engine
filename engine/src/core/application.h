@@ -9,26 +9,28 @@ class game;
 
 namespace ic
 {
-        class IC_API application
-        {
-        public:
-                application();
-                ~application();
+class IC_API Application
+{
+public:
+        Application();
+        virtual ~Application();
 
-                bool run();
-                void onEvent(event& e);
-                bool applicationCreate(game* game_inst);
+        bool run();
+        void onEvent(event& e);
+        bool applicationCreate(game* game_inst);
 
-                static application& get();
-                Window& getWindow() { return *m_Window; }
+        static Application& get();
+        Window& getWindow() { return *m_Window; }
 
-        private:
-                bool onWindowClose(WindowClosedEvent& e);
+private:
+        bool onWindowClose(WindowClosedEvent& e);
 
-                bool m_Running = true;
-                std::unique_ptr<Window> m_Window;
-                renderer* m_renderer;
-                static application* s_Instance;
-                float m_lastFrameTime = 0.0f;
-        };
+        game* m_game;  // the game instance
+
+        bool m_Running = true;
+        std::unique_ptr<Window> m_Window;
+        renderer* m_renderer;
+        static Application* s_Instance;
+        float m_lastFrameTime = 0.0f;
+};
 }  // namespace ic

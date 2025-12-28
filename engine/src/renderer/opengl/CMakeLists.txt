@@ -16,7 +16,7 @@ set(OPENGL_SRC
 	gltf_loader.cpp
 )
 
-add_library(engine-opengl OBJECT ${OPENGL_SRC}) # todo: fix objects
+add_library(engine-opengl OBJECT ${OPENGL_SRC})
 
 target_include_directories(engine-opengl PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/../..

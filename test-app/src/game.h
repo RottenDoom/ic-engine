@@ -5,7 +5,7 @@ class game;
 
 struct game_state
 {
-        // ic::Model playerModel;
+        ic::asset::ModelHandle playerModel;
         // ic::Model levelModel;
 
         float time;

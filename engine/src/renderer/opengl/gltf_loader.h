@@ -24,10 +24,10 @@ public:
         ~GLTFLoader();
 
         bool loadModel(const char* path, Model* model) override;
+        /** TODO:write a unload model function */
         // void unloadModel();
 
 private:
-        /** TODO: These functions need to be included in a asset submodule */
         bool loadGLTF(std::filesystem::path path, Model* model);
         bool loadScene(Model* gltf, fastgltf::Scene& scene);
         bool loadNode(Model* gltf, fastgltf::Node& node);
