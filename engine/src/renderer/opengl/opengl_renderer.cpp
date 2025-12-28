@@ -1,9 +1,9 @@
-#include "opengl_renderer.h"
+#include "renderer/opengl/opengl_renderer.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "gl_debug.h"
+#include "renderer/opengl/gl_debug.h"
 namespace ic
 {
 

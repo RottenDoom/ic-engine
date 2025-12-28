@@ -3,7 +3,6 @@ add_library(glad STATIC
 )
 
 target_include_directories(glad PRIVATE
-	# ${CMAKE_CURRENT_SOURCE_DIR}/../..
 	${CMAKE_SOURCE_DIR}/third-party/glad/include
 )
 
@@ -19,7 +18,7 @@ set(OPENGL_SRC
 add_library(engine-opengl OBJECT ${OPENGL_SRC})
 
 target_include_directories(engine-opengl PRIVATE
-	${CMAKE_CURRENT_SOURCE_DIR}/../..
+	${CMAKE_SOURCE_DIR}/engine/include
 	${CMAKE_SOURCE_DIR}/third-party/glad/include
 	${CMAKE_SOURCE_DIR}/third-party/stb
 )

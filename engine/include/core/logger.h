@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ic_api.h"
+#include "../ic_api.h"
 #include "memory.h"
 #include <cstdlib>
 #include <stdexcept>
@@ -9,55 +9,55 @@
 
 namespace spdlog
 {
-        class logger;
+class logger;
 }
 
 namespace ic
 {
 
-        struct ErrorHandlingConfig
-        {
-                bool exitOnError     = false;  // Exit on ERROR level
-                bool exitOnCritical  = true;   // Exit on CRITICAL level (recommended)
-                bool throwOnError    = false;  // Throw exception on ERROR level
-                bool throwOnCritical = false;  // Throw exception on CRITICAL level
-        };
+struct ErrorHandlingConfig
+{
+        bool exitOnError     = false;  // Exit on ERROR level
+        bool exitOnCritical  = true;   // Exit on CRITICAL level (recommended)
+        bool throwOnError    = false;  // Throw exception on ERROR level
+        bool throwOnCritical = false;  // Throw exception on CRITICAL level
+};
 
-        // Custom exception classes
-        class IC_API EngineException : public std::runtime_error
-        {
-        public:
-                explicit EngineException(const std::string& message) : std::runtime_error(message) {}
-        };
+// Custom exception classes
+class IC_API EngineException : public std::runtime_error
+{
+public:
+        explicit EngineException(const std::string& message) : std::runtime_error(message) {}
+};
 
-        class IC_API CriticalEngineException : public std::runtime_error
-        {
-        public:
-                explicit CriticalEngineException(const std::string& message) : std::runtime_error(message) {}
-        };
-        class IC_API logger
-        {
+class IC_API CriticalEngineException : public std::runtime_error
+{
+public:
+        explicit CriticalEngineException(const std::string& message) : std::runtime_error(message) {}
+};
+class IC_API logger
+{
 
-        public:
-                static void init();
+public:
+        static void init();
 
-                static std::shared_ptr<spdlog::logger>& getCoreLogger();
-                static std::shared_ptr<spdlog::logger>& getClientLogger();
+        static std::shared_ptr<spdlog::logger>& getCoreLogger();
+        static std::shared_ptr<spdlog::logger>& getClientLogger();
 
-                // exception handling configuration
-                static void setErrorHandling(const ErrorHandlingConfig& config);
-                static ErrorHandlingConfig& getErrorHandlingConfig();
+        // exception handling configuration
+        static void setErrorHandling(const ErrorHandlingConfig& config);
+        static ErrorHandlingConfig& getErrorHandlingConfig();
 
-                static void handleError(const std::string& message, bool isCritical = false);
+        static void handleError(const std::string& message, bool isCritical = false);
 
-        private:
-                // fixed
-                // https://stackoverflow.com/questions/73511416/using-a-static-class-fuction-causes-a-linker-error-thanks-to-an-unresolved-exte
-                static std::shared_ptr<spdlog::logger> s_CoreLogger;
-                static std::shared_ptr<spdlog::logger> s_ClientLogger;  // https://github.com/gabime/spdlog/issues/1505
-                                                                        // this might be helpfull
-                static ErrorHandlingConfig s_ErrorConfig;
-        };
+private:
+        // fixed
+        // https://stackoverflow.com/questions/73511416/using-a-static-class-fuction-causes-a-linker-error-thanks-to-an-unresolved-exte
+        static std::shared_ptr<spdlog::logger> s_CoreLogger;
+        static std::shared_ptr<spdlog::logger> s_ClientLogger;  // https://github.com/gabime/spdlog/issues/1505
+                                                                // this might be helpfull
+        static ErrorHandlingConfig s_ErrorConfig;
+};
 
 }  // namespace ic
 

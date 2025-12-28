@@ -1,4 +1,4 @@
-#include "window_win32.h"
+#include "core/platform/win32/window_win32.h"
 #include <GLFW/glfw3.h>
 
 namespace ic

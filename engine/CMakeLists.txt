@@ -35,8 +35,7 @@ set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
 
 target_include_directories(engine
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src  # For public API headers
-        ${CMAKE_BINARY_DIR}/generated
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE
         ${IC_INTERNAL_HEADERS}
 )

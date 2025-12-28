@@ -1,4 +1,4 @@
-#include "gl_material.h"
+#include "renderer/opengl/gl_material.h"
 
 namespace ic
 {

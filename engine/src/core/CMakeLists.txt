@@ -10,9 +10,7 @@ add_library(engine-core OBJECT ${CORE_SRC})
 
 target_include_directories(engine-core
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/..
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/engine/include
 )
 
 set_target_properties(engine-core PROPERTIES POSITION_INDEPENDENT_CODE ON)

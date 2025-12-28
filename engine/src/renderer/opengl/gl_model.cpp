@@ -1,4 +1,4 @@
-#include "gl_model.h"
+#include "renderer/opengl/gl_model.h"
 
 namespace ic
 {

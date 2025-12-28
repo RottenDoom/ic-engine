@@ -1,4 +1,4 @@
-#include "camera.h"
+#include "renderer/camera.h"
 
 #include "core/input.h"
 #include "core/keycodes.h"

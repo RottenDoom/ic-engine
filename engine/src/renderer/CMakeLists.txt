@@ -7,7 +7,7 @@ set(RENDERER_SRC
 add_library(engine-renderer OBJECT ${RENDERER_SRC})
 
 target_include_directories(engine-renderer
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/include
 )
 set_target_properties(engine-renderer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

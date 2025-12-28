@@ -1,6 +1,6 @@
-#include "application.h"
+#include "core/application.h"
 #include "defines.h"
-#include "input.h"
+#include "core/input.h"
 #include "entry.h"
 
 #include <GLFW/glfw3.h>

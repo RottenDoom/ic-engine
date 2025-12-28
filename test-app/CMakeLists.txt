@@ -10,7 +10,7 @@ add_executable(app ${TEST_SOURCES})
 # Only need to add test-app local headers
 target_include_directories(app PRIVATE
     ${CMAKE_SOURCE_DIR}/test-app/src
-    ${CMAKE_SOURCE_DIR}/engine/src/
+    ${CMAKE_SOURCE_DIR}/engine/include/ # includes of the headers
 )
 
 # Compiler flags

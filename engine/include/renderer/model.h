@@ -249,7 +249,7 @@ struct Scene
         std::vector<Index> rootNodes;
 };
 
-IC_API struct Model
+struct IC_API Model
 {
         std::vector<Buffer> buffers;
         std::vector<BufferView> bufferViews;

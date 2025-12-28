@@ -1,6 +1,6 @@
-#include "gltf_loader.h"
-#include "gl_model.h"
-#include "gl_material.h"
+#include "renderer/opengl/gltf_loader.h"
+#include "renderer/opengl/gl_model.h"
+#include "renderer/opengl/gl_material.h"
 
 #include <filesystem>
 #include <string>

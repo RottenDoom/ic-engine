@@ -1,5 +1,5 @@
 #include "renderer/renderer.h"
-#include "opengl_renderer.h"
+#include "renderer/opengl/opengl_renderer.h"
 
 namespace ic
 {

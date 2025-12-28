@@ -1,4 +1,4 @@
-#include "gl_shader.h"
+#include "renderer/opengl/gl_shader.h"
 
 namespace ic
 {

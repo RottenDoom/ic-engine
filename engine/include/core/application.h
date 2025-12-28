@@ -1,8 +1,8 @@
 #pragma once
-#include "ic_api.h"
+#include "../ic_api.h"
 #include "events/application_event.h"
 #include "events/event.h"
-#include "renderer/renderer.h"
+#include "../renderer/renderer.h"
 #include "window.h"
 
 class game;
