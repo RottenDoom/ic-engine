@@ -1,5 +1,5 @@
 #pragma once
-#include "defines.h"
+#include "../defines.h"
 
 #include <string>  // [TODO] Make string class using std::vector or a custom dynamic array
 #include <vector>
@@ -10,8 +10,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
-#include <glad/glad.h>
 
 namespace ic
 {
@@ -57,8 +55,20 @@ struct Accessor
                 UNKNOWN
         } type;
 
+        enum class ComponentType : uint8_t
+        {
+                Byte,
+                UByte,
+                Short,
+                UShort,
+                Int,
+                UInt,
+                Float,
+                Double
+        };
+
         /** OpenGL specific */
-        GLenum componentType = GL_BYTE;
+        ComponentType componentType = ComponentType::UByte;
 
         std::vector<double> min;
         std::vector<double> max;

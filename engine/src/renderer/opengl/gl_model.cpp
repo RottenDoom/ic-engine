@@ -1,4 +1,5 @@
 #include "renderer/opengl/gl_model.h"
+#include <glad/glad.h>
 
 namespace ic
 {
@@ -453,20 +454,20 @@ void GLPrimitive::readAttribute(Model& model,
 
         switch (acc.componentType)
         {
-        case GL_UNSIGNED_BYTE:
+        case Accessor::ComponentType::UByte:
                 componentSize = 1;
                 break;
-        case GL_UNSIGNED_SHORT:
+        case Accessor::ComponentType::UShort:
                 componentSize = 2;
                 break;
-        case GL_UNSIGNED_INT:
+        case Accessor::ComponentType::UInt:
                 componentSize = 4;
                 break;
-        case GL_FLOAT:
+        case Accessor::ComponentType::Float:
                 componentSize = 4;
                 break;
         default:
-                IC_CORE_ERROR("Unsupported component type: {}", acc.componentType);
+                IC_CORE_ERROR("Unsupported component type: {}", (uint32_t)acc.componentType);
                 return;
         }
 
@@ -539,17 +540,18 @@ void GLPrimitive::readIndices(Model& model, Index accessorIdx, std::vector<uint3
         size_t componentSize = 0;
         switch (acc.componentType)
         {
-        case GL_UNSIGNED_BYTE:
+        case Accessor::ComponentType::UByte:
                 componentSize = 1;
                 break;
-        case GL_UNSIGNED_SHORT:
+        case Accessor::ComponentType::UShort:
                 componentSize = 2;
                 break;
-        case GL_UNSIGNED_INT:
+        case Accessor::ComponentType::UInt:
                 componentSize = 4;
                 break;
         default:
-                IC_CORE_ERROR("Invalid index component type: {}", acc.componentType);
+                /** Another hint to replace my logger */
+                // IC_CORE_ERROR("Invalid index component type: {}", acc.componentType);
                 return;
         }
 
@@ -586,15 +588,15 @@ void GLPrimitive::readIndices(Model& model, Index accessorIdx, std::vector<uint3
 
                 switch (acc.componentType)
                 {
-                case GL_UNSIGNED_BYTE:
+                case Accessor::ComponentType::UByte:
                         indexBuffer[i] = static_cast<uint32_t>(*src);
                         break;
 
-                case GL_UNSIGNED_SHORT:
+                case Accessor::ComponentType::UShort:
                         indexBuffer[i] = static_cast<uint32_t>(*reinterpret_cast<const uint16_t*>(src));
                         break;
 
-                case GL_UNSIGNED_INT:
+                case Accessor::ComponentType::UInt:
                         indexBuffer[i] = *reinterpret_cast<const uint32_t*>(src);
                         break;
                 }

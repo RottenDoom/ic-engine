@@ -1,8 +1,8 @@
 #pragma once
-#include "defines.h"
+#include "../../defines.h"
 
-#include "renderer/model.h"
-#include "renderer/asset_manager.h"
+#include "../model.h"
+#include "../asset_manager.h"
 
 #include <glad/glad.h>
 #include <fastgltf/types.hpp>

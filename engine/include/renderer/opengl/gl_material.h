@@ -1,5 +1,5 @@
 #pragma once
-#include "renderer/model.h"
+#include "../model.h"
 #include <glad/glad.h>
 
 /** Gonna make a Material system here */

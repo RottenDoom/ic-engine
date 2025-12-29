@@ -1,9 +1,9 @@
 #pragma once
-#include "defines.h"
+#include "../defines.h"
 
-#include "core/events/event.h"
-#include "core/events/key_event.h"
-#include "core/events/mouse_event.h"
+#include "../core/events/event.h"
+#include "../core/events/key_event.h"
+#include "../core/events/mouse_event.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_ENABLE_EXPERIMENTAL

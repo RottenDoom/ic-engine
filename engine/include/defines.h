@@ -21,6 +21,22 @@
 #include <utility>
 #include <vector>
 
+#if defined(_WIN32) || defined(_WIN64)
+#if defined(IC_EXPORT)
+#define IC_API __declspec(dllexport)
+#elif defined(IC_IMPORT)
+#define IC_API __declspec(dllimport)
+#else
+#define IC_API
+#endif
+#else
+#if __GNUC__ >= 4
+#define IC_API __attribute__((visibility("default")))
+#else
+#define IC_API
+#endif
+#endif
+
 #include "core/logger.h"
 
 #if defined(_WIN32) || defined(_WIN64)

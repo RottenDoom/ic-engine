@@ -4,7 +4,7 @@
 namespace ic
 {
 
-struct window_props
+struct IC_API window_props
 {
         const char* title;
         unsigned int width;

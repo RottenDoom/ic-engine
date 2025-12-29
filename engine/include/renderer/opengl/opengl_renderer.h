@@ -1,14 +1,15 @@
 #pragma once
-#include "defines.h"
 
-#include "renderer/camera.h"
+#include "../../defines.h"
+#include "../camera.h"
+
 #include "gl_shader.h"
 #include "gl_model.h"
-#include "core/events/application_event.h"
-
-#include "core/window.h"
-#include "core/events/event.h"
 #include "gltf_loader.h"
+
+#include "../../core/window.h"
+#include "../../core/events/event.h"
+#include "../../core/events/application_event.h"
 struct PointLight
 {
         glm::vec3 position;

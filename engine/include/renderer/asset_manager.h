@@ -1,5 +1,5 @@
 #pragma once
-#include "defines.h"
+#include "../defines.h"
 
 /** TODO: TONE DOWN the loadModel function call everywhere */
 

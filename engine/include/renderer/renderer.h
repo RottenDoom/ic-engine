@@ -1,5 +1,5 @@
 #pragma once
-#include "defines.h"
+#include "../defines.h"
 
 /*
  * The renderer class is nothing but a cross platformer frontend for my engine. I am writing this engine currently in

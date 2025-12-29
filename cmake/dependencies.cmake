@@ -85,13 +85,26 @@ INTERFACE
 	spdlog::spdlog
 	fastgltf
 )
+
+add_library(glad STATIC 
+	${CMAKE_SOURCE_DIR}/third-party/glad/src/glad.c
+)
+
+# TODO: maybe do something for such libraries
+target_include_directories(glad PRIVATE
+	${CMAKE_SOURCE_DIR}/third-party/glad/include 
+)
+
 set(IC_INTERNAL_HEADERS
 	${CMAKE_SOURCE_DIR}/third-party/tiny_gltf
+	${CMAKE_SOURCE_DIR}/third-party/glad/include
 	${CMAKE_SOURCE_DIR}/third-party/stb
 	${CMAKE_SOURCE_DIR}/third-party/basisu/transcoder
 	${CMAKE_SOURCE_DIR}/third-party/basisu/zstd
 )
 
 add_library(renderer_dependencies INTERFACE)
+
+target_link_libraries(renderer_dependencies INTERFACE glad)
 
 target_include_directories(renderer_dependencies INTERFACE ${IC_INTERNAL_HEADERS})

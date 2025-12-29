@@ -17,7 +17,3 @@ target_link_libraries(engine-renderer
 	renderer_dependencies
     	dependencies
 )
-
-# Same export propagation for renderer sub-target so its public classes
-# are built with dllexport when the final `engine` shared lib is created.
-target_compile_definitions(engine-renderer PRIVATE IC_EXPORT)

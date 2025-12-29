@@ -1,11 +1,3 @@
-add_library(glad STATIC 
-	${CMAKE_SOURCE_DIR}/third-party/glad/src/glad.c
-)
-
-target_include_directories(glad PRIVATE
-	${CMAKE_SOURCE_DIR}/third-party/glad/include
-)
-
 set(OPENGL_SRC
 	opengl_renderer.cpp
 	backend_opengl.cpp
@@ -25,7 +17,6 @@ target_include_directories(engine-opengl PRIVATE
 
 target_link_libraries(engine-opengl PRIVATE
 	dependencies
-	glad
 	OpenGL::GL
 )
 

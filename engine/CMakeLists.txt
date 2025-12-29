@@ -41,10 +41,10 @@ target_include_directories(engine
 )
 
 target_link_libraries(engine
-    PUBLIC
+PUBLIC
 	spdlog::spdlog
-    PRIVATE
     	dependencies
+PRIVATE
         engine-core
         engine-renderer
 )

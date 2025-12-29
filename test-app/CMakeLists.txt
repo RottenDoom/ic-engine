@@ -1,8 +1,6 @@
 # test-app/CMakeLists.txt (preferred)
 set(TEST_SOURCES
-    src/entry.cpp
-    src/game.cpp
-    src/game.h
+    src/game-test.cpp
 )
 
 add_executable(app ${TEST_SOURCES})

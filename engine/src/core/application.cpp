@@ -1,7 +1,6 @@
 #include "core/application.h"
-#include "defines.h"
 #include "core/input.h"
-#include "entry.h"
+#include "core/logger.h"
 
 #include <GLFW/glfw3.h>
 
@@ -14,12 +13,12 @@ namespace ic
 
 Application* Application::s_Instance = nullptr;
 
-Application::Application()
+Application::Application(window_props& properties)
 {
+        isRunning = true;
         ic::logger::init();
-        s_Instance = this;
 
-        m_Window   = Window::create();
+        m_Window = Window::create(properties);
         m_Window->setEventCallback(BIND_EVENT(onEvent));
 
         m_renderer = new renderer();
@@ -35,17 +34,23 @@ Application::~Application()
 
 bool Application::run()
 {
-        while (m_Running)
+        while (isRunning)
         {
                 float time      = glfwGetTime();
                 float delta     = time - m_lastFrameTime;
                 m_lastFrameTime = time;
 
-                /** TODO: not sure if it works like this  */
-                m_game->update(m_game, delta);
-                m_game->render(m_game, delta);
+                if (user_update)
+                {
+                        user_update(delta);
+                }
 
                 m_Window->onUpdate();
+
+                if (user_render)
+                {
+                        user_render();
+                }
                 m_renderer->renderFrame(delta);
         }
 
@@ -60,24 +65,44 @@ void Application::onEvent(event& e)
         m_renderer->onEvent(e);
 }
 
-bool Application::applicationCreate(game* game_inst)
-{
-        m_game = game_inst;
-
-        if (!m_game->initialize(m_game))
-        {
-                return false;
-        }
-        return true;
-}
-
 Application& Application::get()
 {
         return *s_Instance;
 }
 bool Application::onWindowClose(WindowClosedEvent& e)
 {
-        m_Running = false;
+        isRunning = false;
         return true;
 }
+
 }  // namespace ic
+
+void ic_create_application(ic::window_props* windowProperties)
+{
+        if (ic::Application::s_Instance)
+                return;
+
+        ic::Application::s_Instance = new ic::Application(*windowProperties);
+}
+
+bool ic_app_is_running(void)
+{
+        return ic::Application::get().isRunning;
+}
+
+void ic_app_set_callback(ic::AppUpdateFn update_fn, ic::AppRenderFn render_fn)
+{
+        ic::Application::get().user_update = update_fn;
+        ic::Application::get().user_render = render_fn;
+}
+
+void ic_app_run(void)
+{
+        ic::Application::get().run();
+}
+
+void ic_app_destroy(void)
+{
+        delete ic::Application::s_Instance;
+        ic::Application::s_Instance = nullptr;
+}

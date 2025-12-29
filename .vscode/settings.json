@@ -1,7 +1,7 @@
 {
 	"window.commandCenter": false,
 	"breadcrumbs.enabled": false,
-	"workbench.colorTheme": "Gruvbox Dark Soft",
+	"workbench.colorTheme": "Solarized Light",
 	"workbench.activityBar.iconClickBehavior": "toggle",
 	"editor.detectIndentation": false,
 	"editor.fontFamily": "Liberation Mono",

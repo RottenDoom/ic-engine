@@ -464,13 +464,14 @@ void GLTFLoader::loadBuffer(Model* gltf, const fastgltf::Buffer& buffer, const s
 void GLTFLoader::loadAccessor(Model* gltf, fastgltf::Accessor& accessor)
 {
         ic::Accessor acc;
-        acc.bufferView      = accessor.bufferViewIndex.has_value() ? toIndex(accessor.bufferViewIndex.value())
-                                                                   : INVALID_INDEX;
-        acc.offset          = accessor.byteOffset;
-        acc.count           = accessor.count;
-        acc.type            = convertAccessorType(accessor.type);
+        acc.bufferView = accessor.bufferViewIndex.has_value() ? toIndex(accessor.bufferViewIndex.value())
+                                                              : INVALID_INDEX;
+        acc.offset     = accessor.byteOffset;
+        acc.count      = accessor.count;
+        acc.type       = convertAccessorType(accessor.type);
 
-        acc.componentType   = toGLenum(accessor.componentType);
+        /** TODO: fix GLenum from the model */
+        // acc.componentType   = toGLenum(accessor.componentType);
         acc.normalized      = accessor.normalized;
 
         uint32_t components = getAccessorComponentCount(acc.type);

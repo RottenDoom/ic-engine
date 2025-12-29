@@ -1,16 +1,10 @@
 #pragma once
 
-#include "../ic_api.h"
-#include "memory.h"
+#include "../defines.h"
 #include <cstdlib>
 #include <stdexcept>
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
-
-namespace spdlog
-{
-class logger;
-}
 
 namespace ic
 {
@@ -37,7 +31,6 @@ public:
 };
 class IC_API logger
 {
-
 public:
         static void init();
 
@@ -94,7 +87,7 @@ private:
         {                                                                                                              \
                 ::ic::logger::getClientLogger()->critical(__VA_ARGS__);                                                \
                 ::ic::logger::handleError(fmt::format(__VA_ARGS__), true);                                             \
-        } while (0)
+        } while (0)`
 
 // error handling macros
 #define IC_ASSERT(condition, ...)                                                                                      \

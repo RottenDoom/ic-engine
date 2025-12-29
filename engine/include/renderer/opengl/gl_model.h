@@ -1,7 +1,7 @@
 #pragma once
-#include "defines.h"
+#include "../../defines.h"
 
-#include "renderer/model.h"
+#include "../model.h"
 #include "gl_shader.h"
 #include "gl_material.h"
 
