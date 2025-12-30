@@ -136,3 +136,22 @@ public:
         bool onMouseScroll(MouseScrolledEvent& e);
 };
 }  // namespace ic
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+        /**
+         * @function createCamera
+         * @category rendering
+         * @brief Create a 3D camera. 2D camera is to extended for
+         * @param ic::Camera::CameraType type - can lookat or firstperson
+         * @param float* position array of size 3
+         * @param float* orientation array of size 4 (quaternion)
+         */
+        void createCamera(ic::Camera::CameraType type, float* position, float* orientation);
+
+#ifdef __cplusplus
+}
+#endif

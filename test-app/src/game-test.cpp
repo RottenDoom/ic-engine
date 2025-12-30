@@ -13,13 +13,13 @@ struct GameState
 /** User side update and render functions */
 void update(float deltaTime) /** TODO: add user side time update functions or udata pointer */
 {
-        IC_INFO("App is running {}", deltaTime);
+        if (ic_input_key_pressed(ic::Key::G))
+        {
+                IC_INFO("G pressed");
+        }
 }
 
-void render()
-{
-        IC_INFO("App render");
-}
+void render() {}
 
 void createApplication()
 {

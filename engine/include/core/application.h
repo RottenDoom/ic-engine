@@ -8,11 +8,6 @@
 
 namespace ic
 {
-
-/* -------- User-defined callbacks -------- */
-/** TODO: add this in defines */
-typedef void(AppUpdateFn)(float dt);
-typedef void(AppRenderFn)(void);
 class IC_API Application
 {
 public:
@@ -46,17 +41,47 @@ private:
 extern "C"
 {
 #endif
-
-        // Start making the header files while also including header gauds on top
-        // This header file will contain the API to load an application. I want to load the application using a dll so
-        // we will learn that as well to learn that casey mutori is the god
-
+        /**
+         * @function ic_create_application
+         * @category app
+         * @brief Creates the ic_engine application
+         * @param ic::window_props takes in a string title, width and height
+         * @related ic_app_destroy ic_app_set_callback
+         */
         IC_API void ic_create_application(ic::window_props* windowProperties);
 
+        /**
+         * @function ic_app_is_running
+         * @category app
+         * @brief Checks if the application is running
+         * @return Returns true if application is running
+         */
         IC_API bool ic_app_is_running(void);
-        IC_API void ic_app_set_callback(ic::AppUpdateFn update_fn, ic::AppRenderFn render_fn);
+
+        /**
+         * @function ic_app_set_callback
+         * @category app
+         * @brief Sets the update and render callbacks for the user
+         * @param AppUpdateFn: user update function that takes form void update(float deltatime);
+         * @param AppRenderFn: user render function that taken form void update(void);
+         * @related ic_app_run
+         */
+        IC_API void ic_app_set_callback(AppUpdateFn update_fn, AppRenderFn render_fn);
+
+        /**
+         * @function is_app_run
+         * @category app
+         * @brief Run the application
+         * @related ic_create_application
+         */
         IC_API void ic_app_run(void);
 
+        /**
+         * @function
+         * @category app
+         * @brief Destroys the application and cleans up any resources
+         * @related ic_create_application
+         */
         IC_API void ic_app_destroy(void);
 
 #ifdef __cplusplus

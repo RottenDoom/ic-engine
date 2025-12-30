@@ -90,7 +90,7 @@ bool ic_app_is_running(void)
         return ic::Application::get().isRunning;
 }
 
-void ic_app_set_callback(ic::AppUpdateFn update_fn, ic::AppRenderFn render_fn)
+void ic_app_set_callback(AppUpdateFn update_fn, AppRenderFn render_fn)
 {
         ic::Application::get().user_update = update_fn;
         ic::Application::get().user_render = render_fn;

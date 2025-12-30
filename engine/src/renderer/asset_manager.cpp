@@ -5,16 +5,6 @@ namespace ic
 {
 AssetManager* AssetManager::s_instance = nullptr;
 
-asset::ModelHandle asset::LoadModel(const char* path)
-{
-        return AssetManager::Get()->modelManager.loadModel(path);
-}
-
-void asset::DrawModel(ModelHandle handle)
-{
-        AssetManager::Get()->modelManager.draw(handle);
-}
-
 AssetManager::AssetManager() {}
 
 AssetManager::~AssetManager() {}
@@ -39,14 +29,14 @@ void AssetManager::destroyInstance()
 
 ModelManager::ModelManager() {}
 
-asset::ModelHandle ModelManager::loadModel(const char* path)
+ModelHandle ModelManager::loadModel(const char* path)
 {
         Model* model;
         m_loaders["GLTF"]->loadModel(path,
                                      model); /** TODO: FIX check the type of the loader first before handling this  */
-        asset::ModelHandle handle = getNewHandle();
+        ModelHandle handle = getNewHandle();
 
-        if (handle == asset::INVALID_MODEL_HANDLE)
+        if (handle == INVALID_MODEL_HANDLE)
         {
                 IC_CORE_WARN("Invalid Model Handle Generated"); /** TODO: better handling of Model handles */
         }
@@ -54,7 +44,7 @@ asset::ModelHandle ModelManager::loadModel(const char* path)
         return handle;
 }
 
-void ModelManager::draw(asset::ModelHandle handle) {}
+void ModelManager::draw(ModelHandle handle) {}
 
 void ModelManager::registerLoader(ic::IModelLoader* modelLoader)
 {
@@ -77,3 +67,12 @@ void ModelManager::registerLoader(ic::IModelLoader* modelLoader)
 }
 
 }  // namespace ic
+
+/** TODO: write out these functions */
+ModelHandle loadModelFromFile(const char* path, float* translate, float* scale, float* rotation)
+{
+        return -1;
+}
+void unLoadModel(ModelHandle modelId) {}
+
+void drawModel(ModelHandle modelId) {}

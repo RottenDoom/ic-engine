@@ -218,10 +218,11 @@ bool Camera::onMouseMoved(MouseMovedEvent& e)
 
 bool Camera::onMouseScroll(MouseScrolledEvent& e)
 {
-        fovY -= e.getYOffset() * zoomSpeed;      // zoom speed
-        fovY  = glm::clamp(fovY, 10.0f, 90.0f);  // prevent extreme zoom
-        // IC_CORE_TRACE("FOV: {}", fovY);
-        fovChanged = true;
+        fovY       -= e.getYOffset() * zoomSpeed;      // zoom speed
+        fovY        = glm::clamp(fovY, 10.0f, 90.0f);  // prevent extreme zoom
+        fovChanged  = true;
         return false;
 }
 }  // namespace ic
+
+void createCamera(ic::Camera::CameraType type, float* position, float* orientation) {}

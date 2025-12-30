@@ -1,5 +1,6 @@
 #pragma once
 #include "../../defines.h"
+/** TODO: write this class so user can write his own events. */
 
 #define BIT(x) (1 << x)
 

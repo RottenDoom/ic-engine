@@ -104,6 +104,10 @@ std::ostream& operator<<(std::ostream& stream, const std::vector<T>& other)
         return stream;
 }
 
+/** User defined functions optional */
+typedef void(AppUpdateFn)(float dt);
+typedef void(AppRenderFn)(void);
+
 #if defined(_MSC_VER)
 #define IC_INLINE __forceinline
 #define IC_NOINLINE __declspec(noinline)

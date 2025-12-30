@@ -1,6 +1,7 @@
 #engine/src/core/CMakeLists.txt
 set(CORE_SRC
     application.cpp
+    input.cpp
     logger.cpp
     platform/Win32/input_win32.cpp
     platform/Win32/window_win32.cpp
