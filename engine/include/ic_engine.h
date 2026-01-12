@@ -9,6 +9,7 @@
 #include "core/application.h"
 #include "core/window.h"
 #include "core/input.h"
+#include "core/filesystem.h"
 #include "core/mousecodes.h"
 #include "core/keycodes.h"
 #include "core/events/event.h"

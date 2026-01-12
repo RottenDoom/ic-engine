@@ -1,10 +1,13 @@
 #engine/src/core/CMakeLists.txt
 set(CORE_SRC
     application.cpp
+    filesystem.cpp
     input.cpp
     logger.cpp
-    platform/Win32/input_win32.cpp
-    platform/Win32/window_win32.cpp
+    allocator.cpp
+    platform/win32/input_win32.cpp
+    platform/win32/window_win32.cpp
+    platform/win32/filesystem_win32.cpp
 )
 
 add_library(engine-core OBJECT ${CORE_SRC})

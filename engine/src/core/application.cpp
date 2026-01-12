@@ -1,6 +1,7 @@
 #include "core/application.h"
 #include "core/input.h"
 #include "core/logger.h"
+#include "core/filesystem.h"
 
 #include <GLFW/glfw3.h>
 
@@ -23,11 +24,13 @@ Application::Application(window_props& properties)
 
         m_renderer = new renderer();
         m_renderer->init(m_Window.get());
+        fs_init();
         IC_CORE_INFO("Application Initialized!");
 }
 
 Application::~Application()
 {
+        fs_deinit();
         m_renderer->cleanUp();
         delete m_renderer;
 }

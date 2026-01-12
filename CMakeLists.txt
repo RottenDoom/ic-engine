@@ -45,7 +45,7 @@ else()
 endif()
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
-
+option(IC_BUILD_SAMPLES "Build IC engine samples" ON)
 
 configure_file(
     ${CMAKE_SOURCE_DIR}/cmake/config.h.in
@@ -57,6 +57,11 @@ include(cmake/dependencies.cmake)
 
 ## main engine library
 add_subdirectory(engine)
+
+if (IC_BUILD_SAMPLES)
+	message(STATUS "Building IC Engine Samples!")
+	add_subdirectory(samples)
+endif()
 
 ## sample app
 add_subdirectory(test-app)

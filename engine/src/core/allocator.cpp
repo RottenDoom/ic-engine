@@ -1,0 +1,266 @@
+#include "core/allocators.h"
+
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+namespace ic
+{
+static inline uintptr_t align_forward(uintptr_t ptr, size_t alignment)
+{
+        return (ptr + (alignment - 1)) & ~(alignment - 1);
+}
+
+void* ic_allocate(allocator_t* allocator, size_t size, size_t alignment, memory_tag tag)
+{
+        if (!allocator || !allocator->alloc || size == 0)
+                return nullptr;
+
+        return allocator->alloc(allocator, size, alignment, tag);
+}
+
+void ic_free(allocator_t* allocator, void* ptr)
+{
+        if (!allocator || !ptr)
+                return;
+
+        if (allocator->flags & IC_ALLOC_CAN_FREE && allocator->free)
+        {
+                allocator->free(allocator, ptr);
+        }
+}
+
+void ic_allocator_destroy(allocator_t* allocator)
+{
+        if (!allocator)
+                return;
+
+        if (allocator->destroy)
+        {
+                allocator->destroy(allocator);
+        }
+
+        allocator->state   = nullptr;
+        allocator->alloc   = nullptr;
+        allocator->free    = nullptr;
+        allocator->destroy = nullptr;
+}
+
+void ic_allocator_dump(allocator_t* allocator)
+{
+#if defined(_DEBUG)
+        if (!allocator)
+                return;
+
+        if (!allocator->dump)
+        {
+                allocator->dump(allocator);
+        }
+#endif
+}
+
+allocator_t* create_bump_allocator(size_t size)
+{
+        bump_allocator_t* bump = (bump_allocator_t*)malloc(sizeof(bump_allocator_t));
+        void* memory           = malloc(size);
+        bump_allocator_init(bump, memory, size);
+
+        allocator_t* allocator = (allocator_t*)malloc(sizeof(allocator_t));
+        allocator->state       = bump;
+        allocator->alloc       = ic_allocate;
+        allocator->free        = ic_free;
+        allocator->destroy     = ic_allocator_destroy;
+        allocator->dump        = ic_allocator_dump;
+        allocator->flags       = 0;
+
+        return allocator;
+}
+
+void bump_allocator_init(bump_allocator_t* bump, void* memory, size_t size)
+{
+        if (!bump || !memory || size == 0)
+                return;
+
+        bump->memory   = (uint8_t*)memory;
+        bump->capacity = size;
+        bump->offset   = 0;
+
+#if defined(_DEBUG)
+        bump->allocation_count = 0;
+        bump->generations      = 0;
+        bump->high_water_mark  = 0;
+#endif
+}
+
+void* bump_alloc_tagged(bump_allocator_t* bump, size_t size, size_t alignment, memory_tag tag)
+{
+        if (size == 0 || alignment == 0)
+                return nullptr;
+
+        uintptr_t base           = (uintptr_t)bump->memory;
+        uintptr_t current        = base + bump->offset;
+
+        uintptr_t header_address = align_forward(current, alignment);
+        uintptr_t user_address   = header_address + sizeof(memory_header_t);
+        uintptr_t end_address    = user_address + size;
+
+        if (end_address > base + bump->capacity)
+                return nullptr;
+
+        memory_header_t* header = (memory_header_t*)header_address;
+        header->size            = size;
+        header->tag             = tag;
+
+        bump->offset            = (size_t)(end_address - base);
+
+#if defined(_DEBUG)
+        header->id     = ++bump->allocation_count;
+        header->canary = IC_CANARY;
+
+        if (bump->offset > bump->high_water_mark)
+                bump->high_water_mark = bump->offset;
+
+        memset((void*)user_address, 0xCD, size);
+        // printf("[header: %d, data: %d, offset: %d]\n", header_address, user_address, bump->offset);
+#endif
+
+        return (void*)user_address;
+}
+
+void bump_allocator_clear(bump_allocator_t* bump)
+{
+#if defined(_DEBUG)
+        // set the memory to zero since we cleared the memory
+        bump->generations++;
+        memset(bump->memory, 0, bump->capacity);
+#endif
+
+        bump->offset = 0;
+}
+
+bump_mark_t bump_mark_push(bump_allocator_t* bump)
+{
+        bump_mark_t mark;
+        mark.offset = bump->offset;
+
+#if defined(_DEBUG)
+        mark.generations = bump->generations;
+#endif
+
+        return mark;
+}
+
+void bump_mark_pop(bump_allocator_t* bump, bump_mark_t mark)
+{
+#if defined(_DEBUG)
+        if (mark.generations != bump->generations)
+        {
+                IC_CORE_ERROR("Invalid bump mark (generation mismatch)");
+                return;
+        }
+
+        if (mark.offset > bump->offset)
+        {
+                IC_CORE_ERROR("Invalid bump mark (offset corruption)");
+                return;
+        }
+
+        memset(bump->memory + mark.offset, 0xDD, bump->offset - mark.offset);
+#endif
+
+        bump->offset = mark.offset;
+}
+
+#if defined(_DEBUG)
+
+/** Note do not call this function after clearing the allocator */
+void dump_allocations(const bump_allocator_t* bump)
+{
+        size_t offset = 0;
+
+        IC_CORE_INFO("Allocator Dump:");
+
+        while (offset < bump->offset)
+        {
+                if (offset + sizeof(memory_header_t) > bump->offset)
+                {
+                        IC_CORE_ERROR("    Truncated header at offset {}", offset);
+                        return;
+                }
+
+                const memory_header_t* h = (const memory_header_t*)(bump->memory + offset);
+
+                /** Check if memory is corrupted */
+                if (h->canary != IC_CANARY)
+                {
+                        IC_CORE_ERROR("    Canary corrupted at offset {}", offset);
+                        return;
+                }
+
+                size_t block_size = sizeof(memory_header_t) + h->size;
+
+                if (offset + block_size > bump->offset)
+                {
+                        IC_CORE_ERROR("    Allocation overruns arena at offset {}", offset);
+                        return;
+                }
+
+                IC_CORE_INFO("    ID: {} Size: {} Tag: {}", h->id, h->size, h->tag);
+
+                /** TODO: Block sizes and alignment */
+                offset += sizeof(memory_header_t) + h->size;
+        }
+
+        IC_CORE_INFO("    High-water mark: {} bytes", bump->high_water_mark);
+}
+
+void test_bump_allocator()
+{
+        bump_allocator_t* bump = (bump_allocator_t*)malloc(sizeof(bump_allocator_t));
+        memset(bump, 0, sizeof(bump));
+
+        const size_t allocation_size = 1024;
+        void* memory                 = malloc(allocation_size);
+        bump_allocator_init(bump, memory, allocation_size);
+
+        const size_t filesize = 64;
+        char* f               = (char*)bump_alloc_tagged(bump, filesize, alignof(char), IC_TAG_UNKNOWN);
+        strcpy(f, "Hello world bitch!");
+
+        /* ---- long-lived allocation ---- */
+        char* persistent = (char*)bump_alloc_tagged(bump, 64, alignof(char), IC_TAG_UNKNOWN);
+        strcpy(persistent, "I survive the mark");
+
+        /* ---- temporary scope ---- */
+        bump_mark_t mark = bump_mark_push(bump);
+
+        char* temp1      = (char*)bump_alloc_tagged(bump, 32, alignof(char), IC_TAG_UNKNOWN);
+        char* temp2      = (char*)bump_alloc_tagged(bump, 32, alignof(char), IC_TAG_UNKNOWN);
+
+        strcpy(temp1, "temp buffer 1");
+        strcpy(temp2, "temp buffer 2");
+
+        printf("%s\n", temp1);
+        printf("%s\n", temp2);
+
+        dump_allocations(bump);
+
+        /* ---- rewind allocator ---- */
+        bump_mark_pop(bump, mark);
+
+        /* temp1 and temp2 are INVALID here */
+
+        printf("%s\n", persistent); /* still valid */
+
+        printf("%s\n", f);
+        dump_allocations(bump);
+
+        bump_allocator_clear(bump);
+
+        free(memory);
+        free(bump);
+}
+
+#endif
+
+}  // namespace ic
