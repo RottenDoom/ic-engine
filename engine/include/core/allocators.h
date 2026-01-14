@@ -5,7 +5,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// TODO: put these defines in one file
 #define IC_CANARY 0xDEADC0DE
+#if defined(_DEBUG)
+#define ic_malloc(sz) debug_malloc(sz, __FILE__, __LINE__)
+#define ic_free(p) debug_free(p)
+#else
+#define ic_malloc(sz) malloc(sz)
+#define ic_free(p) free(p)
+#endif
 
 namespace ic
 {
@@ -13,6 +21,25 @@ namespace ic
 extern "C"
 {
 #endif
+
+        /** ---------------- HEAP ALLOCATOR -------------- */
+        typedef struct heap_header_t
+        {
+                size_t size;
+                const char* file;
+                uint32_t line;
+                uint32_t id;
+
+                struct heap_header_t* next;
+                struct heap_header_t* prev;
+        } heap_header_t;
+
+        void* debug_malloc(size_t size, const char* file, uint32_t line);
+        void debug_free(void* ptr);
+        void heap_dump_leaks(void);
+
+        /** ---------------------------------------------- */
+
         typedef uint32_t memory_tag;
 
         enum
@@ -29,33 +56,6 @@ extern "C"
                 IC_ALLOC_CAN_REALLOC = 1 << 1,
                 IC_ALLOC_THREAD_SAFE = 1 << 2
         } ic_allocator_flags;
-
-        /** @brief Allocator function pointer to allocate a allocator state */
-        typedef void* (*ic_alloc_fn)(struct Allocator* allocator, size_t size, size_t alignment, memory_tag tag);
-        /** @brief Allocator free function pointer that frees the memory from allocator given to a pointer */
-        typedef void (*ic_free_fn)(struct Allocator* allocator, void* ptr);
-        /** @brief Destroy function pointer to destroy the allocator of a function */
-        typedef void (*ic_destroy_fn)(struct Allocator* allocator);
-
-        /** @brief Optional Dump function for debug */
-        typedef void (*ic_dump)(struct Allocator* state);
-
-        /** @interface */
-        /** Generic Allocator type */
-        typedef struct Allocator
-        {
-                void* state;
-                ic_alloc_fn alloc;
-                ic_free_fn free;
-                ic_destroy_fn destroy;
-                ic_dump dump;
-                uint32_t flags;
-        } allocator_t;
-
-        void* ic_allocate(allocator_t* allocator, size_t size, size_t alignment, memory_tag tag = IC_TAG_UNKNOWN);
-        void ic_free(allocator_t* allocator, void* ptr);
-        void ic_allocator_destroy(allocator_t* allocator);
-        /** end inteface */
 
         /** Memory struct header (24 bytes) */
         typedef struct _MemoryHeader

@@ -64,9 +64,9 @@ bool OpenGLRenderer::init()
                 return false;
         }
 
-        /** TODO: create a better logger using fmt maybe for handling everytype of string */
-        std::cout << "GL Version: " << glGetString(GL_VERSION) << std::endl;
-        // IC_CORE_INFO("GL VERSION: {}", static_cast<const unsigned char*>(glGetString(GL_VERSION)));
+        IC_CORE_INFO("Vendor:   {}", (const char*)glGetString(GL_VENDOR));
+        IC_CORE_INFO("Renderer: {}", (const char*)glGetString(GL_RENDERER));
+        IC_CORE_INFO("Version:  {}", (const char*)glGetString(GL_VERSION));
 
 #if defined(DEBUG) || defined(_DEBUG)
         int flags;

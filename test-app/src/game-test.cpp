@@ -37,19 +37,15 @@ int main(int argc, char* argv[])
 
         ic_app_set_callback(update, render);
 
-        ic::test_bump_allocator();
+        // ic::test_bump_allocator();
 
         /** TODO: Remove all this  */
         /** This is an example usage of FileSystem API in ic_engine library */
         const char* user = IC_fs_getuserdir();
         const char* base = IC_fs_getbasedir();
 
-        // Print system directories
-        IC_TRACE("Base directory: {}", user);
-        IC_TRACE("User directory: {}", base);
-
         // Mount game directories
-        IC_fs_mount("/assets", "/game_data/assets", true);
+        IC_fs_mount("/game_data/assets", "/assets", true);
         IC_fs_mount("/config", "/config", true);
 
         // Check if a file exists

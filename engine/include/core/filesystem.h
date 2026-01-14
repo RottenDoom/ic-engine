@@ -19,6 +19,7 @@ namespace ic
 
 typedef struct File File;
 
+/** Mount type only contains a path for now can be later used for archiving. */
 typedef struct Mount Mount;
 
 // File types
@@ -31,29 +32,50 @@ typedef enum
         FS_UNKNOWN
 } FSFileType;
 
+/** Filesystem struct for holding mounts and standard paths for a FS */
 typedef struct FS_Info FS_Info;
+
+/** File struct for file handles and lifetimes */
 typedef struct File File;
 
 bool fs_init(void);
 void fs_deinit(void);
 
+/** Mount a path onto a physical path on a drive */
 bool fs_mount(const char* virtual_path, const char* physical_path);
 
 /** Returns the directory seporator for a filesystem */
 const char* fs_getDirSeperator(void);
 const char* fs_getWriteDirectory(void);
-void fs_setWriteDirectory(const char* dir);
-bool fs_addToSearchPath(const char* newDir, bool appendToPath);
+void fs_setWriteDirectory(char* dir);
+
+/** @brief adds a directory to a search path. The directory should be normalized and full. if append is true we add it
+ * to the last of search paths else at the start
+ * @note newDir should be a full path to the directory. Use fs base or user or root to access some directories. */
+bool fs_addToSearchPath(char* newDir, bool appendToPath);
 bool fs_removeFromSearchPath(const char* rmDir);
 char** fs_getSearchPath(void);
 
 bool fs_mkdir(const char* dirName);
 bool fs_rmdir(const char* dirName);
+
+/** Returns joined path using a relative path and a full path, checks if that path exists. If yes returns true.
+ * Equivalent to cd command */
+bool fs_joinPath(const char* relPath, const char* fullpath, const char* out);
 bool fs_delete(const char* filename);
+
+/** Enumerate files in a directory. dir should be a full path */
 char** fs_enumerateFiles(const char* dir);
+
+/** Returns full path of a file from the search paths */
 char* fs_getfullpath(const char* filename);
-bool fs_exists(const char* fname, const char* relative_path);
-bool fs_isDirectory(const char* fname);
+
+/** Check if a file exists in the search paths*/
+bool fs_exists(char* relative_path);
+
+/** Check if a file exists. filepath should be a normalized full path to the file */
+bool fs_fileExists(const char* filepath);
+bool fs_isDirectory(const char* dir);
 uint64_t fs_getLastModificationTime(const char* filename);
 
 File* fs_openRead(const char* filename);

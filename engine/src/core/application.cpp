@@ -107,5 +107,8 @@ void ic_app_run(void)
 void ic_app_destroy(void)
 {
         delete ic::Application::s_Instance;
+#if defined(_DEBUG)
+        ic::heap_dump_leaks();
+#endif
         ic::Application::s_Instance = nullptr;
 }

@@ -6,74 +6,71 @@
 
 namespace ic
 {
+static heap_header_t* g_heap_head = nullptr;
+static uint64_t g_alloc_id        = 0;
+
+void* debug_malloc(size_t size, const char* file, uint32_t line)
+{
+        size_t total     = sizeof(heap_header_t) + size;
+        heap_header_t* h = (heap_header_t*)malloc(total);
+
+        if (!h)
+                return nullptr;
+        h->size = size;
+        h->file = file;
+        h->line = line;
+
+        h->id   = ++g_alloc_id;
+
+        h->prev = nullptr;
+        h->next = g_heap_head;
+
+        if (g_heap_head)
+                g_heap_head->prev = h;
+        g_heap_head = h;
+
+        return (void*)(h + 1);
+}
+
+void debug_free(void* ptr)
+{
+        if (!ptr)
+                return;
+
+        heap_header_t* h = ((heap_header_t*)ptr) - 1;
+
+        if (h->prev)
+                h->prev->next = h->next;
+        if (h->next)
+                h->next->prev = h->prev;
+        if (g_heap_head == h)
+                g_heap_head = h->next;
+
+        free(h);
+}
+
+void heap_dump_leaks(void)
+{
+        heap_header_t* h = g_heap_head;
+
+        if (!h)
+        {
+                IC_CORE_INFO("No heap leaks detected");
+                return;
+        }
+
+        IC_CORE_ERROR("Heap leaks detected:");
+
+        while (h)
+        {
+                IC_CORE_ERROR("  Leak ID={} Size={} bytes at {}:{}", h->id, h->size, h->file, h->line);
+                h = h->next;
+        }
+}
+
 static inline uintptr_t align_forward(uintptr_t ptr, size_t alignment)
 {
         return (ptr + (alignment - 1)) & ~(alignment - 1);
-}
-
-void* ic_allocate(allocator_t* allocator, size_t size, size_t alignment, memory_tag tag)
-{
-        if (!allocator || !allocator->alloc || size == 0)
-                return nullptr;
-
-        return allocator->alloc(allocator, size, alignment, tag);
-}
-
-void ic_free(allocator_t* allocator, void* ptr)
-{
-        if (!allocator || !ptr)
-                return;
-
-        if (allocator->flags & IC_ALLOC_CAN_FREE && allocator->free)
-        {
-                allocator->free(allocator, ptr);
-        }
-}
-
-void ic_allocator_destroy(allocator_t* allocator)
-{
-        if (!allocator)
-                return;
-
-        if (allocator->destroy)
-        {
-                allocator->destroy(allocator);
-        }
-
-        allocator->state   = nullptr;
-        allocator->alloc   = nullptr;
-        allocator->free    = nullptr;
-        allocator->destroy = nullptr;
-}
-
-void ic_allocator_dump(allocator_t* allocator)
-{
-#if defined(_DEBUG)
-        if (!allocator)
-                return;
-
-        if (!allocator->dump)
-        {
-                allocator->dump(allocator);
-        }
-#endif
-}
-
-allocator_t* create_bump_allocator(size_t size)
-{
-        bump_allocator_t* bump = (bump_allocator_t*)malloc(sizeof(bump_allocator_t));
-        void* memory           = malloc(size);
-        bump_allocator_init(bump, memory, size);
-
-        allocator_t* allocator = (allocator_t*)malloc(sizeof(allocator_t));
-        allocator->state       = bump;
-        allocator->alloc       = ic_allocate;
-        allocator->free        = ic_free;
-        allocator->destroy     = ic_allocator_destroy;
-        allocator->dump        = ic_allocator_dump;
-        allocator->flags       = 0;
-
-        return allocator;
 }
 
 void bump_allocator_init(bump_allocator_t* bump, void* memory, size_t size)

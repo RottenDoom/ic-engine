@@ -21,14 +21,14 @@ char* __platformCalcBaseDir()
         DWORD length;
 
         /* First attempt with MAX_PATH */
-        buffer = (char*)malloc(bufSize);  // TODO: need allocator here
+        buffer = (char*)ic_malloc(bufSize);  // TODO: need allocator here
         if (!buffer)
                 return NULL;
         /** TODO: the while loop bs */
         length = GetModuleFileNameA(NULL, buffer, FS_MAX_PATH);
         if (length == 0)
         {
-                free(buffer);
+                ic_free(buffer);
                 DWORD err = GetLastError();
                 if (err != 0L)
                 {
@@ -40,11 +40,12 @@ char* __platformCalcBaseDir()
         /* If buffer was too small, length will be >= bufSize */
         while (length >= bufSize - 1)
         {
+                // TODO: check how to copy memory and check how to fix this.
                 bufSize         *= 2;                                /* double the buffer size */
                 char* newBuffer  = (char*)realloc(buffer, bufSize);  // need the allocator here
                 if (!newBuffer)
                 {
-                        free(buffer);
+                        ic_free(buffer);
                         return NULL;
                 }
                 buffer = newBuffer;
@@ -76,7 +77,7 @@ char* __platformCalcUserDir()
                 int required = WideCharToMultiByte(CP_ACP, 0, widePath, -1, NULL, 0, NULL, NULL);
                 if (required > 0)
                 {
-                        char* path = (char*)malloc(required + 1); /* +1 for extra '\' */
+                        char* path = (char*)ic_malloc(required + 1); /* +1 for extra '\' */
                         if (path)
                         {
                                 WideCharToMultiByte(CP_ACP, 0, widePath, -1, path, required, NULL, NULL);
@@ -97,7 +98,7 @@ char* __platformCalcUserDir()
         if (env)
         {
                 size_t len = strlen(env);
-                char* path = (char*)malloc(len + 2);
+                char* path = (char*)ic_malloc(len + 2);
                 if (path)
                 {
                         strcpy(path, env);

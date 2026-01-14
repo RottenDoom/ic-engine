@@ -17,7 +17,9 @@ namespace ic
 
 struct Mount
 {
-        char* path;  // relative path
+        char* virtual_path;   // virtual standard path
+        char* physical_path;  // physical path mapped with the virtual path
+        bool is_archive;      // check if its an archive. TODO: not in use right now.
 };
 
 struct File
@@ -36,8 +38,8 @@ struct FS_Info
         char* base_dir;
         char* user_dir;
         char* root_dir;
-        char** search_paths;  // search paths for the relative path
         char** mount_points;
+        char** search_paths;  // search paths for the relative path
         size_t search_path_count;
 };
 
@@ -62,23 +64,23 @@ static bool is_valid_path(const char* norm_path)
         return true;
 }
 
-static char* normalize(bump_allocator_t* allocator, const char* path)
+static void normalize(char* path)
 {
-        size_t len = strlen(path);
-        char* res  = (char*)bump_alloc_tagged(allocator, len, sizeof(char), IC_TAG_FILESYSTEM);  // Using generic
-        if (!res)
-                return NULL;
+        if (!path)
+                return;
 
-        char* dst          = res;
-        const char* src    = path;
+        char* dst          = path;
+        char* src          = path;
         int last_was_slash = 0;
 
         while (*src)
         {
                 char c = *src++;
+                // Convert backslashes to forward slashes
                 if (c == '\\')
                         c = '/';
 
+                // Skip consecutive slashes
                 if (c == '/')
                 {
                         if (!last_was_slash)
@@ -95,22 +97,21 @@ static char* normalize(bump_allocator_t* allocator, const char* path)
         }
         *dst = '\0';
 
-        // Remove trailing / if present (except for root "/")
-        len = strlen(res);
-        if (len > 1 && res[len - 1] == '/')
+        // Remove trailing slash (except for root "/")
+        size_t len = strlen(path);
+        if (len > 1 && path[len - 1] == '/')
         {
-                res[len - 1] = '\0';
+                path[len - 1] = '\0';
         }
-
-        return res;
 }
 
+/** Returns a + b */
 static char* join_path(bump_allocator_t* allocator, const char* a, const char* b)
 {
         size_t len_a = strlen(a);
         size_t len_b = strlen(b);
         size_t extra = (len_a > 0 && a[len_a - 1] != '/') ? 1 : 0;
-        char* res    = (char*)malloc(len_a + extra + len_b + 1);  // TODO:
+        char* res    = (char*)ic_malloc(len_a + extra + len_b + 1);
         if (!res)
                 return NULL;
 
@@ -121,26 +122,44 @@ static char* join_path(bump_allocator_t* allocator, const char* a, const char* b
         return res;
 }
 
+static bool is_absolute_path(const char* path)
+{
+        // Unix/Linux: starts with '/'
+        if (path[0] == '/')
+                return true;
+
+        // Windows: starts with drive letter like "C:\"
+        if (isalpha(path[0]) && path[1] == ':')
+                return true;
+
+        return false;  // relative
+}
+
 bool fs_init(void)
 {
-        // use global filesystem to control everything
+        // Use global filesystem to control everything
         if (g_filesystem)
         {
                 IC_CORE_WARN("Filesystem already exists");
                 return false;
         }
 
-        g_filesystem = (FS_Info*)malloc(sizeof(FS_Info));
+        g_filesystem = (FS_Info*)ic_malloc(sizeof(FS_Info));
         memset(g_filesystem, 0, sizeof(FS_Info));
 
         // Initialize allocation memory for the filesystem
-        void* fs_memory         = malloc(FS_ALLOCATION_SIZE);
-        g_filesystem->allocator = (bump_allocator_t*)malloc(sizeof(bump_allocator_t));
+        void* fs_memory         = ic_malloc(FS_ALLOCATION_SIZE);
+        g_filesystem->allocator = (bump_allocator_t*)ic_malloc(sizeof(bump_allocator_t));
         bump_allocator_init(g_filesystem->allocator, fs_memory, FS_ALLOCATION_SIZE);
 
-        // Initialize the home and user directories
-        char* home             = normalize(g_filesystem->allocator, __platformCalcBaseDir());
-        char* user             = normalize(g_filesystem->allocator, __platformCalcUserDir());
+        // Get and normalize platform directories
+        char* home = __platformCalcBaseDir();
+        char* user = __platformCalcUserDir();
+
+        normalize(home);  // Normalize in-place
+        normalize(user);  // Normalize in-place
+
+        // Copy to bump allocator
         size_t home_len        = strlen(home) + 1;
         size_t user_len        = strlen(user) + 1;
 
@@ -150,6 +169,10 @@ bool fs_init(void)
         memcpy(g_filesystem->base_dir, home, home_len);
         memcpy(g_filesystem->user_dir, user, user_len);
 
+        // free the platform directory strings
+        ic_free(home);
+        ic_free(user);
+
         // Initialize the search paths
         g_filesystem->search_path_count = 0;
         g_filesystem->search_paths      = (char**)bump_alloc_tagged(g_filesystem->allocator,
@@ -157,7 +180,7 @@ bool fs_init(void)
                                                                alignof(char*),
                                                                IC_TAG_FILESYSTEM);
 
-        // Add user directory to search paths
+        // Add base directory to search paths
         fs_addToSearchPath(g_filesystem->base_dir, false);
 
         IC_CORE_INFO("Initialized filesystem with {} MB allocator", FS_ALLOCATION_SIZE / (1024 * 1024));
@@ -177,86 +200,76 @@ void fs_deinit(void)
 
         bump_allocator_clear(g_filesystem->allocator);
 
-        free(g_filesystem->allocator->memory);
-        free(g_filesystem->allocator);
-        free(g_filesystem);
+        ic_free(g_filesystem->allocator->memory);
+        ic_free(g_filesystem->allocator);
+        ic_free(g_filesystem);
 
         g_filesystem = nullptr;
 }
 
-bool fs_mount(const char* path, const char* mountPoint)
+bool fs_mount(const char* physical_path, const char* virtual_path)
 {
-        if (!path || !mountPoint)
+        if (!g_filesystem || !physical_path || !virtual_path)
                 return false;
+
+        if (!is_valid_path(physical_path) || !is_valid_path(virtual_path))
+                return false;
+
         if (g_filesystem->mount_count >= FS_MAX_MOUNTS)
         {
-                IC_CORE_WARN("Cannot Mount more Directories!");
+                IC_CORE_WARN("No more mount points left");
                 return false;
         }
 
-        Mount* mnt            = &g_filesystem->mounts[g_filesystem->mount_count++];
+        // since physical_path can be a full or relative path we have to resolve it
+        char* resolved_physical;
 
-        bump_mark_t temp_mark = bump_mark_push(g_filesystem->allocator);
-
-        /** Crate a new normalized string */
-        char* norm_path = normalize(g_filesystem->allocator, path);
-        if (!norm_path)
+        if (is_absolute_path(physical_path))
         {
-                bump_mark_pop(g_filesystem->allocator, temp_mark);
-                IC_CORE_ERROR("Failed to normalize path!");
-                return false;
+                resolved_physical = (char*)ic_malloc(strlen(physical_path) + 1);
+                strcpy(resolved_physical, physical_path);
+                normalize(resolved_physical);
+                if (!resolved_physical)
+                {
+                        IC_CORE_ERROR("Could not resolve physical path");
+                        ic_free(resolved_physical);
+                        return false;
+                }
         }
-
-        // Validate path format
-        if (norm_path[0] != '/' || !is_valid_path(norm_path + 1))
+        else
         {
-                bump_mark_pop(g_filesystem->allocator, temp_mark);
-                IC_CORE_ERROR("Invalid mount path: {}", path);
-                return false;
+                size_t len        = strlen(g_filesystem->base_dir) + strlen(physical_path) + 2;
+                resolved_physical = (char*)ic_malloc(len);
+                snprintf(resolved_physical, len, "%s/%s", g_filesystem->base_dir, physical_path);
+                normalize(resolved_physical);
+
+                if (!resolved_physical)
+                {
+                        IC_CORE_ERROR("Could not resolve physical path");
+                        ic_free(resolved_physical);
+                        return false;
+                }
         }
 
-        char* sub_path = norm_path + 1;
+        Mount* mnt        = &g_filesystem->mounts[g_filesystem->mount_count];
 
-        // Normalize the physical mount point (temporary)
-        char* norm_base = normalize(g_filesystem->allocator, mountPoint);
-        if (!norm_base)
+        mnt->virtual_path = (char*)
+            bump_alloc_tagged(g_filesystem->allocator, strlen(virtual_path) + 1, alignof(char), IC_TAG_FILESYSTEM);
+        mnt->physical_path = (char*)
+            bump_alloc_tagged(g_filesystem->allocator, strlen(resolved_physical) + 1, alignof(char), IC_TAG_FILESYSTEM);
+
+        strcpy(mnt->virtual_path, virtual_path);
+        strcpy(mnt->physical_path, resolved_physical);
+
+        if (!mnt->virtual_path || !mnt->physical_path)
         {
-                bump_mark_pop(g_filesystem->allocator, temp_mark);
-                IC_CORE_ERROR("Failed to normalize mount point: {}", mountPoint);
+                IC_CORE_ERROR("Could not mount the virtual path");
+                ic_free(resolved_physical);
                 return false;
         }
 
-        // Join paths (temporary)
-        char* full_path = join_path(g_filesystem->allocator, norm_base, sub_path);
-        if (!full_path)
-        {
-                bump_mark_pop(g_filesystem->allocator, temp_mark);
-                IC_CORE_ERROR("Failed to join paths");
-                return false;
-        }
-
-        // Now allocate permanent copies AFTER we know everything is valid
-        // Pop the work mark first
-        bump_mark_pop(g_filesystem->allocator, temp_mark);
-
-        // Allocate permanent mount path
-        size_t path_len = strlen(norm_path) + 1;
-        mnt->path       = (char*)bump_alloc_tagged(g_filesystem->allocator, path_len, 1, IC_TAG_FILESYSTEM);
-
-        if (!mnt->path)
-        {
-                IC_CORE_ERROR("Failed to allocate permanent mount path");
-                return false;
-        }
-
-        strcpy(mnt->path, norm_path);
-
-        /** Will this assert go here? */
-        IC_CORE_ASSERT(fs_addToSearchPath(full_path, true), "Failed to add to the search paths");
-
-        g_filesystem->mount_count++;
-        IC_CORE_INFO("Mounted directory {} to search path {}.", mnt->path, mountPoint);
-
+        ic_free(resolved_physical);
+        IC_CORE_INFO("Mounted virtual path '{}' as physical path '{}'", mnt->virtual_path, mnt->physical_path);
         return true;
 }
 
@@ -277,9 +290,9 @@ const char* fs_getWriteDirectory(void)
         return g_filesystem->root_dir; /** TODO set and get write dir */
 }
 
-void fs_setWriteDirectory(const char* dir) {}
+void fs_setWriteDirectory(char* dir) {}
 
-bool fs_addToSearchPath(const char* newDir, bool appendToPath)
+bool fs_addToSearchPath(char* newDir, bool appendToPath)
 {
         if (!g_filesystem || !newDir)
                 return false;
@@ -287,7 +300,7 @@ bool fs_addToSearchPath(const char* newDir, bool appendToPath)
         if (g_filesystem->search_path_count >= FS_MAX_MOUNTS)
                 return false;
 
-        newDir          = normalize(g_filesystem->allocator, newDir);
+        normalize(newDir);
 
         size_t dirlen   = strlen(newDir) + 1;
         char* searchDir = (char*)bump_alloc_tagged(g_filesystem->allocator, dirlen, 1, IC_TAG_FILESYSTEM);
@@ -419,36 +432,61 @@ char** fs_enumerateFiles(const char* dir)
 }
 
 /** test which one to chose from */
-bool fs_exists(const char* fname, const char* relative_path)
+bool fs_exists(char* relative_path)
 {
-        char* norm_rel = normalize(g_filesystem->allocator, relative_path);
-        if (!norm_rel || norm_rel[0] == '/' || !is_valid_path(norm_rel))
+        normalize(relative_path);
+        if (!relative_path || relative_path[0] == '/' || !is_valid_path(relative_path))
         {
-                free(norm_rel);  // TD: memory allocator
                 return false;
         }
 
         for (int i = 0; i < g_filesystem->mount_count; i++)
         {
-                char* full = join_path(g_filesystem->allocator, g_filesystem->search_paths[i], norm_rel);
+                char* full = join_path(g_filesystem->allocator, g_filesystem->search_paths[i], relative_path);
                 if (full)
                 {
                         if (!__platformFileExists(full))
                         {
-                                free(full);
-                                free(norm_rel);
+                                ic_free(full);
                                 return true;
                         }
-                        free(full);
+                        ic_free(full);
                 }
         }
-        free(norm_rel);
         return false;
 }
 
-bool fs_isDirectory(const char* fname)
+bool fs_fileExists(const char* filepath)
 {
-        return __platformIsDirectory(fname);
+        if (!__platformFileExists(filepath))
+        {
+                IC_CORE_WARN("File path does not exist");
+                return false;
+        }
+        return true;
+}
+
+bool fs_isDirectory(const char* dir)
+{
+        return __platformIsDirectory(dir);
+}
+
+bool fs_joinPath(const char* relPath, const char* fullpath, const char* out)
+{
+        if (!relPath || !fullpath || g_filesystem)
+                return false;
+
+        out = nullptr;  // just making sure
+        out = join_path(g_filesystem->allocator, fullpath, relPath);
+
+        if (!fs_isDirectory(out))
+        {
+                IC_CORE_WARN("The directory {} does not exist cant join", out);
+                ic_free((void*)out);
+                return false;
+        }
+
+        return true;
 }
 
 uint64_t fs_getLastModificationTime(const char* filename)
@@ -661,15 +699,15 @@ char** IC_listfiles(const char* dir)
         ic::fs_enumerateFiles(dir);
 }
 
-bool IC_fs_mount(const char* path, const char* mountPoint, bool append_path)
+bool IC_fs_mount(const char* physicalPoint, const char* virtualPoint, bool append_path)
 {
-        if (mountPoint == NULL)
+        if (virtualPoint == NULL)
         {
-                mountPoint = "/";
+                virtualPoint = "/";
         }
 
         /** Path is the physical normalized path and mountpoint is a point in the physical path */
-        ic::fs_mount(mountPoint, path);
+        IC_CORE_ASSERT(ic::fs_mount(physicalPoint, virtualPoint), "Could not mount the directory");
         return true;
 }
 
@@ -695,10 +733,24 @@ const char* IC_fs_getuserdir(void)
 
 bool IC_fs_exists(const char* filename)
 {
-        if (!g_filesystem)
+        if (!g_filesystem || !filename)
+        {
+                IC_CORE_ERROR("Filesystem or the filename does not exist");
                 return false;
+        }
 
-        return false;
+        char* file = (char*)malloc(sizeof(filename) + 1);
+        strcpy(file, filename);
+
+        if (!ic::fs_exists(file))
+        {
+                // free(file);
+                IC_CORE_WARN("File does not exist in the search paths.");
+                return false;
+        }
+
+        free(file);
+        return true;
 }
 
 bool IC_fs_mkdir(const char* dirName)
