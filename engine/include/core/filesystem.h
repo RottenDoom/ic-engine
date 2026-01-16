@@ -56,6 +56,7 @@ bool fs_addToSearchPath(char* newDir, bool appendToPath);
 bool fs_removeFromSearchPath(const char* rmDir);
 char** fs_getSearchPath(void);
 
+/** By defualt mkdir makes the directory in the application base directory */
 bool fs_mkdir(const char* dirName);
 bool fs_rmdir(const char* dirName);
 
@@ -71,7 +72,7 @@ char** fs_enumerateFiles(const char* dir);
 char* fs_getfullpath(const char* filename);
 
 /** Check if a file exists in the search paths*/
-bool fs_exists(char* relative_path);
+bool fs_exists(const char* relative_path);
 
 /** Check if a file exists. filepath should be a normalized full path to the file */
 bool fs_fileExists(const char* filepath);
@@ -110,7 +111,7 @@ extern "C"
         IC_API const char* IC_getfilename(const char* path);
 
         /**
-         * @function IC_openFile
+         * @function IC_fs_open
          * @category filesystem
          * @brief Open a file for reading (searches all mount points)
          * @param path: virtual path to the file
@@ -123,10 +124,10 @@ extern "C"
          *     fclose(fp);
          * }
          */
-        IC_API FILE* IC_openFile(const char* path);
+        IC_API FILE* IC_fs_open(const char* path);
 
         /**
-         * @function IC_readFile
+         * @function IC_fs_read
          * @category filesystem
          * @brief Read entire file contents into a buffer (allocated from bump allocator)
          * @param path: virtual path of the file
@@ -138,15 +139,15 @@ extern "C"
          *
          * @example
          * size_t size;
-         * char* content = IC_readFile("shader.glsl", &size);
+         * char* content = IC_fs_read("shader.glsl", &size);
          * if (content) {
          *     printf("Loaded %zu bytes: %s\n", size, content);
          * }
          */
-        IC_API char* IC_readFile(const char* path, size_t* out_size);
+        IC_API char* IC_fs_read(const char* path, size_t* out_size);
 
         /**
-         * @function IC_writeFile
+         * @function IC_fs_write
          * @category filesystem
          * @brief Write data to a file
          * @param path: file path to write to
@@ -156,11 +157,11 @@ extern "C"
          *
          * @example
          * const char* data = "Hello, World!";
-         * if (IC_writeFile("output.txt", data, strlen(data))) {
+         * if (IC_fs_write("output.txt", data, strlen(data))) {
          *     printf("File written successfully\n");
          * }
          */
-        IC_API bool IC_writeFile(const char* path, const void* data, size_t size);
+        IC_API bool IC_fs_write(const char* path, const void* data, size_t size);
 
         /**
          * @function IC_listfiles
@@ -210,8 +211,8 @@ extern "C"
          * @function IC_fs_mount
          * @category filesystem
          * @brief Mount a physical directory to a virtual path
-         * @param path: virtual path (must start with '/', e.g., "/assets")
-         * @param mountPoint: physical directory path (e.g., "./game_data/assets")
+         * @param physical_path: physical directory path (e.g., "./game_data/assets")
+         * @param virtual_path: virtual path (must start with '/', e.g., "/assets")
          * @param append_path: if true, appends to search paths; if false, prepends
          * @returns true on success, false on failure
          *
@@ -225,7 +226,7 @@ extern "C"
          * // Now files can be accessed via virtual paths:
          * FILE* fp = IC_openFile("/assets/texture.png");
          */
-        IC_API bool IC_fs_mount(const char* path, const char* mountPoint, bool append_path);
+        IC_API bool IC_fs_mount(const char* physical_path, const char* virtual_path, bool append_path);
 
         /**
          * @function IC_fs_exists

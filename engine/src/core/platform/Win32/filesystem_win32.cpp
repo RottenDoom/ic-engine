@@ -16,54 +16,26 @@ struct PlatformDirIterator
 
 char* __platformCalcBaseDir()
 {
-        char* buffer  = NULL;
-        DWORD bufSize = FS_MAX_PATH;
-        DWORD length;
-
-        /* First attempt with MAX_PATH */
-        buffer = (char*)ic_malloc(bufSize);  // TODO: need allocator here
+        char* buffer = (char*)ic_malloc(FS_MAX_PATH);
         if (!buffer)
                 return NULL;
-        /** TODO: the while loop bs */
-        length = GetModuleFileNameA(NULL, buffer, FS_MAX_PATH);
-        if (length == 0)
-        {
-                ic_free(buffer);
-                DWORD err = GetLastError();
-                if (err != 0L)
-                {
-                        IC_CORE_ERROR("WinAPI Error code {}", err);
-                        return nullptr;
-                }
-        }
 
-        /* If buffer was too small, length will be >= bufSize */
-        while (length >= bufSize - 1)
+        DWORD length = GetModuleFileNameA(NULL, buffer, FS_MAX_PATH);
+        if (length == 0 || length >= FS_MAX_PATH)
         {
-                // TODO: check how to copy memory and check how to fix this.
-                bufSize         *= 2;                                /* double the buffer size */
-                char* newBuffer  = (char*)realloc(buffer, bufSize);  // need the allocator here
-                if (!newBuffer)
-                {
-                        ic_free(buffer);
-                        return NULL;
-                }
-                buffer = newBuffer;
-                length = GetModuleFileNameA(NULL, buffer, bufSize);
+                DWORD err = GetLastError();
+                IC_CORE_ERROR("GetModuleFileNameA failed (Error: {})", err);
+                ic_free(buffer);
+                return NULL;
         }
 
         char* lastSlash = strrchr(buffer, '\\');
         if (lastSlash)
-        {
-                *(lastSlash + 1) = '\0'; /* truncate after the slash */
-        }
+                *(lastSlash + 1) = '\0';
         else
-        {
-                /* Very unlikely - no directory separator */
                 buffer[0] = '\0';
-        }
 
-        return buffer;  // caller must free this
+        return buffer;
 }
 
 char* __platformCalcUserDir()
@@ -113,10 +85,94 @@ char* __platformCalcUserDir()
         return NULL;
 }
 
+char* __platformCalcWriteDir()
+{
+        char* writePath = (char*)ic_malloc(FS_MAX_PATH);
+        // usually settings and bindings go into local dir and save files go into roaming
+        // might also need to add some kind of fallback path resolution.
+        if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, writePath)))
+        {
+                return writePath;
+        }
+        ic_free(writePath);
+        return NULL;
+}
+
 bool __platformMkDir(const char* path)
 {
-        // check for thread safe functions
-        return CreateDirectoryA(path, NULL) != 0 || GetLastError() == ERROR_ALREADY_EXISTS;
+        if (!path || !path[0])
+                return false;
+
+        char temp[FS_MAX_PATH];
+        size_t len = strlen(path);
+
+        if (len >= sizeof(temp))
+                return false;
+
+        // Copy + normalize slashes
+        strcpy(temp, path);
+        for (char* c = temp; *c; ++c)
+        {
+                if (*c == '/')
+                        *c = '\\';
+        }
+
+        // Must be absolute: C:\...
+        if (!(isalpha((unsigned char)temp[0]) && temp[1] == ':' && temp[2] == '\\'))
+                return false;
+
+        char* p = temp + 3;  // skip "C:\"
+
+        for (; *p; ++p)
+        {
+                if (*p == '\\')
+                {
+                        *p          = '\0';
+
+                        DWORD attrs = GetFileAttributesA(temp);
+                        if (attrs == INVALID_FILE_ATTRIBUTES)
+                        {
+                                if (!CreateDirectoryA(temp, NULL))
+                                {
+                                        DWORD err = GetLastError();
+                                        if (err != ERROR_ALREADY_EXISTS)
+                                        {
+                                                IC_CORE_ERROR("Failed to create directory: {} (Error: {})", temp, err);
+                                                return false;
+                                        }
+                                }
+                        }
+                        else if (!(attrs & FILE_ATTRIBUTE_DIRECTORY))
+                        {
+                                IC_CORE_ERROR("Path exists but is not a directory: {}", temp);
+                                return false;
+                        }
+
+                        *p = '\\';
+                }
+        }
+
+        // Final directory
+        DWORD attrs = GetFileAttributesA(temp);
+        if (attrs == INVALID_FILE_ATTRIBUTES)
+        {
+                if (!CreateDirectoryA(temp, NULL))
+                {
+                        DWORD err = GetLastError();
+                        if (err != ERROR_ALREADY_EXISTS)
+                        {
+                                IC_CORE_ERROR("Failed to create directory: {} (Error: {})", temp, err);
+                                return false;
+                        }
+                }
+        }
+        else if (!(attrs & FILE_ATTRIBUTE_DIRECTORY))
+        {
+                IC_CORE_ERROR("Path exists but is not a directory: {}", temp);
+                return false;
+        }
+
+        return true;
 }
 
 bool __platformRmDir(const char* dirName)

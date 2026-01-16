@@ -47,21 +47,28 @@ int main(int argc, char* argv[])
         // Mount game directories
         IC_fs_mount("/game_data/assets", "/assets", true);
         IC_fs_mount("/config", "/config", true);
+        IC_fs_mount("/cube", "/cube", true);
 
         // Check if a file exists
-        if (IC_fs_exists("config.ini"))
-        {
+        if (IC_fs_exists("/config/config.ini"))
                 IC_TRACE("Config file exists");
+
+        // Create a directory (use ./ fo making the directory in base/app dir)
+        if (IC_fs_mkdir("/game/saves"))
+        {
+                IC_TRACE("Saves directory created");
         }
         else
         {
-                IC_TRACE("Config file not found");
+                IC_TRACE("Could not create saves directory");
         }
 
-        // Create a directory
-        if (IC_fs_mkdir("./saves"))
+        if (IC_fs_open("/cube/bullcrap.gltf"))
         {
-                IC_TRACE("Saves directory created");
+                size_t len;
+                char* file = IC_fs_read("/cube/bullcrap.gltf", &len);
+
+                printf("File content:\n %s\n", file);
         }
         // ==========================
 

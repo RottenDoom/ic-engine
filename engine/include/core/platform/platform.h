@@ -11,6 +11,7 @@ namespace ic
 /** FILESYSTEM */
 char* __platformCalcBaseDir();
 char* __platformCalcUserDir();
+char* __platformCalcWriteDir();
 
 bool __platformMkDir(const char* path);
 bool __platformRmDir(const char* dirName);
