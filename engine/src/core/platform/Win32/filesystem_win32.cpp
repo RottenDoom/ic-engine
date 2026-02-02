@@ -291,4 +291,31 @@ void __platformCloseDir(PlatformDirIterator* iter)
         }
 }
 
+const char* __platformGetBaseDir(void)
+{
+        return __platformCalcBaseDir();
+}
+const char* __platformGetUserDir(void)
+{
+        return __platformCalcUserDir();
+}
+const char* __platformGetCurrentDir(void)
+{
+        DWORD len = GetCurrentDirectoryA(0, NULL);
+        if (len == 0)
+                return NULL;
+
+        char* buffer = (char*)malloc(len + 1);
+        if (!buffer)
+                return NULL;
+
+        if (GetCurrentDirectoryA(len + 1, buffer) == 0)
+        {
+                free(buffer);
+                return NULL;
+        }
+
+        return buffer;  // caller owns memory
+}
+
 }  // namespace ic

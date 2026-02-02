@@ -1,4 +1,5 @@
 #include <ic_engine.h>
+#include <iostream>
 
 struct ApplicationState
 {
@@ -37,8 +38,6 @@ int main(int argc, char* argv[])
 
         ic_app_set_callback(update, render);
 
-        // ic::test_bump_allocator();
-
         /** TODO: Remove all this  */
         /** This is an example usage of FileSystem API in ic_engine library */
         const char* user = IC_fs_getuserdir();
@@ -75,4 +74,7 @@ int main(int argc, char* argv[])
         ic_app_run();
 
         ic_app_destroy();
+
+        std::cin.get();
+        return 0;
 }

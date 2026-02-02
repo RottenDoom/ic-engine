@@ -196,6 +196,20 @@ extern "C"
         IC_API const char* IC_fs_getbasedir(void);
 
         /**
+         * @function IC_fs_getcwddir
+         * @category filesystem
+         * @brief Get the cwd directory (get the current main file directory)
+         * @returns cwd directory path (never NULL after fs_init)
+         *
+         * @note The cwd directory cannot be modified after initialization.
+         *
+         * @example
+         * const char* cwd = IC_fs_getcwddir();
+         * printf("Running from: %s\n", cwd);
+         */
+        IC_API const char* IC_fs_getcwddir(void);
+
+        /**
          * @function IC_fs_getuserdir
          * @category filesystem
          * @brief Get the user's home directory
@@ -282,27 +296,6 @@ extern "C"
          * }
          */
         IC_API bool IC_fs_isDirectory(const char* path);
-
-        /**
-         * @function IC_fs_initialize
-         * @category filesystem
-         * @brief Initialize the filesystem (must be called first)
-         *
-         * @example
-         * IC_fs_initialize();
-         * // ... use filesystem ...
-         * IC_fs_shutdown();
-         */
-        IC_API void IC_fs_initialize(void);
-
-        /**
-         * @function IC_fs_shutdown
-         * @category filesystem
-         * @brief Shutdown the filesystem and free all resources
-         *
-         * @note All file handles should be closed before calling this.
-         */
-        IC_API void IC_fs_shutdown(void);
 
 #ifdef __cplusplus
 }

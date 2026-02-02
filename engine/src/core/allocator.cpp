@@ -94,34 +94,26 @@ void* bump_alloc_tagged(bump_allocator_t* bump, size_t size, size_t alignment, m
         if (size == 0 || alignment == 0)
                 return nullptr;
 
-        uintptr_t base           = (uintptr_t)bump->memory;
-        uintptr_t current        = base + bump->offset;
+        uintptr_t base          = (uintptr_t)bump->memory;
+        uintptr_t current       = base + bump->offset;
 
-        uintptr_t header_address = align_forward(current, alignment);
-        uintptr_t user_address   = header_address + sizeof(memory_header_t);
-        uintptr_t end_address    = user_address + size;
+        memory_header_t* header = (memory_header_t*)current;
 
-        if (end_address > base + bump->capacity)
+        uintptr_t user_start    = current + sizeof(memory_header_t);
+        uintptr_t user_addr     = align_forward(user_start, alignment);
+        size_t padding          = (size_t)(user_addr - user_start);
+        uintptr_t end_addr      = user_addr + size;
+
+        if (end_addr > base + bump->capacity)
                 return nullptr;
 
-        memory_header_t* header = (memory_header_t*)header_address;
-        header->size            = size;
-        header->tag             = tag;
+        header->size    = size;
+        header->tag     = tag;
+        header->padding = padding;
 
-        bump->offset            = (size_t)(end_address - base);
+        bump->offset    = (size_t)(end_addr - base);
 
-#if defined(_DEBUG)
-        header->id     = ++bump->allocation_count;
-        header->canary = IC_CANARY;
-
-        if (bump->offset > bump->high_water_mark)
-                bump->high_water_mark = bump->offset;
-
-        memset((void*)user_address, 0xCD, size);
-        // printf("[header: %d, data: %d, offset: %d]\n", header_address, user_address, bump->offset);
-#endif
-
-        return (void*)user_address;
+        return (void*)user_addr;
 }
 
 void bump_allocator_clear(bump_allocator_t* bump)
@@ -202,60 +194,49 @@ void dump_allocations(const bump_allocator_t* bump)
                         return;
                 }
 
-                IC_CORE_INFO("    ID: {} Size: {} Tag: {}", h->id, h->size, h->tag);
+                IC_CORE_INFO("    ID: {} Size: {} Tag: {} Line: {}, File: {}", h->id, h->size, h->tag, h->line, h->file);
 
                 /** TODO: Block sizes and alignment */
-                offset += sizeof(memory_header_t) + h->size;
+                offset += sizeof(memory_header_t) + h->padding + h->size;
         }
 
         IC_CORE_INFO("    High-water mark: {} bytes", bump->high_water_mark);
 }
 
-void test_bump_allocator()
+void* debug_bump_alloc_tagged(
+    bump_allocator_t* bump, size_t size, size_t alignment, memory_tag tag, const char* file, uint32_t line)
 {
-        bump_allocator_t* bump = (bump_allocator_t*)malloc(sizeof(bump_allocator_t));
-        memset(bump, 0, sizeof(bump));
+        if (size == 0 || alignment == 0)
+                return nullptr;
 
-        const size_t allocation_size = 1024;
-        void* memory                 = malloc(allocation_size);
-        bump_allocator_init(bump, memory, allocation_size);
+        uintptr_t base          = (uintptr_t)bump->memory;
+        uintptr_t current       = base + bump->offset;
 
-        const size_t filesize = 64;
-        char* f               = (char*)bump_alloc_tagged(bump, filesize, alignof(char), IC_TAG_UNKNOWN);
-        strcpy(f, "Hello world bitch!");
+        memory_header_t* header = (memory_header_t*)current;
 
-        /* ---- long-lived allocation ---- */
-        char* persistent = (char*)bump_alloc_tagged(bump, 64, alignof(char), IC_TAG_UNKNOWN);
-        strcpy(persistent, "I survive the mark");
+        uintptr_t user_start    = current + sizeof(memory_header_t);
+        uintptr_t user_addr     = align_forward(user_start, alignment);
+        size_t padding          = (size_t)(user_addr - user_start);
+        uintptr_t end_addr      = user_addr + size;
 
-        /* ---- temporary scope ---- */
-        bump_mark_t mark = bump_mark_push(bump);
+        if (end_addr > base + bump->capacity)
+                return nullptr;
 
-        char* temp1      = (char*)bump_alloc_tagged(bump, 32, alignof(char), IC_TAG_UNKNOWN);
-        char* temp2      = (char*)bump_alloc_tagged(bump, 32, alignof(char), IC_TAG_UNKNOWN);
+        header->size    = size;
+        header->tag     = tag;
+        header->id      = ++bump->allocation_count;
+        header->file    = file;
+        header->line    = line;
+        header->padding = padding;
+        header->canary  = IC_CANARY;
 
-        strcpy(temp1, "temp buffer 1");
-        strcpy(temp2, "temp buffer 2");
+        bump->offset    = (size_t)(end_addr - base);
+        if (bump->offset > bump->high_water_mark)
+                bump->high_water_mark = bump->offset;
 
-        printf("%s\n", temp1);
-        printf("%s\n", temp2);
-
-        dump_allocations(bump);
-
-        /* ---- rewind allocator ---- */
-        bump_mark_pop(bump, mark);
-
-        /* temp1 and temp2 are INVALID here */
-
-        printf("%s\n", persistent); /* still valid */
-
-        printf("%s\n", f);
-        dump_allocations(bump);
-
-        bump_allocator_clear(bump);
-
-        free(memory);
-        free(bump);
+        memset((void*)user_addr, 0xCD, size);
+        printf("[header: %d, data: %d, size: %zu offset: %d]\n", header, user_addr, size, bump->offset);
+        return (void*)user_addr;
 }
 
 #endif
