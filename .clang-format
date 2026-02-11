@@ -29,7 +29,7 @@ AlignConsecutiveAssignments:
 # function declaration
 AlwaysBreakAfterReturnType: None
 BreakBeforeBraces: Allman
-PointerAlignment: Left
+PointerAlignment: Right
 AlwaysBreakTemplateDeclarations: Yes
 
 # breaking and alignment

@@ -1,5 +1,7 @@
 #pragma once
 #include "../defines.h"
+#include "core/filesystem.h"
+#include "core/assets/asset_manager.h"
 
 #include <string>  // [TODO] Make string class using std::vector or a custom dynamic array
 #include <vector>
@@ -259,7 +261,7 @@ struct Scene
         std::vector<Index> rootNodes;
 };
 
-struct IC_API Model
+struct Model
 {
         std::vector<Buffer> buffers;
         std::vector<BufferView> bufferViews;

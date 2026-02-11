@@ -21,6 +21,8 @@
 #include <utility>
 #include <vector>
 
+using string = std::string;
+
 #if defined(_WIN32) || defined(_WIN64)
 #if defined(IC_EXPORT)
 #define IC_API __declspec(dllexport)
@@ -79,7 +81,7 @@ constexpr T ic_clamp(T value, T min, T max)
 }
 
 #define BIND_EVENT(fn)                                                                                                 \
-        [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
+        [this](auto &&...args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
 // Ensure all types are of the correct size.
 STATIC_ASSERT(sizeof(uint8_t) == 1, "Expected uint8_t to be 1 byte.");
@@ -94,9 +96,9 @@ STATIC_ASSERT(sizeof(int64_t) == 8, "Expected int64_t to be 8 bytes.");
 
 /** Rare debug operator */
 template <typename T>
-std::ostream& operator<<(std::ostream& stream, const std::vector<T>& other)
+std::ostream &operator<<(std::ostream &stream, const std::vector<T> &other)
 {
-        for (auto& x : other)
+        for (auto &x : other)
         {
                 stream << x << " ";
         }

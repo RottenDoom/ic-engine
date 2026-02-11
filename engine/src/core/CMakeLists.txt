@@ -5,6 +5,8 @@ set(CORE_SRC
     input.cpp
     logger.cpp
     allocator.cpp
+    assets/asset_manager.cpp
+    assets/asset_registry.cpp
     platform/win32/input_win32.cpp
     platform/win32/window_win32.cpp
     platform/win32/filesystem_win32.cpp

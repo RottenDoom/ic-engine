@@ -6,19 +6,19 @@ namespace ic
 
 struct renderer::backend_context
 {
-        backend_context(Window& w) {}
+        backend_context(Window &w) {}
 };
 
 struct renderer::backend_renderer
 {
         OpenGLRenderer renderer;
-        backend_renderer(Window& w) : renderer(w) {}
+        backend_renderer(Window &w) : renderer(w) {}
 };
 
 renderer::renderer()  = default;
 renderer::~renderer() = default;
 
-bool renderer::init(Window* w)
+bool renderer::init(Window *w)
 {
         if (m_initialized)
                 return false;
@@ -38,7 +38,7 @@ bool renderer::init(Window* w)
         return true;
 }
 
-void renderer::onEvent(event& e)
+void renderer::onEvent(event &e)
 {
         m_renderer->renderer.onEvent(e);
 }

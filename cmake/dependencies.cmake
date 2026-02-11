@@ -26,6 +26,19 @@ set(SPDLOG_BUILD_SHARED OFF CACHE BOOL "" FORCE)  # Build as static library
 
 FetchContent_MakeAvailable(spdlog)
 
+FetchContent_Declare(
+  yaml-cpp
+  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+  GIT_TAG yaml-cpp-0.9.0 # Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
+)
+
+# Don't build tests/tools
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+set(YAML_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(yaml-cpp)
 
 # GLM
 FetchContent_Declare(
@@ -82,6 +95,7 @@ INTERFACE
 	glm
 	ktx
 	glfw
+	yaml-cpp::yaml-cpp
 	spdlog::spdlog
 	fastgltf
 )

@@ -1,0 +1,27 @@
+assets_folder: "assets"
+
+assets:
+  - id: 0x1000000000000001
+    filepath: textures/player_albedo.png
+    type: texture
+
+  - id: 0x1000000000000002
+    filepath: textures/player_normal.png
+    type: texture
+
+  - id: 0x2000000000000001
+    filepath: materials/player.mtl
+    type: material
+    dependencies:
+      - 0x1000000000000001
+      - 0x1000000000000002
+
+  - id: 0x3000000000000001
+    filepath: models/player.gltf
+    type: model
+    dependencies:
+      - 0x2000000000000001
+
+  - id: 0x3000000000000002
+    filepath: models/enemy.gltf
+    type: model

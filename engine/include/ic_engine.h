@@ -8,6 +8,7 @@
 // core
 #include "core/application.h"
 #include "core/window.h"
+#include "core/assets/asset_manager.h"
 #include "core/input.h"
 #include "core/filesystem.h"
 #include "core/mousecodes.h"
@@ -19,7 +20,6 @@
 
 // renderer
 #include "renderer/camera.h"
-#include "renderer/asset_manager.h"
 #include "renderer/model.h"
 
-#endif  // IC_H
+#endif  // IC_ENGINE_H
