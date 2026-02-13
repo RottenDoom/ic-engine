@@ -5,7 +5,12 @@
 #include "core/assets/types/asset_base.h"
 #include "core/assets/asset_parser.h"
 
-/** TODO: math libarry??? */
+/** TODO:
+ * 1.math libarry???
+ * 2. Completely understand all the buffer types and load them into the scene with most optimized method.
+ * 3. Complete the base asset as well as Mesh and AABB struct
+ *  */
+
 using vec3 = float[3];
 using vec2 = float[2];
 using vec4 = float[4];
@@ -37,15 +42,16 @@ struct Mesh
         string name;
 };
 
-class IC_Model : public ic::IAsset
+class IC_Model : public IAsset
 {
 public:
         ASSET_CLASS_TYPE(ASSET_TYPE_MODEL)
 
         /** TODO: Implementation */
-        bool Load(const GUID id) override { return false; }
-        virtual bool CachedLoad(ic::ISerializer *serializer) override { return false; }
-        virtual bool CachedSave(ic::ISerializer *serializer) const override { return false; }
+        // MAYBE ADD FILENAME OR FILEPATH HERE
+        bool Load(const GUID id) override;
+        bool CachedLoad(Serializer *serializer) override { return false; }
+        bool CachedSave(Serializer *serializer) const override { return false; }
         void Free() override {}
         void FreeCPU() {}
         void FreeGPU() {}
@@ -53,19 +59,6 @@ public:
 private:
         std::vector<Mesh> meshes;
         std::vector<AABB> meshAABBs;
-};
-
-/** TODO: implment this */
-class AssetSerializer
-{
-};
-
-class ModelSerializer : public AssetSerializer
-{
-public:
-private:
-        bool DeserializeBinary(IC_Model *model, const char *filepath);
-        bool DeserializeGLTF(IC_Model *model, const char *filepath);
 };
 
 #endif

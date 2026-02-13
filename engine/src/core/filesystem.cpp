@@ -339,6 +339,11 @@ bool fs_removeFromSearchPath(const char *rmDir)
         return false;
 }
 
+char *fs_getParentPath(const char *path)
+{
+        return NULL;
+}
+
 char *fs_getfullpath(const char *filename)
 {
         for (size_t i = 0; i < g_filesystem->mount_count; i++)

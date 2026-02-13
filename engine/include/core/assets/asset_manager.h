@@ -4,23 +4,23 @@
 #include "defines.h"
 #include "core/assets/types/asset_base.h"
 #include "core/assets/asset_registry.h"
+#include "core/assets/asset_serializer.h"
+
+/**
+ * TODO:
+ * 1. Implement and test all the functions.
+ * 2. Write an asset parser that parses gltf to internal binary asset types (deserializer + parser + emmitter)
+ * 3. Define the workflow somewhere.
+ * 4. Fix the filesystem with some tests
+ * 5. Add more functions that might be used internally or externally
+ * 6. Fix the formatting to be consistent.
+ */
 
 namespace ic
 {
 
 void asset_manager_init(void);
 void asset_manager_deinit(void);
-
-/** Serialize the models with Binary data */
-class IAssetSerializer
-{
-public:
-        IAssetSerializer() {}
-        virtual ~IAssetSerializer() {};
-
-        virtual bool Serialize(const IAsset *asset, const char *filepath) = 0;
-        virtual bool Deserialize(IAsset *asset, const char *filepath)     = 0;
-};
 
 class AssetManager
 {
@@ -59,13 +59,13 @@ public:
         AssetRegistry *GetRegistry();
 
         template <typename T>
-        bool AddSerializer(std::unique_ptr<IAssetSerializer> serializer);
+        bool AddSerializer(Serializer *serializer);
 
 private:
         AssetRegistry registry_;
 
-        std::unordered_map<GUID, IAsset *> assets_;
-        std::unordered_map<AssetType, std::unique_ptr<IAssetSerializer>> asset_serializers_;
+        std::unordered_map<GUID, IAsset *> assets_;                      // THIS TOO;
+        std::unordered_map<AssetType, Serializer *> asset_serializers_;  // REPLACE THIS SHIT
 };
 
 }  // namespace ic

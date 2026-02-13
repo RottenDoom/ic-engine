@@ -42,54 +42,57 @@ bool fs_init(void);
 void fs_deinit(void);
 
 /** Mount a path onto a physical path on a drive */
-bool fs_mount(const char* virtual_path, const char* physical_path);
+bool fs_mount(const char *virtual_path, const char *physical_path);
 
 /** Returns the directory seporator for a filesystem */
-const char* fs_getDirSeperator(void);
-const char* fs_getWriteDirectory(void);
-void fs_setWriteDirectory(char* dir);
+const char *fs_getDirSeperator(void);
+const char *fs_getWriteDirectory(void);
+void fs_setWriteDirectory(char *dir);
 
 /** @brief adds a directory to a search path. The directory should be normalized and full. if append is true we add it
  * to the last of search paths else at the start
  * @note newDir should be a full path to the directory. Use fs base or user or root to access some directories. */
-bool fs_addToSearchPath(char* newDir, bool appendToPath);
-bool fs_removeFromSearchPath(const char* rmDir);
-char** fs_getSearchPath(void);
+bool fs_addToSearchPath(char *newDir, bool appendToPath);
+bool fs_removeFromSearchPath(const char *rmDir);
+char **fs_getSearchPath(void);
 
 /** By defualt mkdir makes the directory in the application base directory */
-bool fs_mkdir(const char* dirName);
-bool fs_rmdir(const char* dirName);
+bool fs_mkdir(const char *dirName);
+bool fs_rmdir(const char *dirName);
 
 /** Returns joined path using a relative path and a full path, checks if that path exists. If yes returns true.
  * Equivalent to cd command */
-bool fs_joinPath(const char* relPath, const char* fullpath, const char* out);
-bool fs_delete(const char* filename);
+bool fs_joinPath(const char *relPath, const char *fullpath, const char *out);
+bool fs_delete(const char *filename);
 
 /** Enumerate files in a directory. dir should be a full path */
-char** fs_enumerateFiles(const char* dir);
+char **fs_enumerateFiles(const char *dir);
 
 /** Returns full path of a file from the search paths */
-char* fs_getfullpath(const char* filename);
+char *fs_getfullpath(const char *filename);
+
+/** Get parent path from a file path or directory */
+char *fs_getParentPath(const char *path);
 
 /** Check if a file exists in the search paths*/
-bool fs_exists(const char* relative_path);
+bool fs_exists(const char *relative_path);
 
 /** Check if a file exists. filepath should be a normalized full path to the file */
-bool fs_fileExists(const char* filepath);
-bool fs_isDirectory(const char* dir);
-uint64_t fs_getLastModificationTime(const char* filename);
+bool fs_fileExists(const char *filepath);
+bool fs_isDirectory(const char *dir);
+uint64_t fs_getLastModificationTime(const char *filename);
 
-File* fs_openRead(const char* filename);
-bool fs_close(File* handle);
-size_t fs_read(File* handle, void* buffer, size_t objSize, size_t objCount);
-size_t fs_write(File* handle, void* buffer, size_t objSize, size_t objCount);
-bool fs_eof(File* handle);
-size_t fs_tell(File* handle);
-bool fs_seek(File* handle, size_t pos);
-size_t fs_fileLength(File* handle);
-size_t fs_setBuffer(File* handle, size_t bufsize);
-bool fs_flush(File* handle);
-bool fs_compress(File* handle);
+File *fs_openRead(const char *filename);
+bool fs_close(File *handle);
+size_t fs_read(File *handle, void *buffer, size_t objSize, size_t objCount);
+size_t fs_write(File *handle, void *buffer, size_t objSize, size_t objCount);
+bool fs_eof(File *handle);
+size_t fs_tell(File *handle);
+bool fs_seek(File *handle, size_t pos);
+size_t fs_fileLength(File *handle);
+size_t fs_setBuffer(File *handle, size_t bufsize);
+bool fs_flush(File *handle);
+bool fs_compress(File *handle);
 
 }  // namespace ic
 
@@ -108,7 +111,7 @@ extern "C"
          * const char* name = IC_getfilename("/assets/textures/player.png");
          * // Returns: "player.png"
          */
-        IC_API const char* IC_getfilename(const char* path);
+        IC_API const char *IC_getfilename(const char *path);
 
         /**
          * @function IC_fs_open
@@ -124,7 +127,7 @@ extern "C"
          *     fclose(fp);
          * }
          */
-        IC_API FILE* IC_fs_open(const char* path);
+        IC_API FILE *IC_fs_open(const char *path);
 
         /**
          * @function IC_fs_read
@@ -144,7 +147,7 @@ extern "C"
          *     printf("Loaded %zu bytes: %s\n", size, content);
          * }
          */
-        IC_API char* IC_fs_read(const char* path, size_t* out_size);
+        IC_API char *IC_fs_read(const char *path, size_t *out_size);
 
         /**
          * @function IC_fs_write
@@ -161,7 +164,7 @@ extern "C"
          *     printf("File written successfully\n");
          * }
          */
-        IC_API bool IC_fs_write(const char* path, const void* data, size_t size);
+        IC_API bool IC_fs_write(const char *path, const void *data, size_t size);
 
         /**
          * @function IC_listfiles
@@ -178,7 +181,7 @@ extern "C"
          *     }
          * }
          */
-        IC_API char** IC_listfiles(const char* dir);
+        IC_API char **IC_listfiles(const char *dir);
 
         /**
          * @function IC_fs_getbasedir
@@ -193,7 +196,7 @@ extern "C"
          * const char* base = IC_fs_getbasedir();
          * printf("Running from: %s\n", base);
          */
-        IC_API const char* IC_fs_getbasedir(void);
+        IC_API const char *IC_fs_getbasedir(void);
 
         /**
          * @function IC_fs_getcwddir
@@ -207,7 +210,7 @@ extern "C"
          * const char* cwd = IC_fs_getcwddir();
          * printf("Running from: %s\n", cwd);
          */
-        IC_API const char* IC_fs_getcwddir(void);
+        IC_API const char *IC_fs_getcwddir(void);
 
         /**
          * @function IC_fs_getuserdir
@@ -219,7 +222,7 @@ extern "C"
          * const char* user_dir = IC_fs_getuserdir();
          * printf("User directory: %s\n", user_dir);
          */
-        IC_API const char* IC_fs_getuserdir(void);
+        IC_API const char *IC_fs_getuserdir(void);
 
         /**
          * @function IC_fs_mount
@@ -240,7 +243,7 @@ extern "C"
          * // Now files can be accessed via virtual paths:
          * FILE* fp = IC_openFile("/assets/texture.png");
          */
-        IC_API bool IC_fs_mount(const char* physical_path, const char* virtual_path, bool append_path);
+        IC_API bool IC_fs_mount(const char *physical_path, const char *virtual_path, bool append_path);
 
         /**
          * @function IC_fs_exists
@@ -254,7 +257,7 @@ extern "C"
          *     printf("Save file found\n");
          * }
          */
-        IC_API bool IC_fs_exists(const char* filename);
+        IC_API bool IC_fs_exists(const char *filename);
 
         /**
          * @function IC_fs_mkdir
@@ -267,7 +270,7 @@ extern "C"
          * IC_fs_mkdir("./saves");
          * IC_fs_mkdir("./screenshots");
          */
-        IC_API bool IC_fs_mkdir(const char* dirName);
+        IC_API bool IC_fs_mkdir(const char *dirName);
 
         /**
          * @function IC_fs_delete
@@ -281,7 +284,7 @@ extern "C"
          *     printf("Temp file deleted\n");
          * }
          */
-        IC_API bool IC_fs_delete(const char* filename);
+        IC_API bool IC_fs_delete(const char *filename);
 
         /**
          * @function IC_fs_isDirectory
@@ -295,7 +298,7 @@ extern "C"
          *     printf("Assets directory exists\n");
          * }
          */
-        IC_API bool IC_fs_isDirectory(const char* path);
+        IC_API bool IC_fs_isDirectory(const char *path);
 
 #ifdef __cplusplus
 }

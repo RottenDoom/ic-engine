@@ -33,11 +33,13 @@ public:
         GLTFLoader() = default;
         ~GLTFLoader();
 
+        // MAYBE MAKE THIS STATIC.
         bool loadModel(const char *path, Model *model);
         /** TODO:write a unload model function */
         // void unloadModel();
 
 private:
+        // ALL THESE FUNCTIONS CHANGE NOW.
         bool loadGLTF(std::filesystem::path path, Model *model);
         bool loadScene(Model *gltf, fastgltf::Scene &scene);
         bool loadNode(Model *gltf, fastgltf::Node &node);

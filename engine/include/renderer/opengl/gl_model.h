@@ -1,7 +1,7 @@
 #pragma once
-#include "../../defines.h"
+#include "defines.h"
 
-#include "../model.h"
+#include "renderer/model.h"
 #include "gl_shader.h"
 #include "gl_material.h"
 
@@ -46,17 +46,17 @@ struct GLPrimitive
         size_t vertexStride = 0;  // Actual stride based on present attributes
         IndirectDrawCommand draw;
 
-        void setupBuffers(Model& model, MeshPrimitive& primitive);
+        void setupBuffers(Model &model, MeshPrimitive &primitive);
 
 private:
-        void readAttribute(Model& model,
+        void readAttribute(Model &model,
                            Index accessorIdx,
-                           std::vector<uint8_t>& vertexBuffer,
+                           std::vector<uint8_t> &vertexBuffer,
                            size_t offset,
                            size_t stride,
                            size_t vertexCount);
 
-        void readIndices(Model& model, Index accessorIdx, std::vector<uint32_t>& indexBuffer);
+        void readIndices(Model &model, Index accessorIdx, std::vector<uint32_t> &indexBuffer);
 
         void setupVertexAttributes();
 
@@ -71,19 +71,19 @@ struct GLMesh
 
 struct GLModel
 {
-        Model* model;
+        Model *model;
         std::vector<GLMesh> meshes;
         std::vector<GLTexture> textures;
 
-        void upload(Model& model);
+        void upload(Model &model);
         void uploadTextures();
         void uploadMeshes();
 
-        void draw(Shader& shader);
-        void drawNode(Shader& shader, Index nodeIndex, glm::mat4 parentTransform);
-        void drawMesh(Shader& shader, GLMesh glMesh, Mesh& mesh, glm::mat4 worldTransform);
+        void draw(Shader &shader);
+        void drawNode(Shader &shader, Index nodeIndex, glm::mat4 parentTransform);
+        void drawMesh(Shader &shader, GLMesh glMesh, Mesh &mesh, glm::mat4 worldTransform);
 
-        void bindMaterial(Shader& shader, Material& mat, GLPrimitive& primitive);
+        void bindMaterial(Shader &shader, Material &mat, GLPrimitive &primitive);
 };
 
 }  // namespace ic

@@ -90,6 +90,11 @@ INTERFACE
 	${glfw_SOURCE_DIR}/include
 )
 
+
+add_library(mmapped STATIC 
+	${CMAKE_SOURCE_DIR}/third-party/memory_map/MemoryMapped.cpp
+)
+
 target_link_libraries(dependencies
 INTERFACE
 	glm
@@ -98,6 +103,7 @@ INTERFACE
 	yaml-cpp::yaml-cpp
 	spdlog::spdlog
 	fastgltf
+	mmapped
 )
 
 add_library(glad STATIC 
@@ -115,6 +121,7 @@ set(IC_INTERNAL_HEADERS
 	${CMAKE_SOURCE_DIR}/third-party/stb
 	${CMAKE_SOURCE_DIR}/third-party/basisu/transcoder
 	${CMAKE_SOURCE_DIR}/third-party/basisu/zstd
+	${CMAKE_SOURCE_DIR}/third_party/memory_map
 )
 
 add_library(renderer_dependencies INTERFACE)

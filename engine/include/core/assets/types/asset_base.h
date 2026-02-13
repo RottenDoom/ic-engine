@@ -2,15 +2,20 @@
 #define ASSET_BASE_H
 #include "defines.h"
 
+/** TODO:
+ * 1. Asset Base UUID generator when writing a file to registry
+ * 2. File hash functions and versioning when packing assets.
+ */
+
 /** TODO: Define this function */
 #define HASH(x) 1997;
 
 #define ASSET_CLASS_TYPE(type)                                                                                         \
-        static ic::AssetType getStaticType()                                                                           \
+        static AssetType getStaticType()                                                                               \
         {                                                                                                              \
-                return ic::AssetType::type;                                                                            \
+                return AssetType::type;                                                                                \
         }                                                                                                              \
-        virtual ic::AssetType getAssetType() const override                                                            \
+        virtual AssetType getAssetType() const override                                                                \
         {                                                                                                              \
                 return getStaticType();                                                                                \
         }                                                                                                              \
@@ -21,9 +26,7 @@
 
 using GUID = uint32_t;
 extern const GUID INVALID_ID;
-
-namespace ic
-{
+class Serializer;
 
 enum AssetType : uint8_t
 {
@@ -40,10 +43,6 @@ enum AssetType : uint8_t
                                 //     ASSET_TYPE_TEXTURESET = 8,
 
         ASSET_TYPE_COUNT
-};
-
-class ISerializer
-{
 };
 
 /**
@@ -68,8 +67,8 @@ public:
         virtual string toString() const { return getName(); }
 
         virtual bool Load(const GUID id) { return false; };
-        virtual bool CachedLoad(ISerializer *serializer)       = 0;
-        virtual bool CachedSave(ISerializer *serializer) const = 0;
+        virtual bool CachedLoad(Serializer *serializer)       = 0;
+        virtual bool CachedSave(Serializer *serializer) const = 0;
         virtual void Free() {}
 
         void SetName(char *name) { m_name = name; };
@@ -84,9 +83,7 @@ private:
         char *m_name       = nullptr;
         GUID _id           = INVALID_ID;
         int32_t _ref_count = 0;
-        // void SerializeName(ISerializer *serializer) const;
+        void serializeName(Serializer *serializer) const;
 };
-
-}  // namespace ic
 
 #endif

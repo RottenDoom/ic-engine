@@ -2,6 +2,7 @@
 #include "core/allocators.h"
 #include "core/filesystem.h"
 #include "core/assets/asset_registry.h"
+#include "core/assets/asset_serializer.h"
 #include "core/assets/types/ic_model.h"
 
 // global unique asset manager
@@ -11,11 +12,15 @@ static GUID UUID                  = 1u;
 namespace ic
 {
 
+void IAsset::serializeName(Serializer *serializer) const
+{
+        serializer->write<uint16_t>(m_name);
+}
+
 void asset_manager_init(void)
 {
         void *memory    = ic_malloc(sizeof(AssetManager));
         g_asset_manager = new (memory) AssetManager();  // constructor runs
-        fs_mount("/", "/");
         g_asset_manager->Init("/assets/registry.yaml");
 }
 
@@ -81,7 +86,7 @@ void AssetManager::SerializeAsset(T *asset, const char *filename)
 {
 }
 template <typename T>
-bool AssetManager::AddSerializer(std::unique_ptr<IAssetSerializer> serializer)
+bool AssetManager::AddSerializer(Serializer *serializer)
 {
         return false;
 }
@@ -119,14 +124,19 @@ IC_Model *ic_load_model(GUID modelID)
         const char *filepath = g_asset_manager->GetRegistry()->GetFilePath(modelID);
         IC_CORE_INFO("Loading model from: {}", filepath);
 
-        // THis wont work since model is still just a struct. Model class doesnt containt the asset at all.
-        // ic::Model* model = new Model(modelID);
-
         g_asset_manager->GetRegistry()->Register(filepath);  // modelID and model should go in here.
                                                              // model->addRef()
 
-        // return model ptr.
-        // return model;
+        // Serializer serializer;
+        // if (!cached->CachedLoad(&serializer))
+        // {
+        //         IC_CORE_INFO("Could not load fast file");
+        // }
+        // else
+        // {
+        //         IC_CORE_ASSERT(cached->Load(modelID), "Could not load file!");
+        //         cached->CachedSave(&serializer);
+        // }
 
         // THis means the model was't loaded yet and thus we load the model by initializing asset class adding to
         // assetmanager(reposibility of asset manager ofcourse) increase refcounts and the loaded boolean. But this

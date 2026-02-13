@@ -28,6 +28,7 @@ Application::Application(window_props &properties)
         m_renderer            = new (renderer_memory) renderer();
         m_renderer->init(m_Window.get());
         fs_init();
+        fs_mount("/", "/");  // Mounting default directory [TODO: Do some changes to mounting logic]
         asset_manager_init();
 
         IC_CORE_INFO("Application Initialized!");
