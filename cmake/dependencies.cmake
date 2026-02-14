@@ -1,6 +1,7 @@
 include(FetchContent)
 
 ## GLOBAL DEPENDENCIES
+add_library(dependencies INTERFACE)
 
 # GLFW
 FetchContent_Declare(
@@ -50,23 +51,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glm)
 
-# KTX
-FetchContent_Declare(
-    ktx
-    GIT_REPOSITORY "https://github.com/KhronosGroup/KTX-Software.git"
-    GIT_TAG v4.4.2
-)
-
-# Build only the library (skip CLI tools and tests)
-set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_VK_UPLOAD OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_GL_UPLOAD ON CACHE BOOL "" FORCE)
-set(KTX_FEATURE_LOADTEST_APPS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
-set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
-
-FetchContent_MakeAvailable(ktx)	
-
 # fastgltf
 FetchContent_Declare(
     fastgltf
@@ -81,16 +65,7 @@ set(FASTGLTF_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(fastgltf)
 
-add_library(dependencies INTERFACE)
-
-# target_include_directories(dependencies
-# INTERFACE
-# 	${glm_SOURCE_DIR}
-# 	${spdlog_SOURCE_DIR}/include
-# 	${glfw_SOURCE_DIR}/include
-# )
-
-
+# MMAPPED
 add_library(mmapped STATIC 
     ${CMAKE_SOURCE_DIR}/third-party/memory_map/MemoryMapped.cpp
 )
@@ -100,47 +75,42 @@ target_include_directories(mmapped
         ${CMAKE_SOURCE_DIR}/third-party/memory_map
 )
 
-
 target_link_libraries(dependencies
 INTERFACE
-	glm
 	glfw
 	yaml-cpp::yaml-cpp
-	spdlog::spdlog
 	fastgltf
-	mmapped
 )
 
 ## RENDERER DEPENDENCIES
 
+# GLAD
 add_library(glad STATIC 
 	${CMAKE_SOURCE_DIR}/third-party/glad/src/glad.c
 )
 
-# TODO: maybe do something for such libraries
-target_include_directories(glad PRIVATE
+target_include_directories(glad PUBLIC
 	${CMAKE_SOURCE_DIR}/third-party/glad/include 
 )
 
+# STB
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE
     ${CMAKE_SOURCE_DIR}/third-party/stb
 )
 
-set(IC_INTERNAL_HEADERS
-	${CMAKE_SOURCE_DIR}/third-party/glad/include
-	${CMAKE_SOURCE_DIR}/third-party/stb
-	${ktx_SOURCE_DIR}/include
-	${CMAKE_SOURCE_DIR}/third-party/basisu/transcoder
-	${CMAKE_SOURCE_DIR}/third-party/basisu/zstd
-)
-
-add_library(renderer_dependencies INTERFACE)
-
-target_link_libraries(renderer_dependencies INTERFACE
-    glad
-    stb
+# KTX
+FetchContent_Declare(
     ktx
+    GIT_REPOSITORY "https://github.com/KhronosGroup/KTX-Software.git"
+    GIT_TAG v4.4.2
 )
 
-# target_include_directories(renderer_dependencies INTERFACE ${IC_INTERNAL_HEADERS})
+set(KTX_FEATURE_TESTS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_VK_UPLOAD OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_GL_UPLOAD ON CACHE BOOL "" FORCE)
+set(KTX_FEATURE_LOADTEST_APPS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(ktx)	

@@ -1,18 +1,20 @@
-#pragma once
+#ifndef GLTF_LOADER_H
+#define GLTF_LOADER_H
+
 #include "defines.h"
 
 #include <fastgltf/types.hpp>
 #include <fastgltf/core.hpp>
-#include "core/assets/types/model.h"
+#include "core/assets/types/asset_base.h"
+#include "core/math.h"
+
+class Model;
+struct MeshPrimitive;
 
 namespace ic
 {
 
 struct GLModel;
-struct VKModel : public Model
-{
-        fastgltf::Asset asset;
-};
 
 // GOOD architecture says that each model loader should not know about any other model loaders
 typedef enum ModelType
@@ -74,11 +76,10 @@ private:
         void readAccessorVec4(Model *gltf, Index accessorIndex, std::vector<glm::vec4> &outData);
         void readAccessorUVec4(Model *gltf, Index accessorIndex, std::vector<glm::uvec4> &outData);
 
-        // Helpers
-        Accessor::Type convertAccessorType(fastgltf::AccessorType type);
-
         // Temporary data for processing
         std::vector<TempPrimitiveData> m_tempPrimitiveData;
 };
 
 }  // namespace ic
+
+#endif

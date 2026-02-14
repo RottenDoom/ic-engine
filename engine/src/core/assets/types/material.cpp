@@ -1,4 +1,4 @@
-#include "assets/types/material.h"
+#include "core/assets/types/material.h"
 
 Material *Material::getDefaultMaterial()
 {

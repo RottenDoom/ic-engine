@@ -1,4 +1,8 @@
+#ifndef MATERIAL_H
+#define MATERIAL_H
+
 #include "defines.h"
+#include "core/assets/types/asset_base.h"
 #include "core/math.h"
 
 struct TextureInfo
@@ -105,3 +109,5 @@ struct Material
 
         Material *getDefaultMaterial();
 };
+
+#endif

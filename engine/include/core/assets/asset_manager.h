@@ -4,7 +4,6 @@
 #include "defines.h"
 #include "core/assets/types/asset_base.h"
 #include "core/assets/asset_registry.h"
-#include "core/assets/asset_serializer.h"
 
 /**
  * TODO:
@@ -21,6 +20,8 @@ namespace ic
 
 void asset_manager_init(void);
 void asset_manager_deinit(void);
+
+class Serializer;
 
 class AssetManager
 {
@@ -91,7 +92,9 @@ extern "C"
          * @brief Loads models from asset id. Checks in the registry if it contains the GUID else returns
          * (exception/nothing) for now.
          elID modelID from a registry file.
-         Model Model *ic_load_model(GUID modelId);
+
+         */
+        IC_API Model *ic_load_model(GUID modelId);
 
         /** @function ic_unload_model
          * @category assets

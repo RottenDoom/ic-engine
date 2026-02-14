@@ -4,6 +4,7 @@
 #include "core/filesystem.h"
 #include "core/allocators.h"
 #include "core/assets/asset_manager.h"
+#include "renderer/renderer.h"
 
 #include <GLFW/glfw3.h>
 
@@ -24,9 +25,9 @@ Application::Application(window_props &properties)
         m_Window = Window::create(properties);
         m_Window->setEventCallback(BIND_EVENT(onEvent));
 
-        void *renderer_memory = ic_malloc(sizeof(renderer));
-        m_renderer            = new (renderer_memory) renderer();
+        m_renderer = createRenderer();
         m_renderer->init(m_Window.get());
+
         fs_init();
         fs_mount("/", "/");  // Mounting default directory [TODO: Do some changes to mounting logic]
         asset_manager_init();
@@ -39,7 +40,7 @@ Application::~Application()
         asset_manager_deinit();
         fs_deinit();
         m_renderer->cleanUp();
-        m_renderer->~renderer();
+        destroyRenderer(m_renderer);
         ic_free(m_renderer);
 }
 

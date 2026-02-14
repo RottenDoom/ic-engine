@@ -2,13 +2,15 @@
 
 #include "defines.h"
 #include "window.h"
-#include "renderer/renderer.h"
 
 #include "events/application_event.h"
 #include "events/event.h"
 
 namespace ic
 {
+
+class IRenderer;
+
 class IC_API Application
 {
 public:
@@ -32,7 +34,7 @@ private:
         bool onWindowClose(WindowClosedEvent &e);
 
         std::unique_ptr<Window> m_Window;
-        renderer *m_renderer;
+        IRenderer *m_renderer;
         float m_lastFrameTime = 0.0f;
 };
 

@@ -1,5 +1,7 @@
 #pragma once
-#include "../defines.h"
+#include "defines.h"
+#include "core/window.h"
+#include "core/events/event.h"
 
 /*
  * The renderer class is nothing but a cross platformer frontend for my engine. I am writing this engine currently in
@@ -9,28 +11,20 @@
 
 namespace ic
 {
-class Window;
-class event;
-class renderer
+// Abstract renderer interface - lives in core
+class IRenderer
 {
-private:
-        struct backend_context;
-        struct backend_renderer;
-
-        bool m_initialized = false;
-        std::unique_ptr<backend_context> m_context;
-        std::unique_ptr<backend_renderer> m_renderer;
-
 public:
-        explicit renderer();
-        ~renderer();
+        virtual ~IRenderer()               = default;
 
-        renderer(const renderer&)            = delete;
-        renderer& operator=(const renderer&) = delete;
-
-        bool init(Window* w);
-        void onEvent(event& e);
-        void renderFrame(float deltaTime);
-        void cleanUp();
+        virtual bool init(Window *w)       = 0;
+        virtual void onEvent(event &e)     = 0;
+        virtual void renderFrame(float dt) = 0;
+        virtual void cleanUp()             = 0;
 };
+
+// Factory function to create the renderer (implemented in engine-renderer)
+IRenderer *createRenderer();
+void destroyRenderer(IRenderer *renderer);
+
 }  // namespace ic

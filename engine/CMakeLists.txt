@@ -16,45 +16,34 @@ if (IC_ENGINE_USE_OPENGL)
     add_subdirectory(src/renderer/opengl)
 endif()
 
-set(ENGINE_OBJECT_SOURCES
+add_library(engine SHARED 
+	src/engine.cpp
 	$<TARGET_OBJECTS:engine-core>
-	$<TARGET_OBJECTS:engine-renderer>
+    	$<TARGET_OBJECTS:engine-renderer>
 )
-
-if (IC_ENGINE_USE_VULKAN)
-    list(APPEND ENGINE_OBJECT_SOURCES $<TARGET_OBJECTS:engine-vulkan>)
-endif()
-
-if (IC_ENGINE_USE_OPENGL)
-    list(APPEND ENGINE_OBJECT_SOURCES $<TARGET_OBJECTS:engine-opengl>)
-endif()
-
-# Main engine shared library
-add_library(engine SHARED ${ENGINE_OBJECT_SOURCES})
-set_target_properties(engine PROPERTIES OUTPUT_NAME "engine")
-
-target_include_directories(engine
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    PRIVATE
-        ${IC_INTERNAL_HEADERS}
-)
-
-target_link_libraries(engine
-PUBLIC
-    	dependencies
-PRIVATE
-        engine-core
-        engine-renderer
-)
-
-if (IC_ENGINE_USE_VULKAN)
-    target_link_libraries(engine PRIVATE engine-vulkan Vulkan::Vulkan) # todo: vulkan not needed here
-endif()
 
 if (IC_ENGINE_USE_OPENGL)
     target_link_libraries(engine PRIVATE engine-opengl)
 endif()
+
+if (IC_ENGINE_USE_VULKAN)
+    target_link_libraries(engine PRIVATE engine-vulkan Vulkan::Vulkan)
+endif()
+
+target_link_libraries(engine PUBLIC spdlog::spdlog glm)
+
+set_target_properties(engine PROPERTIES
+    OUTPUT_NAME "engine"
+    POSITION_INDEPENDENT_CODE ON
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_BINARY_DIR}/bin/Debug
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
+)
+
+target_include_directories(engine
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
 
 set(ENGINE_GENERATED_SPVS "")
 
@@ -72,12 +61,6 @@ if (IC_ENGINE_USE_VULKAN AND IC_ENGINE_USE_GLSLC) # or whatever flag you set
         message(WARNING "IC_ENGINE_USE_VULKAN=ON but no shaders were found in ${CMAKE_SOURCE_DIR}/shaders")
     endif()
 endif()
-
-set_target_properties(engine PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_BINARY_DIR}/bin/Debug
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
-)
 
 install(TARGETS engine 
 	EXPORT ic_engineTargets

@@ -1,33 +1,32 @@
 #include "renderer/renderer.h"
 #include "renderer/opengl/opengl_renderer.h"
+// #include "renderer/vulkan/vulkan_renderer.h"  // When you add Vulkan
 
 namespace ic
 {
 
-struct renderer::backend_context
+struct Renderer::backend_context
 {
         backend_context(Window &w) {}
 };
 
-struct renderer::backend_renderer
+struct Renderer::backend_renderer
 {
         OpenGLRenderer renderer;
+        // VulkanRenderer renderer;  // Or switch based on config
+
         backend_renderer(Window &w) : renderer(w) {}
 };
 
-renderer::renderer()  = default;
-renderer::~renderer() = default;
+Renderer::Renderer()  = default;
+Renderer::~Renderer() = default;
 
-bool renderer::init(Window *w)
+bool Renderer::init(Window *w)
 {
         if (m_initialized)
                 return false;
 
-        m_context = std::make_unique<backend_context>(*w);
-
-        // if (!m_context->ctx.initialize())
-        //         return false;
-
+        m_context  = std::make_unique<backend_context>(*w);
         m_renderer = std::make_unique<backend_renderer>(*w);
 
         if (!m_renderer->renderer.init())
@@ -38,23 +37,35 @@ bool renderer::init(Window *w)
         return true;
 }
 
-void renderer::onEvent(event &e)
+void Renderer::onEvent(event &e)
 {
         m_renderer->renderer.onEvent(e);
 }
 
-void renderer::renderFrame(float dt)
+void Renderer::renderFrame(float dt)
 {
         m_renderer->renderer.draw(dt);
 }
 
-void renderer::cleanUp()
+void Renderer::cleanUp()
 {
         if (!m_initialized)
                 return;
+
         m_renderer->renderer.destroy();
-        // m_context->ctx.cleanUp();
         m_initialized = false;
+}
+
+// Factory functions (implementation in engine-renderer)
+IRenderer *createRenderer()
+{
+        // MEMORY STUFF HERE
+        return new Renderer();
+}
+
+void destroyRenderer(IRenderer *renderer)
+{
+        delete renderer;
 }
 
 }  // namespace ic

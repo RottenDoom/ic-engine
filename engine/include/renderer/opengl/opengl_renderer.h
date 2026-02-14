@@ -2,6 +2,7 @@
 
 #include "defines.h"
 #include "renderer/camera.h"
+#include "renderer/renderer.h"
 
 #include "gl_shader.h"
 #include "gl_model.h"
@@ -23,6 +24,29 @@ struct PointLight
 };
 namespace ic
 {
+
+// Concrete renderer implementation
+class Renderer : public IRenderer
+{
+public:
+        Renderer();
+        ~Renderer() override;
+
+        bool init(Window *w) override;
+        void onEvent(event &e) override;
+        void renderFrame(float dt) override;
+        void cleanUp() override;
+
+private:
+        struct backend_context;
+        struct backend_renderer;
+
+        std::unique_ptr<backend_context> m_context;
+        std::unique_ptr<backend_renderer> m_renderer;
+
+        bool m_initialized = false;
+};
+
 class OpenGLRenderer
 {
 private:

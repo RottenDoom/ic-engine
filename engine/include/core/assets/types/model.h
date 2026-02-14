@@ -6,6 +6,7 @@
 #include "core/filesystem.h"
 
 #include "core/assets/types/asset_base.h"
+#include "material.h"
 
 #include <string>  // [TODO] Make string class using std::vector or a custom dynamic array
 #include <vector>
@@ -15,14 +16,10 @@
 // #include "renderer/graphics_api/texture.hpp"
 // #endif
 
-using Index                   = uint32_t;
-constexpr Index INVALID_INDEX = ~0u;
-
-class ic::GLTFLoader;
-
-struct TextureInfo;
-struct Texture;
-struct Material;
+namespace ic
+{
+class GLTFLoader;
+}
 
 struct Vertex
 {
@@ -318,6 +315,10 @@ public:
         std::vector<std::string> extensionsUsed;
         std::vector<std::string> extensionsRequired;
 
+        std::vector<Buffer> buffers;
+        std::vector<BufferView> bufferViews;
+        std::vector<Accessor> accessors;
+
         ASSET_CLASS_TYPE(ASSET_TYPE_MODEL)
 
         bool Load(const char *filepath) override;
@@ -355,11 +356,6 @@ public:
         // void MarkGPUDirty();  // Flags that GPU data needs re-upload
 
 private:
-        // Raw GLTF loading data (temporary, freed after processing)
-        std::vector<Buffer> buffers;
-        std::vector<BufferView> bufferViews;
-        std::vector<Accessor> accessors;
-
         // Internal state flags
         bool gpuDataDirty    = false;
         bool transformsDirty = false;

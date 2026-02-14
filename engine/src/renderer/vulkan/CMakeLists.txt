@@ -17,25 +17,15 @@ set(VULKAN_SRC
     texture.cpp
 )
 
-add_library(engine-vulkan OBJECT ${VULKAN_SRC})
+add_library(engine-vulkan STATIC ${VULKAN_SRC})
 
-set_target_properties(engine-vulkan PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-target_include_directories(engine-vulkan
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../..
-        $ENV{VULKAN_SDK}/Include
-)
+add_library(engine-vulkan STATIC ${VULKAN_SRC})
 
 target_link_libraries(engine-vulkan
-    PRIVATE
-	dependencies
-	renderer_dependencies
-        Vulkan::Vulkan
-        ktx
+    PUBLIC engine-renderer
+    PRIVATE renderer_dependencies
+            Vulkan::Vulkan
 )
 
-
-# Ensure engine-vulkan static objects are compiled with export macro so
-# their symbols are available in the `engine` shared library.
 target_compile_definitions(engine-vulkan PRIVATE IC_EXPORT)
+set_target_properties(engine-vulkan PROPERTIES POSITION_INDEPENDENT_CODE ON)

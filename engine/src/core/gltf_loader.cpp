@@ -1,6 +1,5 @@
 #include "core/gltf_loader.h"
-#include "renderer/opengl/gl_model.h"
-#include "renderer/opengl/gl_material.h"
+#include "core/assets/types/model.h"
 
 #include <filesystem>
 #include <string>
@@ -12,8 +11,6 @@
 namespace ic
 {
 #define toIndex(x) static_cast<Index>(x)
-
-static GLenum toGLenum(fastgltf::ComponentType type);
 static size_t getAccessorComponentCount(Accessor::Type type);
 
 GLTFLoader::~GLTFLoader() {}
@@ -375,26 +372,6 @@ bool GLTFLoader::loadMaterial(Model *gltf, fastgltf::Material &material)
         return true;
 }
 
-Accessor::Type GLTFLoader::convertAccessorType(fastgltf::AccessorType type)
-{
-
-        switch (type)
-        {
-        case fastgltf::AccessorType::Scalar:
-                return Accessor::Type::SCALAR;
-        case fastgltf::AccessorType::Vec2:
-                return Accessor::Type::VEC2;
-        case fastgltf::AccessorType::Vec3:
-                return Accessor::Type::VEC3;
-        case fastgltf::AccessorType::Vec4:
-                return Accessor::Type::VEC4;
-        case fastgltf::AccessorType::Mat4:
-                return Accessor::Type::MAT4;
-        default:
-                return Accessor::Type::UNKNOWN;
-        }
-}
-
 void GLTFLoader::processMeshGeometry(Model *gltf)
 {
         size_t primitiveIndex = 0;
@@ -721,11 +698,26 @@ void GLTFLoader::loadBuffer(Model *gltf, const fastgltf::Buffer &buffer, const s
 void GLTFLoader::loadAccessor(Model *gltf, fastgltf::Accessor &accessor)
 {
         Accessor acc;
-        acc.bufferView      = accessor.bufferViewIndex.has_value() ? toIndex(accessor.bufferViewIndex.value())
-                                                                   : INVALID_INDEX;
-        acc.offset          = accessor.byteOffset;
-        acc.count           = accessor.count;
-        acc.type            = convertAccessorType(accessor.type);
+        acc.bufferView = accessor.bufferViewIndex.has_value() ? toIndex(accessor.bufferViewIndex.value())
+                                                              : INVALID_INDEX;
+        acc.offset     = accessor.byteOffset;
+        acc.count      = accessor.count;
+
+        switch (accessor.type)
+        {
+        case fastgltf::AccessorType::Scalar:
+                acc.type = Accessor::Type::SCALAR;
+        case fastgltf::AccessorType::Vec2:
+                acc.type = Accessor::Type::VEC2;
+        case fastgltf::AccessorType::Vec3:
+                acc.type = Accessor::Type::VEC3;
+        case fastgltf::AccessorType::Vec4:
+                acc.type = Accessor::Type::VEC4;
+        case fastgltf::AccessorType::Mat4:
+                acc.type = Accessor::Type::MAT4;
+        default:
+                acc.type = Accessor::Type::UNKNOWN;
+        }
 
         acc.componentType   = static_cast<Accessor::ComponentType>(accessor.componentType);
         acc.normalized      = accessor.normalized;
@@ -880,50 +872,6 @@ bool GLTFLoader::loadCamera(Model *gltf, fastgltf::Camera &camera)
         return false;
 }
 
-static GLenum toGLenum(fastgltf::ComponentType type)
-{
-        return static_cast<GLenum>(static_cast<uint16_t>(type) & 0x1FFF);
-}
-
-// Helper to get component count from accessor type
-static size_t getAccessorComponentCount(Accessor::Type type)
-{
-        switch (type)
-        {
-        case Accessor::Type::SCALAR:
-                return 1;
-        case Accessor::Type::VEC2:
-                return 2;
-        case Accessor::Type::VEC3:
-                return 3;
-        case Accessor::Type::VEC4:
-                return 4;
-        case Accessor::Type::MAT4:
-                return 16;
-        default:
-                return 0;
-        }
-}
-
-// Helper to get component size from GL type
-static size_t getComponentSize(GLenum componentType)
-{
-        switch (componentType)
-        {
-        case GL_BYTE:
-        case GL_UNSIGNED_BYTE:
-                return 1;
-        case GL_SHORT:
-        case GL_UNSIGNED_SHORT:
-                return 2;
-        case GL_UNSIGNED_INT:
-        case GL_FLOAT:
-                return 4;
-        default:
-                return 0;
-        }
-}
-
 // Helper to extract values from AccessorBoundsArray
 static std::vector<double> extractBoundsArray(const fastgltf::AccessorBoundsArray &bounds)
 {
@@ -967,6 +915,25 @@ static glm::vec3 getBoundingBoxMax(const Accessor &accessor)
                                  static_cast<float>(accessor.max[2]));
         }
         return glm::vec3(0.0f);
+}
+
+static size_t getAccessorComponentCount(Accessor::Type type)
+{
+        switch (type)
+        {
+        case Accessor::Type::SCALAR:
+                return 1;
+        case Accessor::Type::VEC2:
+                return 2;
+        case Accessor::Type::VEC3:
+                return 3;
+        case Accessor::Type::VEC4:
+                return 4;
+        case Accessor::Type::MAT4:
+                return 16;
+        default:
+                return 0;
+        }
 }
 
 }  // namespace ic

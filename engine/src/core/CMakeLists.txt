@@ -23,15 +23,14 @@ target_include_directories(engine-core
         ${CMAKE_SOURCE_DIR}/engine/include
 )
 
-set_target_properties(engine-core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-
 target_link_libraries(engine-core 
 PUBLIC 
-	spdlog::spdlog
-	glfw
-PRIVATE
 	dependencies
+	glm
+	spdlog::spdlog
+PRIVATE
+	mmapped
+	stb
 )
 
 # When building the engine as a DLL we must compile these static subtargets
@@ -39,3 +38,4 @@ PRIVATE
 # `engine` library. This ensures classes annotated with `IC_API` are
 # exported correctly.
 target_compile_definitions(engine-core PRIVATE IC_EXPORT)
+set_target_properties(engine-core PROPERTIES POSITION_INDEPENDENT_CODE ON)

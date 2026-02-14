@@ -2,7 +2,11 @@
 #define ASSET_BASE_H
 
 #include "defines.h"
-#include "core/assets/asset_serializer.h"
+
+namespace ic
+{
+class Serializer;
+}
 
 /** TODO:
  * 1. Asset Base UUID generator when writing a file to registry
@@ -11,6 +15,10 @@
 
 /** TODO: Define this function */
 #define HASH(x) 1997;
+
+// TODO: make some place else for this as this is only for model.
+using Index                   = uint32_t;
+constexpr Index INVALID_INDEX = ~0u;
 
 #define ASSET_CLASS_TYPE(type)                                                                                         \
         static AssetType getStaticType()                                                                               \

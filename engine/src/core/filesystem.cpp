@@ -219,8 +219,9 @@ Mount *fs_getMounts(void)
 const char *fs_getDirSeperator(void)
 {
         /** TODO: check for platform and return the dir seperator for the platfrom */
-        const char retval[2] = {__PLATFORM_DIR_SEPERATOR__, '\0'};
-        return retval;
+        // const char retval[2] = {__PLATFORM_DIR_SEPERATOR__, '\0'};
+        // return retval;
+        return NULL;
 }
 
 const char *fs_getWriteDirectory(void)
