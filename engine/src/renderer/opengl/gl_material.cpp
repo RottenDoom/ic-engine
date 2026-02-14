@@ -3,7 +3,7 @@
 namespace ic
 {
 
-void GLTexture::createTexture(Model& model, Texture& tex, ImageData& img)
+void GLTexture::createTexture(Model &model, Texture &tex, ImageData &img)
 {
         glCreateTextures(GL_TEXTURE_2D, 1, &textureHandle);
 
@@ -32,7 +32,7 @@ void GLTexture::createTexture(Model& model, Texture& tex, ImageData& img)
         glGenerateTextureMipmap(textureHandle);
 }
 
-void GLTexture::applySampler(Sampler& sampler)
+void GLTexture::applySampler(Sampler &sampler)
 {
         if (sampler.minFilter != Sampler::Filter::NoFilter)
         {
@@ -53,11 +53,6 @@ void GLTexture::applySampler(Sampler& sampler)
         {
                 glTextureParameteri(textureHandle, GL_TEXTURE_WRAP_T, static_cast<GLint>(sampler.wrapT));
         }
-}
-
-Material* Material::getDefaultMaterial()
-{
-        return nullptr;
 }
 
 }  // namespace ic

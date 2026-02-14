@@ -76,7 +76,7 @@ private:
 extern "C"
 {
 #endif
-        typedef class IC_Model IC_Model;
+        typedef class Model Model;
 
         /** @function ic_load_registry
          * @category assets
@@ -90,9 +90,8 @@ extern "C"
          * @category assets
          * @brief Loads models from asset id. Checks in the registry if it contains the GUID else returns
          * (exception/nothing) for now.
-         * @param modelID modelID from a registry file.
-         */
-        IC_API IC_Model *ic_load_model(GUID modelId);
+         elID modelID from a registry file.
+         Model Model *ic_load_model(GUID modelId);
 
         /** @function ic_unload_model
          * @category assets

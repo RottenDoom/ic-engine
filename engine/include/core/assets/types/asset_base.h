@@ -1,6 +1,8 @@
 #ifndef ASSET_BASE_H
 #define ASSET_BASE_H
+
 #include "defines.h"
+#include "core/assets/asset_serializer.h"
 
 /** TODO:
  * 1. Asset Base UUID generator when writing a file to registry
@@ -26,7 +28,6 @@
 
 using GUID = uint32_t;
 extern const GUID INVALID_ID;
-class Serializer;
 
 enum AssetType : uint8_t
 {
@@ -66,9 +67,9 @@ public:
         virtual const char *getName() const    = 0;
         virtual string toString() const { return getName(); }
 
-        virtual bool Load(const GUID id) { return false; };
-        virtual bool CachedLoad(Serializer *serializer)       = 0;
-        virtual bool CachedSave(Serializer *serializer) const = 0;
+        virtual bool Load(const char *filepath) { return false; };
+        virtual bool CachedLoad(ic::Serializer *serializer)       = 0;
+        virtual bool CachedSave(ic::Serializer *serializer) const = 0;
         virtual void Free() {}
 
         void SetName(char *name) { m_name = name; };
@@ -83,7 +84,7 @@ private:
         char *m_name       = nullptr;
         GUID _id           = INVALID_ID;
         int32_t _ref_count = 0;
-        void serializeName(Serializer *serializer) const;
+        void serializeName(ic::Serializer *serializer) const;
 };
 
 #endif

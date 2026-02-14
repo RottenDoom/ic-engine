@@ -1,4 +1,4 @@
-#include "renderer/opengl/gltf_loader.h"
+#include "core/gltf_loader.h"
 #include "renderer/opengl/gl_model.h"
 #include "renderer/opengl/gl_material.h"
 
@@ -11,7 +11,7 @@
 
 namespace ic
 {
-#define toIndex(x) static_cast<ic::Index>(x)
+#define toIndex(x) static_cast<Index>(x)
 
 static GLenum toGLenum(fastgltf::ComponentType type);
 static size_t getAccessorComponentCount(Accessor::Type type);
@@ -37,14 +37,7 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model *gltf)
                 return false;
         }
 
-        if constexpr (std::is_same_v<std::filesystem::path::value_type, wchar_t>)
-        {
-                IC_CORE_INFO("Loading {}", path.string());
-        }
-        else
-        {
-                IC_CORE_INFO("Loading {}", path.string());
-        }
+        IC_CORE_INFO("Loading {}", path.string());
 
         static constexpr auto supportedExtensions = fastgltf::Extensions::KHR_mesh_quantization |
                                                     fastgltf::Extensions::KHR_texture_transform |
@@ -63,7 +56,6 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model *gltf)
                 return false;
         }
 
-        /** Sounds like some finance term */
         auto expectedAsset = parser.loadGltf(gltfFile.get(), path.parent_path(), gltfOptions);
         if (expectedAsset.error() != fastgltf::Error::None)
         {
@@ -73,36 +65,33 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model *gltf)
                 return false;
         }
 
-        fastgltf::Asset *asset;
-        if (const auto assetPtr = expectedAsset.get_if())
+        fastgltf::Asset *asset = expectedAsset.get_if();
+        if (!asset)
         {
-
-                asset = assetPtr;
+                IC_CORE_WARN("Failed to get asset from GLTF file");
+                return false;
         }
 
-        for (auto &it : asset->scenes)
+        // Load raw GLTF data first (buffers, accessors, etc.)
+        for (auto &it : asset->buffers)
         {
-                loadScene(gltf, it);
+                loadBuffer(gltf, it, path);
         }
 
-        for (auto &it : asset->nodes)
+        for (auto &it : asset->bufferViews)
         {
-                loadNode(gltf, it);
+                loadBufferView(gltf, it);
         }
 
-        for (auto &it : asset->meshes)
+        for (auto &it : asset->accessors)
         {
-                loadMesh(gltf, it);
+                loadAccessor(gltf, it);
         }
 
+        // Load resources
         for (auto &it : asset->samplers)
         {
                 loadSamplers(gltf, it);
-        }
-
-        for (auto &it : asset->materials)
-        {
-                loadMaterial(gltf, it);
         }
 
         for (auto &it : asset->images)
@@ -115,33 +104,38 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model *gltf)
                 loadTexture(gltf, it);
         }
 
-        for (auto &it : asset->accessors)
+        for (auto &it : asset->materials)
         {
-                loadAccessor(gltf, it);
+                loadMaterial(gltf, it);
         }
 
-        for (auto &it : asset->bufferViews)
+        // Load scene graph
+        for (auto &it : asset->nodes)
         {
-                loadBufferView(gltf, it);
+                loadNode(gltf, it);
         }
 
-        for (auto &it : asset->buffers)
+        // Load meshes and process geometry
+        for (auto &it : asset->meshes)
         {
-                loadBuffer(gltf, it, path); /** See if this path is correct */
+                loadMesh(gltf, it);
         }
 
-        /** TODO: remove these */
+        for (auto &it : asset->scenes)
+        {
+                loadScene(gltf, it);
+        }
+
         IC_CORE_TRACE("Loaded {} Scenes", gltf->scenes.size());
         IC_CORE_TRACE("Loaded {} Nodes", gltf->nodes.size());
         IC_CORE_TRACE("Loaded {} Meshes", gltf->meshes.size());
         IC_CORE_TRACE("Loaded {} Images", gltf->images.size());
         IC_CORE_TRACE("Loaded {} Textures", gltf->textures.size());
         IC_CORE_TRACE("Loaded {} Buffers", gltf->buffers.size());
-        IC_CORE_TRACE("Loaded {} bufferViews", gltf->bufferViews.size());
-        IC_CORE_TRACE("Loaded {} accessors", gltf->accessors.size());
-        IC_CORE_TRACE("Loaded {} materials", gltf->materials.size());
+        IC_CORE_TRACE("Loaded {} BufferViews", gltf->bufferViews.size());
+        IC_CORE_TRACE("Loaded {} Accessors", gltf->accessors.size());
+        IC_CORE_TRACE("Loaded {} Materials", gltf->materials.size());
 
-        /** TODO: handle this better */
         if (asset->defaultScene.has_value())
         {
                 gltf->defaultScene = toIndex(asset->defaultScene.value());
@@ -155,18 +149,24 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model *gltf)
                 gltf->defaultScene = INVALID_INDEX;
         }
 
+        // Process meshes to extract vertex/index data
+        processMeshGeometry(gltf);
+
+        // Can free loading data now if needed
+        // gltf->FreeLoadingData();
+
         return true;
 }
 
 bool GLTFLoader::loadScene(Model *gltf, fastgltf::Scene &scene)
 {
-        ic::Scene engineScene{};
+        Scene engineScene{};
         engineScene.name = scene.name;
         engineScene.rootNodes.reserve(scene.nodeIndices.size());
 
         for (size_t nodeIndex : scene.nodeIndices)
         {
-                engineScene.rootNodes.push_back(static_cast<ic::Index>(nodeIndex));
+                engineScene.rootNodes.push_back(static_cast<Index>(nodeIndex));
         }
 
         gltf->scenes.push_back(std::move(engineScene));
@@ -175,29 +175,29 @@ bool GLTFLoader::loadScene(Model *gltf, fastgltf::Scene &scene)
 
 bool GLTFLoader::loadNode(Model *gltf, fastgltf::Node &node)
 {
-        ic::Node gltfNode{};
+        Node gltfNode{};
         gltfNode.name = node.name; /** Node can also contain no name handle that too */
         if (node.meshIndex.has_value())
         {
-                gltfNode.mesh = node.meshIndex.value();
+                gltfNode.meshIndex = node.meshIndex.value();
         }
         if (node.skinIndex.has_value())
         {
-                gltfNode.skin = node.skinIndex.value();
+                gltfNode.skinIndex = node.skinIndex.value();
         }
         if (node.lightIndex.has_value())
         {
-                gltfNode.light = node.lightIndex.value();
+                gltfNode.lightIndex = node.lightIndex.value();
         }
         if (node.cameraIndex.has_value())
         {
-                gltfNode.camera = node.cameraIndex.value();
+                gltfNode.cameraIndex = node.cameraIndex.value();
         }
 
         gltfNode.children.reserve(node.children.size());
         for (auto &childIndex : node.children)
         {
-                gltfNode.children.push_back(static_cast<ic::Index>(childIndex));
+                gltfNode.children.push_back(static_cast<Index>(childIndex));
         }
 
         if (std::holds_alternative<fastgltf::TRS>(node.transform))
@@ -238,92 +238,84 @@ bool GLTFLoader::loadNode(Model *gltf, fastgltf::Node &node)
 
 bool GLTFLoader::loadMesh(Model *gltf, fastgltf::Mesh &mesh)
 {
-        ic::Mesh outMesh{};
-        outMesh.meshPrimitives.reserve(mesh.primitives.size());
+        Mesh outMesh{};
+        outMesh.primitives.reserve(mesh.primitives.size());
         outMesh.name = mesh.name;
 
-        for (auto it = mesh.primitives.begin(); it != mesh.primitives.end(); ++it)
+        /** Each mesh contains primitives what indices it points to and material and mode.
+         *  The mesh has modes triangle, point or line, Also each primitive of a mesh has
+         *  Positions. We also initialize all the necessary data for the indices
+         *  We could have directly used the data to initialize the vertex arrays but that will require
+         *  me to write two different functions for the same thing but for different structs. I would
+         * rather write those functions in there respective structs
+         */
+        for (auto &primitive : mesh.primitives)
         {
-                /** Each mesh contains primitives what indices it points to and material and mode.
-                 *  The mesh has modes triangle, point or line, Also each primitive of a mesh has
-                 *  Positions. We also initialize all the necessary data for the indices
-                 *  We could have directly used the data to initialize the vertex arrays but that will require
-                 *  me to write two different functions for the same thing but for different structs. I would rather
-                 * write those functions in there respective structs
-                 */
-                ic::MeshPrimitive primitive;
+                MeshPrimitive prim;
+                prim.mode = static_cast<MeshPrimitive::Mode>(primitive.type);
 
-                /** Sanity Checks */
-                auto positionIt = it->findAttribute("POSITION");
-                IC_CORE_ASSERT(positionIt != it->attributes.end(),
-                               "Primitive Error: POSITION attribute is required for construct vertex arrays! Mesh {}",
+                // TODO: Store accessor indices temporarily (will be processed later)
+                TempPrimitiveData tempData;
+
+                auto positionIt = primitive.findAttribute("POSITION");
+                IC_CORE_ASSERT(positionIt != primitive.attributes.end(),
+                               "POSITION attribute required for mesh: {}",
                                mesh.name);
+                tempData.positionAccessor = toIndex(positionIt->accessorIndex);
 
-                IC_CORE_ASSERT(it->indicesAccessor.has_value(),
-                               "Primitive Error: Index accessor not available for the mesh: {}",
-                               mesh.name);
-
-                // mode
-                primitive.mode = static_cast<ic::MeshPrimitive::Mode>(it->type);
-
-                // attributes
-                for (const auto &[name, accessor] : it->attributes)
+                for (const auto &[name, accessorIndex] : primitive.attributes)
                 {
-                        if (name == "POSITION")
-                                primitive.position = toIndex(accessor);
-                        else if (name == "NORMAL")
-                                primitive.normal = toIndex(accessor);
+                        if (name == "NORMAL")
+                                tempData.normalAccessor = toIndex(accessorIndex);
                         else if (name == "TANGENT")
-                                primitive.tangent = toIndex(accessor);
+                                tempData.tangentAccessor = toIndex(accessorIndex);
                         else if (name == "COLOR_0")
-                                primitive.color = toIndex(accessor);
-                        else if (name.rfind("TEXCOORD_", 0) == 0)
-                        {
-                                // Extract the number after TEXCOORD_
-                                /** TODO: make my own string class? */
-                                size_t uvIndex = static_cast<size_t>(name[9] - '0');
-                                if (primitive.texcoords.size() <= uvIndex)
-                                        primitive.texcoords.resize(uvIndex + 1, INVALID_INDEX);
-
-                                primitive.texcoords[uvIndex] = toIndex(accessor);
-                        }
+                                tempData.colorAccessor = toIndex(accessorIndex);
+                        else if (name == "TEXCOORD_0")
+                                tempData.texCoord0Accessor = toIndex(accessorIndex);
+                        else if (name == "TEXCOORD_1")
+                                tempData.texCoord1Accessor = toIndex(accessorIndex);
                         else if (name == "JOINTS_0")
-                                primitive.joints = toIndex(accessor);
+                                tempData.jointsAccessor = toIndex(accessorIndex);
                         else if (name == "WEIGHTS_0")
-                                primitive.weights = toIndex(accessor);
+                                tempData.weightsAccessor = toIndex(accessorIndex);
                 }
 
-                // indices
-                if (it->indicesAccessor.has_value())
-                        primitive.indices = toIndex(it->indicesAccessor.value());
+                if (primitive.indicesAccessor.has_value())
+                {
+                        tempData.indicesAccessor = toIndex(primitive.indicesAccessor.value());
+                }
 
-                // material
-                if (it->materialIndex.has_value())
-                        primitive.material = toIndex(it->materialIndex.value());
+                if (primitive.materialIndex.has_value())
+                {
+                        prim.materialIndex = toIndex(primitive.materialIndex.value());
+                }
 
-                // it->target /** TODO: Morph Targets */
-                // it-> dracoCompression /** TODO: Draco Compression using KTX? */
-
-                outMesh.meshPrimitives.push_back(std::move(primitive));
+                // Store temp data for processing
+                m_tempPrimitiveData.push_back(tempData);
+                outMesh.primitives.push_back(std::move(prim));
         }
+
         gltf->meshes.push_back(std::move(outMesh));
         return true;
 }
 
 bool GLTFLoader::loadSamplers(Model *gltf, fastgltf::Sampler &sampler)
 {
-        ic::Sampler tsampler{};
-        tsampler.magFilter = static_cast<Sampler::Filter>(sampler.magFilter.value());
-        tsampler.minFilter = static_cast<Sampler::Filter>(sampler.minFilter.value());
-        tsampler.wrapS     = static_cast<Sampler::Wrap>(sampler.wrapS);
-        tsampler.wrapT     = static_cast<Sampler::Wrap>(sampler.wrapT);
+        Sampler tsampler{};
+        if (sampler.magFilter.has_value())
+                tsampler.magFilter = static_cast<Sampler::Filter>(sampler.magFilter.value());
+        if (sampler.minFilter.has_value())
+                tsampler.minFilter = static_cast<Sampler::Filter>(sampler.minFilter.value());
+        tsampler.wrapS = static_cast<Sampler::Wrap>(sampler.wrapS);
+        tsampler.wrapT = static_cast<Sampler::Wrap>(sampler.wrapT);
         gltf->samplers.push_back(std::move(tsampler));
         return true;
 }
 
 bool GLTFLoader::loadMaterial(Model *gltf, fastgltf::Material &material)
 {
-        ic::Material mat;
+        Material mat;
         mat.name = material.name;
 
         /** PBR Data */
@@ -403,9 +395,276 @@ Accessor::Type GLTFLoader::convertAccessorType(fastgltf::AccessorType type)
         }
 }
 
+void GLTFLoader::processMeshGeometry(Model *gltf)
+{
+        size_t primitiveIndex = 0;
+
+        for (auto &mesh : gltf->meshes)
+        {
+                for (auto &primitive : mesh.primitives)
+                {
+                        if (primitiveIndex >= m_tempPrimitiveData.size())
+                        {
+                                IC_CORE_ERROR("Primitive index out of range during geometry processing");
+                                continue;
+                        }
+
+                        const auto &tempData = m_tempPrimitiveData[primitiveIndex++];
+
+                        // Extract vertices
+                        extractVertices(gltf, tempData, primitive);
+
+                        // Extract indices
+                        extractIndices(gltf, tempData, primitive);
+                }
+        }
+
+        // Clear temporary data
+        m_tempPrimitiveData.clear();
+}
+
+void GLTFLoader::extractVertices(Model *gltf, const TempPrimitiveData &tempData, MeshPrimitive &primitive)
+{
+        if (tempData.positionAccessor == INVALID_INDEX)
+                return;
+
+        const Accessor &posAccessor = gltf->accessors[tempData.positionAccessor];
+        size_t vertexCount          = posAccessor.count;
+
+        primitive.vertices.resize(vertexCount);
+
+        // Read positions
+        std::vector<glm::vec3> positions;
+        readAccessorVec3(gltf, tempData.positionAccessor, positions);
+
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+                primitive.vertices[i].pos = positions[i];
+        }
+
+        // Read normals
+        if (tempData.normalAccessor != INVALID_INDEX)
+        {
+                std::vector<glm::vec3> normals;
+                readAccessorVec3(gltf, tempData.normalAccessor, normals);
+                for (size_t i = 0; i < std::min(vertexCount, normals.size()); ++i)
+                {
+                        primitive.vertices[i].normal = normals[i];
+                }
+        }
+
+        // Read tangents
+        if (tempData.tangentAccessor != INVALID_INDEX)
+        {
+                std::vector<glm::vec4> tangents;
+                readAccessorVec4(gltf, tempData.tangentAccessor, tangents);
+                for (size_t i = 0; i < std::min(vertexCount, tangents.size()); ++i)
+                {
+                        primitive.vertices[i].tangent = tangents[i];
+                }
+        }
+
+        // Read UVs
+        if (tempData.texCoord0Accessor != INVALID_INDEX)
+        {
+                std::vector<glm::vec2> uvs;
+                readAccessorVec2(gltf, tempData.texCoord0Accessor, uvs);
+                for (size_t i = 0; i < std::min(vertexCount, uvs.size()); ++i)
+                {
+                        primitive.vertices[i].uv0 = uvs[i];
+                }
+        }
+
+        if (tempData.texCoord1Accessor != INVALID_INDEX)
+        {
+                std::vector<glm::vec2> uvs;
+                readAccessorVec2(gltf, tempData.texCoord1Accessor, uvs);
+                for (size_t i = 0; i < std::min(vertexCount, uvs.size()); ++i)
+                {
+                        primitive.vertices[i].uv1 = uvs[i];
+                }
+        }
+
+        // Read colors
+        if (tempData.colorAccessor != INVALID_INDEX)
+        {
+                std::vector<glm::vec4> colors;
+                readAccessorVec4(gltf, tempData.colorAccessor, colors);
+                for (size_t i = 0; i < std::min(vertexCount, colors.size()); ++i)
+                {
+                        primitive.vertices[i].color = colors[i];
+                }
+        }
+
+        // Read skinning data
+        if (tempData.jointsAccessor != INVALID_INDEX)
+        {
+                std::vector<glm::uvec4> joints;
+                readAccessorUVec4(gltf, tempData.jointsAccessor, joints);
+                for (size_t i = 0; i < std::min(vertexCount, joints.size()); ++i)
+                {
+                        primitive.vertices[i].joint0 = joints[i];
+                }
+        }
+
+        if (tempData.weightsAccessor != INVALID_INDEX)
+        {
+                std::vector<glm::vec4> weights;
+                readAccessorVec4(gltf, tempData.weightsAccessor, weights);
+                for (size_t i = 0; i < std::min(vertexCount, weights.size()); ++i)
+                {
+                        primitive.vertices[i].weight0 = weights[i];
+                }
+        }
+}
+
+void GLTFLoader::extractIndices(Model *gltf, const TempPrimitiveData &tempData, MeshPrimitive &primitive)
+{
+        if (tempData.indicesAccessor == INVALID_INDEX)
+                return;
+
+        const Accessor &idxAccessor = gltf->accessors[tempData.indicesAccessor];
+        primitive.indices.resize(idxAccessor.count);
+
+        // Indices can be different types, need to handle each
+        const uint8_t *data = getAccessorData(gltf, tempData.indicesAccessor);
+
+        switch (idxAccessor.componentType)
+        {
+        case Accessor::ComponentType::UByte:
+        {
+                const uint8_t *indices = reinterpret_cast<const uint8_t *>(data);
+                for (size_t i = 0; i < idxAccessor.count; ++i)
+                {
+                        primitive.indices[i] = static_cast<uint32_t>(indices[i]);
+                }
+                break;
+        }
+        case Accessor::ComponentType::UShort:
+        {
+                const uint16_t *indices = reinterpret_cast<const uint16_t *>(data);
+                for (size_t i = 0; i < idxAccessor.count; ++i)
+                {
+                        primitive.indices[i] = static_cast<uint32_t>(indices[i]);
+                }
+                break;
+        }
+        case Accessor::ComponentType::UInt:
+        {
+                const uint32_t *indices = reinterpret_cast<const uint32_t *>(data);
+                memcpy(primitive.indices.data(), indices, idxAccessor.count * sizeof(uint32_t));
+                break;
+        }
+        default:
+                IC_CORE_ERROR("Unsupported index component type");
+                break;
+        }
+}
+
+const uint8_t *GLTFLoader::getAccessorData(Model *gltf, Index accessorIndex)
+{
+        if (accessorIndex >= gltf->accessors.size())
+                return nullptr;
+
+        const Accessor &accessor = gltf->accessors[accessorIndex];
+        if (accessor.bufferView >= gltf->bufferViews.size())
+                return nullptr;
+
+        const BufferView &bufferView = gltf->bufferViews[accessor.bufferView];
+        if (bufferView.bufferIndex >= gltf->buffers.size())
+                return nullptr;
+
+        const Buffer &buffer = gltf->buffers[bufferView.bufferIndex];
+
+        return buffer.data.data() + bufferView.byteOffset + accessor.offset;
+}
+
+void GLTFLoader::readAccessorVec2(Model *gltf, Index accessorIndex, std::vector<glm::vec2> &outData)
+{
+        const Accessor &accessor = gltf->accessors[accessorIndex];
+        outData.resize(accessor.count);
+
+        const uint8_t *data    = getAccessorData(gltf, accessorIndex);
+        const float *floatData = reinterpret_cast<const float *>(data);
+
+        for (size_t i = 0; i < accessor.count; ++i)
+        {
+                outData[i] = glm::vec2(floatData[i * 2], floatData[i * 2 + 1]);
+        }
+}
+
+void GLTFLoader::readAccessorVec3(Model *gltf, Index accessorIndex, std::vector<glm::vec3> &outData)
+{
+        const Accessor &accessor = gltf->accessors[accessorIndex];
+        outData.resize(accessor.count);
+
+        const uint8_t *data    = getAccessorData(gltf, accessorIndex);
+        const float *floatData = reinterpret_cast<const float *>(data);
+
+        for (size_t i = 0; i < accessor.count; ++i)
+        {
+                outData[i] = glm::vec3(floatData[i * 3], floatData[i * 3 + 1], floatData[i * 3 + 2]);
+        }
+}
+
+void GLTFLoader::readAccessorVec4(Model *gltf, Index accessorIndex, std::vector<glm::vec4> &outData)
+{
+        const Accessor &accessor = gltf->accessors[accessorIndex];
+        outData.resize(accessor.count);
+
+        const uint8_t *data    = getAccessorData(gltf, accessorIndex);
+        const float *floatData = reinterpret_cast<const float *>(data);
+
+        for (size_t i = 0; i < accessor.count; ++i)
+        {
+                outData[i] =
+                    glm::vec4(floatData[i * 4], floatData[i * 4 + 1], floatData[i * 4 + 2], floatData[i * 4 + 3]);
+        }
+}
+
+void GLTFLoader::readAccessorUVec4(Model *gltf, Index accessorIndex, std::vector<glm::uvec4> &outData)
+{
+        const Accessor &accessor = gltf->accessors[accessorIndex];
+        outData.resize(accessor.count);
+
+        const uint8_t *data = getAccessorData(gltf, accessorIndex);
+
+        // Joints can be stored as different types
+        switch (accessor.componentType)
+        {
+        case Accessor::ComponentType::UByte:
+        {
+                const uint8_t *ubyteData = reinterpret_cast<const uint8_t *>(data);
+                for (size_t i = 0; i < accessor.count; ++i)
+                {
+                        outData[i] = glm::uvec4(ubyteData[i * 4],
+                                                ubyteData[i * 4 + 1],
+                                                ubyteData[i * 4 + 2],
+                                                ubyteData[i * 4 + 3]);
+                }
+                break;
+        }
+        case Accessor::ComponentType::UShort:
+        {
+                const uint16_t *ushortData = reinterpret_cast<const uint16_t *>(data);
+                for (size_t i = 0; i < accessor.count; ++i)
+                {
+                        outData[i] = glm::uvec4(ushortData[i * 4],
+                                                ushortData[i * 4 + 1],
+                                                ushortData[i * 4 + 2],
+                                                ushortData[i * 4 + 3]);
+                }
+                break;
+        }
+        default:
+                IC_CORE_ERROR("Unsupported component type for joint indices");
+                break;
+        }
+}
+
 void GLTFLoader::loadBufferView(Model *gltf, fastgltf::BufferView &bufferView)
 {
-        ic::BufferView bufView;
+        BufferView bufView;
 
         bufView.bufferIndex = bufferView.bufferIndex;
         bufView.byteOffset  = bufferView.byteOffset;
@@ -419,7 +678,7 @@ void GLTFLoader::loadBufferView(Model *gltf, fastgltf::BufferView &bufferView)
 
 void GLTFLoader::loadBuffer(Model *gltf, const fastgltf::Buffer &buffer, const std::filesystem::path &basePath)
 {
-        ic::Buffer buf;
+        Buffer buf;
         std::visit(fastgltf::visitor{[&](const fastgltf::sources::Array &array)
                                      {
                                              buf.data.resize(array.bytes.size());
@@ -461,15 +720,14 @@ void GLTFLoader::loadBuffer(Model *gltf, const fastgltf::Buffer &buffer, const s
 
 void GLTFLoader::loadAccessor(Model *gltf, fastgltf::Accessor &accessor)
 {
-        ic::Accessor acc;
-        acc.bufferView = accessor.bufferViewIndex.has_value() ? toIndex(accessor.bufferViewIndex.value())
-                                                              : INVALID_INDEX;
-        acc.offset     = accessor.byteOffset;
-        acc.count      = accessor.count;
-        acc.type       = convertAccessorType(accessor.type);
+        Accessor acc;
+        acc.bufferView      = accessor.bufferViewIndex.has_value() ? toIndex(accessor.bufferViewIndex.value())
+                                                                   : INVALID_INDEX;
+        acc.offset          = accessor.byteOffset;
+        acc.count           = accessor.count;
+        acc.type            = convertAccessorType(accessor.type);
 
-        /** TODO: fix GLenum from the model */
-        // acc.componentType   = toGLenum(accessor.componentType);
+        acc.componentType   = static_cast<Accessor::ComponentType>(accessor.componentType);
         acc.normalized      = accessor.normalized;
 
         uint32_t components = getAccessorComponentCount(acc.type);
@@ -527,7 +785,7 @@ void GLTFLoader::loadAccessor(Model *gltf, fastgltf::Accessor &accessor)
 
 bool GLTFLoader::loadImage(Model *gltf, fastgltf::Asset &asset, fastgltf::Image &image)
 {
-        ic::ImageData imageData;
+        ImageData imageData;
 
         std::visit(
             fastgltf::visitor{
@@ -602,7 +860,7 @@ bool GLTFLoader::loadImage(Model *gltf, fastgltf::Asset &asset, fastgltf::Image 
 
 void GLTFLoader::loadTexture(Model *gltf, fastgltf::Texture &texture)
 {
-        ic::Texture tex;
+        Texture tex;
 
         if (texture.imageIndex.has_value())
         {

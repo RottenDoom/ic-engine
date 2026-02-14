@@ -1,21 +1,22 @@
 #include "core/assets/asset_manager.h"
+#include "core/assets/types/model.h"
+
 #include "core/allocators.h"
 #include "core/filesystem.h"
 #include "core/assets/asset_registry.h"
 #include "core/assets/asset_serializer.h"
-#include "core/assets/types/ic_model.h"
 
 // global unique asset manager
 ic::AssetManager *g_asset_manager = nullptr;
 static GUID UUID                  = 1u;
 
-namespace ic
-{
-
-void IAsset::serializeName(Serializer *serializer) const
+void IAsset::serializeName(ic::Serializer *serializer) const
 {
         serializer->write<uint16_t>(m_name);
 }
+
+namespace ic
+{
 
 void asset_manager_init(void)
 {
@@ -102,7 +103,7 @@ void ic_load_registry(const char *registry_file_path)
 }
 
 // remove this ic here somehow
-IC_Model *ic_load_model(GUID modelID)
+Model *ic_load_model(GUID modelID)
 {
         // check if the registry contains the model
         if (!g_asset_manager->GetRegistry()->Contains(modelID))
@@ -112,7 +113,7 @@ IC_Model *ic_load_model(GUID modelID)
         }
 
         // either load the model or return the pointer if already loaded
-        IC_Model *cached = g_asset_manager->Get<IC_Model>(modelID);
+        Model *cached = g_asset_manager->Get<Model>(modelID);
         if (cached)
         {
                 cached->AddRef();
@@ -127,16 +128,16 @@ IC_Model *ic_load_model(GUID modelID)
         g_asset_manager->GetRegistry()->Register(filepath);  // modelID and model should go in here.
                                                              // model->addRef()
 
-        // Serializer serializer;
-        // if (!cached->CachedLoad(&serializer))
-        // {
-        //         IC_CORE_INFO("Could not load fast file");
-        // }
-        // else
-        // {
-        //         IC_CORE_ASSERT(cached->Load(modelID), "Could not load file!");
-        //         cached->CachedSave(&serializer);
-        // }
+        ic::Serializer serializer;
+        if (!cached->CachedLoad(&serializer))
+        {
+                IC_CORE_INFO("Could not load fast file");
+        }
+        else
+        {
+                IC_CORE_ASSERT(cached->Load(filepath), "Could not load file!");
+                cached->CachedSave(&serializer);
+        }
 
         // THis means the model was't loaded yet and thus we load the model by initializing asset class adding to
         // assetmanager(reposibility of asset manager ofcourse) increase refcounts and the loaded boolean. But this

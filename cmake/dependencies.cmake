@@ -1,5 +1,7 @@
 include(FetchContent)
 
+## GLOBAL DEPENDENCIES
+
 # GLFW
 FetchContent_Declare(
     glfw
@@ -32,7 +34,6 @@ FetchContent_Declare(
   GIT_TAG yaml-cpp-0.9.0 # Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
 )
 
-# Don't build tests/tools
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
@@ -49,6 +50,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glm)
 
+# KTX
 FetchContent_Declare(
     ktx
     GIT_REPOSITORY "https://github.com/KhronosGroup/KTX-Software.git"
@@ -81,30 +83,35 @@ FetchContent_MakeAvailable(fastgltf)
 
 add_library(dependencies INTERFACE)
 
-
-target_include_directories(dependencies
-INTERFACE
-	${glm_SOURCE_DIR}
-	${ktx_SOURCE_DIR}/include
-	${spdlog_SOURCE_DIR}/include
-	${glfw_SOURCE_DIR}/include
-)
+# target_include_directories(dependencies
+# INTERFACE
+# 	${glm_SOURCE_DIR}
+# 	${spdlog_SOURCE_DIR}/include
+# 	${glfw_SOURCE_DIR}/include
+# )
 
 
 add_library(mmapped STATIC 
-	${CMAKE_SOURCE_DIR}/third-party/memory_map/MemoryMapped.cpp
+    ${CMAKE_SOURCE_DIR}/third-party/memory_map/MemoryMapped.cpp
 )
+
+target_include_directories(mmapped
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/third-party/memory_map
+)
+
 
 target_link_libraries(dependencies
 INTERFACE
 	glm
-	ktx
 	glfw
 	yaml-cpp::yaml-cpp
 	spdlog::spdlog
 	fastgltf
 	mmapped
 )
+
+## RENDERER DEPENDENCIES
 
 add_library(glad STATIC 
 	${CMAKE_SOURCE_DIR}/third-party/glad/src/glad.c
@@ -115,17 +122,25 @@ target_include_directories(glad PRIVATE
 	${CMAKE_SOURCE_DIR}/third-party/glad/include 
 )
 
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE
+    ${CMAKE_SOURCE_DIR}/third-party/stb
+)
+
 set(IC_INTERNAL_HEADERS
-	${CMAKE_SOURCE_DIR}/third-party/tiny_gltf
 	${CMAKE_SOURCE_DIR}/third-party/glad/include
 	${CMAKE_SOURCE_DIR}/third-party/stb
+	${ktx_SOURCE_DIR}/include
 	${CMAKE_SOURCE_DIR}/third-party/basisu/transcoder
 	${CMAKE_SOURCE_DIR}/third-party/basisu/zstd
-	${CMAKE_SOURCE_DIR}/third_party/memory_map
 )
 
 add_library(renderer_dependencies INTERFACE)
 
-target_link_libraries(renderer_dependencies INTERFACE glad)
+target_link_libraries(renderer_dependencies INTERFACE
+    glad
+    stb
+    ktx
+)
 
-target_include_directories(renderer_dependencies INTERFACE ${IC_INTERNAL_HEADERS})
+# target_include_directories(renderer_dependencies INTERFACE ${IC_INTERNAL_HEADERS})

@@ -18,8 +18,8 @@
 #include "core/events/key_event.h"
 #include "core/events/mouse_event.h"
 
+#include "core/assets/types/model.h"
+
 // renderer
 #include "renderer/camera.h"
-#include "renderer/model.h"
-
 #endif  // IC_ENGINE_H

@@ -4,7 +4,7 @@
 namespace ic
 {
 
-void GLModel::upload(Model& model)
+void GLModel::upload(Model &model)
 {
         this->model = &model;
 
@@ -20,17 +20,17 @@ void GLModel::uploadTextures()
 
         for (size_t i = 0; i < model->textures.size(); ++i)
         {
-                Texture& tex = model->textures[i];
+                Texture &tex = model->textures[i];
                 if (tex.image != INVALID_INDEX)
                 {
-                        ImageData& img = model->images[tex.image];
+                        ImageData &img = model->images[tex.image];
                         textures[i].createTexture(*model, tex, img);
                 }
 
                 // Apply sampler if present
                 if (tex.sampler != INVALID_INDEX)
                 {
-                        Sampler& sampler = model->samplers[tex.sampler];
+                        Sampler &sampler = model->samplers[tex.sampler];
                         textures[i].applySampler(sampler);
                 }
         }
@@ -43,36 +43,36 @@ void GLModel::uploadMeshes()
 
         for (size_t i = 0; i < model->meshes.size(); ++i)
         {
-                Mesh& mesh = model->meshes[i];
+                Mesh &mesh = model->meshes[i];
 
-                meshes[i].primitives.resize(mesh.meshPrimitives.size());
+                meshes[i].primitives.resize(mesh.primitives.size());
 
-                for (size_t j = 0; j < mesh.meshPrimitives.size(); ++j)
+                for (size_t j = 0; j < mesh.primitives.size(); ++j)
                 {
-                        meshes[i].primitives[j].setupBuffers(*model, mesh.meshPrimitives[j]);
+                        meshes[i].primitives[j].setupBuffers(*model, mesh.primitives[j]);
                         IC_CORE_TRACE("Mesh primitive EBO {}", meshes[i].primitives[j].EBO);
                 }
         }
 }
 
-void GLModel::draw(Shader& shader)
+void GLModel::draw(Shader &shader)
 {
-        ic::Scene& scene = model->scenes[model->defaultScene];
+        Scene &scene = model->scenes[model->defaultScene];
 
-        for (auto& rootNodeIdx : scene.rootNodes)
+        for (auto &rootNodeIdx : scene.rootNodes)
         {
                 drawNode(shader, rootNodeIdx, glm::mat4(1.0f));  //** Transform needs to be checked. */
         }
 }
 
-void GLModel::drawNode(Shader& shader, Index idx, glm::mat4 parent)
+void GLModel::drawNode(Shader &shader, Index idx, glm::mat4 parent)
 {
-        Node& node      = model->nodes[idx];
+        Node &node      = model->nodes[idx];
         glm::mat4 world = parent * node.localTransform;
 
-        if (node.mesh != INVALID_INDEX)
+        if (node.meshIndex != INVALID_INDEX)
         {
-                drawMesh(shader, meshes[node.mesh], model->meshes[node.mesh], world);
+                drawMesh(shader, meshes[node.meshIndex], model->meshes[node.meshIndex], world);
         }
 
         for (Index childIdx : node.children)
@@ -81,7 +81,7 @@ void GLModel::drawNode(Shader& shader, Index idx, glm::mat4 parent)
         }
 }
 
-void GLModel::drawMesh(Shader& shader, GLMesh glMesh, Mesh& mesh, glm::mat4 world)
+void GLModel::drawMesh(Shader &shader, GLMesh glMesh, Mesh &mesh, glm::mat4 world)
 {
 
         //  Set model matrix uniform
@@ -89,13 +89,13 @@ void GLModel::drawMesh(Shader& shader, GLMesh glMesh, Mesh& mesh, glm::mat4 worl
 
         for (size_t i = 0; i < glMesh.primitives.size(); ++i)
         {
-                GLPrimitive& prim       = glMesh.primitives[i];
-                MeshPrimitive& meshPrim = mesh.meshPrimitives[i];
+                GLPrimitive &prim       = glMesh.primitives[i];
+                MeshPrimitive &meshPrim = mesh.primitives[i];
 
                 // Bind material if present
-                if (meshPrim.material != INVALID_INDEX)
+                if (meshPrim.materialIndex != INVALID_INDEX)
                 {
-                        Material& mat = model->materials[meshPrim.material];
+                        Material &mat = model->materials[meshPrim.materialIndex];
                         bindMaterial(shader, mat, prim);
                 }
 
@@ -106,14 +106,14 @@ void GLModel::drawMesh(Shader& shader, GLMesh glMesh, Mesh& mesh, glm::mat4 worl
                         glDrawElementsBaseVertex(GL_TRIANGLES,
                                                  prim.draw.count,
                                                  prim.indexType,
-                                                 (void*)(prim.draw.firstIndex *
-                                                         (prim.indexType == GL_UNSIGNED_SHORT ? 2 : 4)),
+                                                 (void *)(prim.draw.firstIndex *
+                                                          (prim.indexType == GL_UNSIGNED_SHORT ? 2 : 4)),
                                                  prim.draw.baseVertex);
                 }
         }
 }
 
-void GLModel::bindMaterial(Shader& shader, Material& mat, GLPrimitive& primitive)
+void GLModel::bindMaterial(Shader &shader, Material &mat, GLPrimitive &primitive)
 {
         /** TODO: default material handling */
         shader.setInt("u_defaultMaterial", 0);
@@ -210,174 +210,148 @@ void GLModel::bindMaterial(Shader& shader, Material& mat, GLPrimitive& primitive
         }
 }
 
-void GLPrimitive::setupBuffers(Model& model, MeshPrimitive& primitive)
+void GLPrimitive::setupBuffers(Model &model, MeshPrimitive &primitive)
 {
-        // Determine which attributes are present
+        // Check if we have vertices
+        if (primitive.vertices.empty())
+        {
+                IC_CORE_ERROR("Primitive has no vertices!");
+                return;
+        }
+
+        size_t vertexCount = primitive.vertices.size();
+
+        // Determine which attributes are present by checking the first vertex
         attributeFlags = 0;
         IC_CORE_TRACE("Active vertex attributes:");
-        if (primitive.position != INVALID_INDEX)
-        {
 
-                IC_CORE_TRACE("  - POSITION");
-                attributeFlags |= ATTRIB_POSITION;
-        }
-        if (primitive.normal != INVALID_INDEX)
+        // Position is always present (we checked vertices.empty() above)
+        attributeFlags |= ATTRIB_POSITION;
+        IC_CORE_TRACE("  - POSITION");
+
+        // Check first vertex to see what attributes have non-zero/valid data
+        const Vertex &firstVert = primitive.vertices[0];
+
+        // Check if normals are present (non-zero normal indicates it's present)
+        if (glm::length(firstVert.normal) > 0.0f)
         {
                 IC_CORE_TRACE("  - NORMAL");
                 attributeFlags |= ATTRIB_NORMAL;
         }
-        if (!primitive.texcoords.empty() && primitive.texcoords[0] != INVALID_INDEX)
+
+        // Check UVs
+        if (firstVert.uv0 != glm::vec2(0.0f))
         {
                 IC_CORE_TRACE("  - TEXCOORD0");
                 attributeFlags |= ATTRIB_TEXCOORD0;
         }
-        if (primitive.texcoords.size() > 1 && primitive.texcoords[1] != INVALID_INDEX)
+
+        if (firstVert.uv1 != glm::vec2(0.0f))
         {
                 IC_CORE_TRACE("  - TEXCOORD1");
-
                 attributeFlags |= ATTRIB_TEXCOORD1;
         }
-        if (primitive.texcoords.size() > 2 && primitive.texcoords[2] != INVALID_INDEX)
+
+        if (firstVert.uv2 != glm::vec2(0.0f))
         {
                 IC_CORE_TRACE("  - TEXCOORD2");
                 attributeFlags |= ATTRIB_TEXCOORD2;
         }
 
-        if (primitive.color != INVALID_INDEX)
+        // Check color
+        if (firstVert.color != glm::vec4(0.0f))
         {
                 IC_CORE_TRACE("  - COLOR");
                 attributeFlags |= ATTRIB_COLOR;
         }
-        if (primitive.tangent != INVALID_INDEX)
+
+        // Check tangent
+        if (glm::length(glm::vec3(firstVert.tangent)) > 0.0f)
         {
                 IC_CORE_TRACE("  - TANGENT");
                 attributeFlags |= ATTRIB_TANGENT;
         }
-        if (primitive.joints != INVALID_INDEX)
+
+        // Check skinning data
+        if (firstVert.joint0 != glm::uvec4(0))
         {
-                IC_CORE_TRACE("  - JOINT");
+                IC_CORE_TRACE("  - JOINTS");
                 attributeFlags |= ATTRIB_JOINTS;
         }
-        if (primitive.weights != INVALID_INDEX)
+
+        if (glm::length(firstVert.weight0) > 0.0f)
         {
-                IC_CORE_TRACE("  - WEIGHT");
+                IC_CORE_TRACE("  - WEIGHTS");
                 attributeFlags |= ATTRIB_WEIGHTS;
         }
 
         // Calculate vertex stride based on present attributes
         vertexStride = calculateStride(attributeFlags);
 
-        // Get vertex count from position accessor
-        size_t vertexCount = 0;
-        if (primitive.position != INVALID_INDEX)
-        {
-                vertexCount = model.accessors[primitive.position].count;
-        }
-        else
-        {
-                IC_CORE_ERROR("Primitive missing position attribute!");
-                return;
-        }
-
         // Allocate interleaved vertex buffer
         std::vector<uint8_t> vertexBuffer(vertexCount * vertexStride, 0);
 
-        // Read each attribute into the buffer at its proper offset
-        if (attributeFlags & ATTRIB_POSITION)
+        // Pack vertices into interleaved format
+        for (size_t i = 0; i < vertexCount; ++i)
         {
-                readAttribute(model,
-                              primitive.position,
-                              vertexBuffer,
-                              getAttributeOffset(attributeFlags, ATTRIB_POSITION),
-                              vertexStride,
-                              vertexCount);
-        }
+                const Vertex &vert = primitive.vertices[i];
+                uint8_t *dst       = vertexBuffer.data() + i * vertexStride;
+                size_t offset      = 0;
 
-        if (attributeFlags & ATTRIB_NORMAL)
-        {
-                readAttribute(model,
-                              primitive.normal,
-                              vertexBuffer,
-                              getAttributeOffset(attributeFlags, ATTRIB_NORMAL),
-                              vertexStride,
-                              vertexCount);
-        }
+                // Write each attribute that's present
+                if (attributeFlags & ATTRIB_POSITION)
+                {
+                        memcpy(dst + offset, &vert.pos, sizeof(glm::vec3));
+                        offset += sizeof(glm::vec3);
+                }
 
-        if (attributeFlags & ATTRIB_TEXCOORD0)
-        {
-                readAttribute(model,
-                              primitive.texcoords[0],
-                              vertexBuffer,
-                              getAttributeOffset(attributeFlags, ATTRIB_TEXCOORD0),
-                              vertexStride,
-                              vertexCount);
-        }
+                if (attributeFlags & ATTRIB_NORMAL)
+                {
+                        memcpy(dst + offset, &vert.normal, sizeof(glm::vec3));
+                        offset += sizeof(glm::vec3);
+                }
 
-        if (attributeFlags & ATTRIB_TEXCOORD1)
-        {
-                readAttribute(model,
-                              primitive.texcoords[1],
-                              vertexBuffer,
-                              getAttributeOffset(attributeFlags, ATTRIB_TEXCOORD1),
-                              vertexStride,
-                              vertexCount);
-        }
+                if (attributeFlags & ATTRIB_TANGENT)
+                {
+                        memcpy(dst + offset, &vert.tangent, sizeof(glm::vec4));
+                        offset += sizeof(glm::vec4);
+                }
 
-        if (attributeFlags & ATTRIB_TEXCOORD2)
-        {
-                readAttribute(model,
-                              primitive.texcoords[2],
-                              vertexBuffer,
-                              getAttributeOffset(attributeFlags, ATTRIB_TEXCOORD2),
-                              vertexStride,
-                              vertexCount);
-        }
+                if (attributeFlags & ATTRIB_TEXCOORD0)
+                {
+                        memcpy(dst + offset, &vert.uv0, sizeof(glm::vec2));
+                        offset += sizeof(glm::vec2);
+                }
 
-        if (attributeFlags & ATTRIB_COLOR)
-        {
-                readAttribute(model,
-                              primitive.color,
-                              vertexBuffer,
-                              getAttributeOffset(attributeFlags, ATTRIB_COLOR),
-                              vertexStride,
-                              vertexCount);
-        }
+                if (attributeFlags & ATTRIB_TEXCOORD1)
+                {
+                        memcpy(dst + offset, &vert.uv1, sizeof(glm::vec2));
+                        offset += sizeof(glm::vec2);
+                }
 
-        if (attributeFlags & ATTRIB_TANGENT)
-        {
-                readAttribute(model,
-                              primitive.tangent,
-                              vertexBuffer,
-                              getAttributeOffset(attributeFlags, ATTRIB_TANGENT),
-                              vertexStride,
-                              vertexCount);
-        }
+                if (attributeFlags & ATTRIB_TEXCOORD2)
+                {
+                        memcpy(dst + offset, &vert.uv2, sizeof(glm::vec2));
+                        offset += sizeof(glm::vec2);
+                }
 
-        if (attributeFlags & ATTRIB_JOINTS)
-        {
-                readAttribute(model,
-                              primitive.joints,
-                              vertexBuffer,
-                              getAttributeOffset(attributeFlags, ATTRIB_JOINTS),
-                              vertexStride,
-                              vertexCount);
-        }
+                if (attributeFlags & ATTRIB_COLOR)
+                {
+                        memcpy(dst + offset, &vert.color, sizeof(glm::vec4));
+                        offset += sizeof(glm::vec4);
+                }
 
-        if (attributeFlags & ATTRIB_WEIGHTS)
-        {
-                readAttribute(model,
-                              primitive.weights,
-                              vertexBuffer,
-                              getAttributeOffset(attributeFlags, ATTRIB_WEIGHTS),
-                              vertexStride,
-                              vertexCount);
-        }
+                if (attributeFlags & ATTRIB_JOINTS)
+                {
+                        memcpy(dst + offset, &vert.joint0, sizeof(glm::uvec4));
+                        offset += sizeof(glm::uvec4);
+                }
 
-        // Read indices
-        std::vector<uint32_t> indexBuffer;
-        if (primitive.indices != INVALID_INDEX)
-        {
-                readIndices(model, primitive.indices, indexBuffer);
+                if (attributeFlags & ATTRIB_WEIGHTS)
+                {
+                        memcpy(dst + offset, &vert.weight0, sizeof(glm::vec4));
+                        offset += sizeof(glm::vec4);
+                }
         }
 
         // Create OpenGL buffers
@@ -393,19 +367,21 @@ void GLPrimitive::setupBuffers(Model& model, MeshPrimitive& primitive)
                       vertexBuffer.size());
 
         // Upload index data if present
-        if (!indexBuffer.empty())
+        if (!primitive.indices.empty())
         {
-                /** TODO: component size */
                 glCreateBuffers(1, &EBO);
-                glNamedBufferData(EBO, indexBuffer.size() * sizeof(uint32_t), indexBuffer.data(), GL_STATIC_DRAW);
+                glNamedBufferData(EBO,
+                                  primitive.indices.size() * sizeof(uint32_t),
+                                  primitive.indices.data(),
+                                  GL_STATIC_DRAW);
                 glVertexArrayElementBuffer(VAO, EBO);
 
                 IC_CORE_TRACE("Uploading EBO: indices={}, indexType=GL_UNSIGNED_INT, totalBytes={}",
-                              indexBuffer.size(),
-                              indexBuffer.size() * sizeof(uint32_t));
+                              primitive.indices.size(),
+                              primitive.indices.size() * sizeof(uint32_t));
 
                 indexType  = GL_UNSIGNED_INT;
-                draw.count = static_cast<uint32_t>(indexBuffer.size());
+                draw.count = static_cast<uint32_t>(primitive.indices.size());
         }
         else
         {
@@ -431,178 +407,6 @@ void GLPrimitive::setupBuffers(Model& model, MeshPrimitive& primitive)
         IC_CORE_TRACE("Vertex count: {}", vertexCount);
         IC_CORE_TRACE("Index count: {}", draw.count);
         IC_CORE_TRACE("==========================");
-}
-
-void GLPrimitive::readAttribute(Model& model,
-                                Index accessorIdx,
-                                std::vector<uint8_t>& vertexBuffer,
-                                size_t dstOffset,
-                                size_t dstStride,
-                                size_t vertexCount)
-{
-        Accessor& acc = model.accessors[accessorIdx];
-        IC_CORE_ASSERT(acc.bufferView != INVALID_INDEX, "Accessor has no bufferView!");
-
-        BufferView& view = model.bufferViews[acc.bufferView];
-        Buffer& buf      = model.buffers[view.bufferIndex];
-
-        IC_CORE_ASSERT(vertexCount == acc.count, "Vertex count mismatch with accessor!");
-
-        // Determine component size and count based on accessor type
-        size_t componentSize  = 0;
-        size_t componentCount = 0;
-
-        switch (acc.componentType)
-        {
-        case Accessor::ComponentType::UByte:
-                componentSize = 1;
-                break;
-        case Accessor::ComponentType::UShort:
-                componentSize = 2;
-                break;
-        case Accessor::ComponentType::UInt:
-                componentSize = 4;
-                break;
-        case Accessor::ComponentType::Float:
-                componentSize = 4;
-                break;
-        default:
-                IC_CORE_ERROR("Unsupported component type: {}", (uint32_t)acc.componentType);
-                return;
-        }
-
-        switch (acc.type)
-        {
-        case Accessor::Type::SCALAR:
-                componentCount = 1;
-                break;
-        case Accessor::Type::VEC2:
-                componentCount = 2;
-                break;
-        case Accessor::Type::VEC3:
-                componentCount = 3;
-                break;
-        case Accessor::Type::VEC4:
-                componentCount = 4;
-                break;
-        case Accessor::Type::MAT4:
-                componentCount = 16;
-                break;
-        default:
-                IC_CORE_ERROR("Unsupported accessor type!");
-                return;
-        }
-
-        // stride calculation
-        const size_t elementSize = componentSize * componentCount;
-        size_t sourceStride      = view.byteStride != 0 ? view.byteStride : elementSize;
-
-        IC_CORE_ASSERT(sourceStride >= elementSize, "Invalid bufferView stride!");
-
-        // read data
-        const size_t accessorStart = view.byteOffset + acc.offset;
-        const size_t accessorEnd   = accessorStart + (acc.count - 1) * sourceStride + elementSize;
-
-        IC_CORE_ASSERT(accessorEnd <= view.byteOffset + view.byteLength, "Accessor reads past end of bufferView!");
-        IC_CORE_ASSERT(accessorEnd <= buf.data.size(), "Accessor reads past end of buffer!");
-
-        IC_CORE_TRACE("Reading vertices: count={}, componentSize={}, stride={}, bufferView=[{}, {})",
-                      acc.count,
-                      componentSize,
-                      sourceStride,
-                      accessorStart,
-                      accessorEnd);
-
-        const uint8_t* base = buf.data.data() + accessorStart;
-
-        for (size_t i = 0; i < acc.count; ++i)
-        {
-                const uint8_t* src = base + i * sourceStride;
-                uint8_t* dst       = vertexBuffer.data() + i * dstStride + dstOffset;
-
-                memcpy(dst, src, elementSize);
-        }
-
-        IC_CORE_TRACE("Finished reading {} vertices", vertexBuffer.size());
-}
-
-void GLPrimitive::readIndices(Model& model, Index accessorIdx, std::vector<uint32_t>& indexBuffer)
-{
-        Accessor& acc = model.accessors[accessorIdx];
-
-        IC_CORE_ASSERT(acc.bufferView != INVALID_INDEX, "Index accessor has no bufferView!");
-        IC_CORE_ASSERT(acc.count > 0, "Index accessor has zero count!");
-
-        BufferView& view = model.bufferViews[acc.bufferView];
-        Buffer& buf      = model.buffers[view.bufferIndex];
-
-        // ---- Determine component size ----
-        size_t componentSize = 0;
-        switch (acc.componentType)
-        {
-        case Accessor::ComponentType::UByte:
-                componentSize = 1;
-                break;
-        case Accessor::ComponentType::UShort:
-                componentSize = 2;
-                break;
-        case Accessor::ComponentType::UInt:
-                componentSize = 4;
-                break;
-        default:
-                /** Another hint to replace my logger */
-                // IC_CORE_ERROR("Invalid index component type: {}", acc.componentType);
-                return;
-        }
-
-        // ---- Source stride ----
-        size_t sourceStride = view.byteStride != 0 ? view.byteStride : componentSize;
-        IC_CORE_ASSERT(sourceStride >= componentSize, "Invalid index bufferView stride!");
-
-        // ---- Compute read range ----
-        const size_t accessorStart = view.byteOffset + acc.offset;
-
-        const size_t accessorEnd   = accessorStart + (acc.count - 1) * sourceStride + componentSize;
-
-        IC_CORE_ASSERT(accessorEnd <= view.byteOffset + view.byteLength,
-                       "Index accessor reads past end of bufferView!");
-
-        IC_CORE_ASSERT(accessorEnd <= buf.data.size(), "Index accessor reads past end of buffer!");
-
-        // ---- Resize output ----
-        indexBuffer.resize(acc.count);
-
-        IC_CORE_TRACE("Reading indices: count={}, componentSize={}, stride={}, bufferView=[{}, {})",
-                      acc.count,
-                      componentSize,
-                      sourceStride,
-                      accessorStart,
-                      accessorEnd);
-
-        // ---- Read indices ----
-        const uint8_t* base = buf.data.data() + accessorStart;
-
-        for (size_t i = 0; i < acc.count; ++i)
-        {
-                const uint8_t* src = base + i * sourceStride;
-
-                switch (acc.componentType)
-                {
-                case Accessor::ComponentType::UByte:
-                        indexBuffer[i] = static_cast<uint32_t>(*src);
-                        break;
-
-                case Accessor::ComponentType::UShort:
-                        indexBuffer[i] = static_cast<uint32_t>(*reinterpret_cast<const uint16_t*>(src));
-                        break;
-
-                case Accessor::ComponentType::UInt:
-                        indexBuffer[i] = *reinterpret_cast<const uint32_t*>(src);
-                        break;
-                }
-        }
-
-        IC_CORE_TRACE("Finished reading {} indices", indexBuffer.size());
 }
 
 void GLPrimitive::setupVertexAttributes()

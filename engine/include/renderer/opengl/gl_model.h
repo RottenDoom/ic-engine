@@ -1,7 +1,7 @@
 #pragma once
 #include "defines.h"
 
-#include "renderer/model.h"
+#include "core/assets/types/model.h"
 #include "gl_shader.h"
 #include "gl_material.h"
 
@@ -49,15 +49,6 @@ struct GLPrimitive
         void setupBuffers(Model &model, MeshPrimitive &primitive);
 
 private:
-        void readAttribute(Model &model,
-                           Index accessorIdx,
-                           std::vector<uint8_t> &vertexBuffer,
-                           size_t offset,
-                           size_t stride,
-                           size_t vertexCount);
-
-        void readIndices(Model &model, Index accessorIdx, std::vector<uint32_t> &indexBuffer);
-
         void setupVertexAttributes();
 
         size_t calculateStride(uint32_t flags);

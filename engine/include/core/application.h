@@ -1,10 +1,11 @@
 #pragma once
 
-#include "../defines.h"
+#include "defines.h"
+#include "window.h"
+#include "renderer/renderer.h"
+
 #include "events/application_event.h"
 #include "events/event.h"
-#include "../renderer/renderer.h"
-#include "window.h"
 
 namespace ic
 {
@@ -12,26 +13,26 @@ class IC_API Application
 {
 public:
         bool isRunning           = true;
-        AppUpdateFn* user_update = nullptr;
-        AppRenderFn* user_render = nullptr;
+        AppUpdateFn *user_update = nullptr;
+        AppRenderFn *user_render = nullptr;
 
-        static Application* s_Instance;
+        static Application *s_Instance;
 
 public:
-        Application(window_props& properties);
+        Application(window_props &properties);
         virtual ~Application();
 
         bool run();
-        void onEvent(event& e);
+        void onEvent(event &e);
 
-        static Application& get();
-        Window& getWindow() { return *m_Window; }
+        static Application &get();
+        Window &getWindow() { return *m_Window; }
 
 private:
-        bool onWindowClose(WindowClosedEvent& e);
+        bool onWindowClose(WindowClosedEvent &e);
 
         std::unique_ptr<Window> m_Window;
-        renderer* m_renderer;
+        renderer *m_renderer;
         float m_lastFrameTime = 0.0f;
 };
 
@@ -48,7 +49,7 @@ extern "C"
          * @param ic::window_props takes in a string title, width and height
          * @related ic_app_destroy ic_app_set_callback
          */
-        IC_API void ic_create_application(ic::window_props* windowProperties);
+        IC_API void ic_create_application(ic::window_props *windowProperties);
 
         /**
          * @function ic_app_is_running

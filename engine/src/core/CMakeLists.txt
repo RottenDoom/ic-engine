@@ -5,8 +5,12 @@ set(CORE_SRC
     input.cpp
     logger.cpp
     allocator.cpp
+    gltf_loader.cpp
+    assets/types/model.cpp
+    assets/types/material.cpp
     assets/asset_manager.cpp
     assets/asset_registry.cpp
+    assets/asset_serializer.cpp
     platform/win32/input_win32.cpp
     platform/win32/window_win32.cpp
     platform/win32/filesystem_win32.cpp

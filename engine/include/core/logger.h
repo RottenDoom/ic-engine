@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../defines.h"
+#include "defines.h"
 #include <cstdlib>
 #include <stdexcept>
 #include <spdlog/fmt/ostr.h>
@@ -21,27 +21,27 @@ struct ErrorHandlingConfig
 class IC_API EngineException : public std::runtime_error
 {
 public:
-        explicit EngineException(const std::string& message) : std::runtime_error(message) {}
+        explicit EngineException(const std::string &message) : std::runtime_error(message) {}
 };
 
 class IC_API CriticalEngineException : public std::runtime_error
 {
 public:
-        explicit CriticalEngineException(const std::string& message) : std::runtime_error(message) {}
+        explicit CriticalEngineException(const std::string &message) : std::runtime_error(message) {}
 };
 class IC_API logger
 {
 public:
         static void init();
 
-        static std::shared_ptr<spdlog::logger>& getCoreLogger();
-        static std::shared_ptr<spdlog::logger>& getClientLogger();
+        static std::shared_ptr<spdlog::logger> &getCoreLogger();
+        static std::shared_ptr<spdlog::logger> &getClientLogger();
 
         // exception handling configuration
-        static void setErrorHandling(const ErrorHandlingConfig& config);
-        static ErrorHandlingConfig& getErrorHandlingConfig();
+        static void setErrorHandling(const ErrorHandlingConfig &config);
+        static ErrorHandlingConfig &getErrorHandlingConfig();
 
-        static void handleError(const std::string& message, bool isCritical = false);
+        static void handleError(const std::string &message, bool isCritical = false);
 
 private:
         // fixed
