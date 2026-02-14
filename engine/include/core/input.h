@@ -1,4 +1,5 @@
-#pragma once
+#ifndef INPUT_H
+#define INPUT_H
 
 #include "keycodes.h"
 #include "mousecodes.h"
@@ -48,4 +49,6 @@ extern "C"
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

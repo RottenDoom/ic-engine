@@ -1,4 +1,5 @@
-#pragma once
+#ifndef WINDOW_WIN32_H
+#define WINDOW_WIN32_H
 
 #include "../../../defines.h"
 
@@ -17,7 +18,7 @@ namespace ic
 class win32_window : public Window
 {
 public:
-        win32_window(const window_props& props);
+        win32_window(const window_props &props);
         ~win32_window() override;
 
         void onUpdate() override;
@@ -26,28 +27,28 @@ public:
         unsigned int getHeight() const override { return m_data.height; }
 
         // Window attributes
-        void setEventCallback(const eventCallbackFn& callback) override { m_data.eventCallback = callback; }
+        void setEventCallback(const eventCallbackFn &callback) override { m_data.eventCallback = callback; }
         void setVSync(bool enabled) override;
         bool isVSync() const override;
 
-        void* getNativeWindow() const override { return static_cast<void*>(m_Window); }
+        void *getNativeWindow() const override { return static_cast<void *>(m_Window); }
 
         bool wasWindowResized() { return framebufferResized; }
-        static void framebufferResizeCallback(GLFWwindow* handle, int width, int height);
+        static void framebufferResizeCallback(GLFWwindow *handle, int width, int height);
 
         bool framebufferResized = false;
 
 private:
-        void init(const window_props& props);
+        void init(const window_props &props);
         void shutdown();
 
 private:
-        GLFWwindow* m_Window;
+        GLFWwindow *m_Window;
         // GraphicsContext* m_Context;
 
         struct window_data
         {
-                const char* title;
+                const char *title;
                 unsigned int width, height;
                 bool VSync;
 
@@ -58,3 +59,5 @@ private:
 };
 
 }  // namespace ic
+
+#endif

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef RENDERER_H
+#define RENDERER_H
+
 #include "defines.h"
 #include "core/window.h"
 #include "core/events/event.h"
@@ -28,3 +30,5 @@ IRenderer *createRenderer();
 void destroyRenderer(IRenderer *renderer);
 
 }  // namespace ic
+
+#endif

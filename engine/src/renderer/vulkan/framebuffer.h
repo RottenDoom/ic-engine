@@ -1,37 +1,41 @@
-#pragma once
+#ifndef FRAMEBUFFER_H
+#define FRAMEBUFFER_H
+
 #include "defines.h"
 
 #include <vulkan/vulkan.h>
 
 namespace ic
 {
-        class framebuffer
-        {
-        private:
-                VkFramebuffer m_framebuffer;
+class framebuffer
+{
+private:
+        VkFramebuffer m_framebuffer;
 
-        public:
-                framebuffer() = default;
-                virtual ~framebuffer();
+public:
+        framebuffer() = default;
+        virtual ~framebuffer();
 
-                framebuffer(const framebuffer&)            = delete;
-                framebuffer& operator=(const framebuffer&) = delete;
-                framebuffer(framebuffer&& other) noexcept;
-                framebuffer& operator=(framebuffer&& other) noexcept;
+        framebuffer(const framebuffer &)            = delete;
+        framebuffer &operator=(const framebuffer &) = delete;
+        framebuffer(framebuffer &&other) noexcept;
+        framebuffer &operator=(framebuffer &&other) noexcept;
 
-                operator VkFramebuffer() const { return m_framebuffer; }
+        operator VkFramebuffer() const { return m_framebuffer; }
 
-                bool create(const VkDevice& device,
-                            const VkRenderPass& renderpass,
-                            const VkExtent2D& swapChainExtent,
-                            const uint32_t& attachmentCount,
-                            const VkImageView* pAttachments,
-                            VkAllocationCallbacks* callbacks = nullptr) noexcept;
+        bool create(const VkDevice &device,
+                    const VkRenderPass &renderpass,
+                    const VkExtent2D &swapChainExtent,
+                    const uint32_t &attachmentCount,
+                    const VkImageView *pAttachments,
+                    VkAllocationCallbacks *callbacks = nullptr) noexcept;
 
-                void destroy(const VkDevice& device);
+        void destroy(const VkDevice &device);
 
-        private:
-                void moveFrom(framebuffer&& other);
-                void reset();
-        };
+private:
+        void moveFrom(framebuffer &&other);
+        void reset();
+};
 }  // namespace ic
+
+#endif

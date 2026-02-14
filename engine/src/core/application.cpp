@@ -41,7 +41,6 @@ Application::~Application()
         fs_deinit();
         m_renderer->cleanUp();
         destroyRenderer(m_renderer);
-        ic_free(m_renderer);
 }
 
 bool Application::run()

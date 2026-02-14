@@ -1,4 +1,5 @@
-#pragma once
+#ifndef LOGGER_H
+#define LOGGER_H
 
 #include "defines.h"
 #include <cstdlib>
@@ -147,3 +148,5 @@ private:
                         throw ::ic::EngineException(msg);                                                              \
                 }                                                                                                      \
         } while (0)
+
+#endif

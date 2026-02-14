@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MOUSE_EVENT_H
+#define MOUSE_EVENT_H
 
 #include "event.h"
 #include "../mousecodes.h"
@@ -94,3 +95,5 @@ public:
 };
 
 }  // namespace ic
+
+#endif

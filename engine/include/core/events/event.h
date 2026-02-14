@@ -1,4 +1,5 @@
-#pragma once
+#ifndef EVENT_H
+#define EVENT_H
 #include "../../defines.h"
 /** TODO: write this class so user can write his own events. */
 
@@ -46,7 +47,7 @@ enum EventCategory
         {                                                                                                              \
                 return getStaticType();                                                                                \
         }                                                                                                              \
-        virtual const char* getName() const override                                                                   \
+        virtual const char *getName() const override                                                                   \
         {                                                                                                              \
                 return #type;                                                                                          \
         }
@@ -67,7 +68,7 @@ public:
         bool handled                           = false;
 
         virtual EventType getEventType() const = 0;
-        virtual const char* getName() const    = 0;
+        virtual const char *getName() const    = 0;
         virtual int getCategoryFlags() const   = 0;
         virtual std::string toString() const { return getName(); }
 
@@ -77,26 +78,28 @@ public:
 class eventDispatcher
 {
 public:
-        eventDispatcher(event& event) : m_event(event) {}
+        eventDispatcher(event &event) : m_event(event) {}
 
         template <typename T, typename F>
-        bool dispatch(const F& func)
+        bool dispatch(const F &func)
         {
                 if (m_event.getEventType() == T::getStaticType())
                 {
-                        m_event.handled |= func(static_cast<T&>(m_event));
+                        m_event.handled |= func(static_cast<T &>(m_event));
                         return true;
                 }
                 return false;
         }
 
 private:
-        event& m_event;
+        event &m_event;
 };
 
-inline std::ostream& operator<<(std::ostream& os, const event& e)
+inline std::ostream &operator<<(std::ostream &os, const event &e)
 {
         return os << e.toString();
 }
 
 }  // namespace ic
+
+#endif

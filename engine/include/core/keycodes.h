@@ -1,4 +1,5 @@
-#pragma once
+#ifndef KEYCODES_H
+#define KEYCODES_H
 
 #include "defines.h"
 
@@ -144,3 +145,5 @@ enum : KeyCode
 };
 }
 }  // namespace ic
+
+#endif

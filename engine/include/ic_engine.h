@@ -2,8 +2,8 @@
  * This is an external header that includes all the external headers for my engine
  */
 
-#ifndef IC_H
-#define IC_H
+#ifndef IC_ENGINE_H
+#define IC_ENGINE_H
 
 // core
 #include "core/application.h"

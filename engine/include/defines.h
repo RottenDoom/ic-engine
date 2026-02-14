@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DEFINES_H
+#define DEFINES_H
 
 // TODO remove this and use ic_engine/config.h
 #define IC_ENGINE_USE_OPENGL 1
@@ -116,4 +117,6 @@ typedef void(AppRenderFn)(void);
 #else
 #define IC_INLINE inline __attribute__((always_inline))
 #define IC_NOINLINE __attribute__((noinline))
+#endif
+
 #endif

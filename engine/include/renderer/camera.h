@@ -1,9 +1,10 @@
-#pragma once
-#include "../defines.h"
+#ifndef CAMERA_H
+#define CAMERA_H
+#include "defines.h"
 
-#include "../core/events/event.h"
-#include "../core/events/key_event.h"
-#include "../core/events/mouse_event.h"
+#include "core/events/event.h"
+#include "core/events/key_event.h"
+#include "core/events/mouse_event.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_ENABLE_EXPERIMENTAL
@@ -130,10 +131,10 @@ public:
 
         void handleInput(float deltaTime);
         void onUpdate(float deltaTime);
-        void onEvent(event& e);
-        bool onKeyPressed(KeyPressedEvent& e);
-        bool onMouseMoved(MouseMovedEvent& e);
-        bool onMouseScroll(MouseScrolledEvent& e);
+        void onEvent(event &e);
+        bool onKeyPressed(KeyPressedEvent &e);
+        bool onMouseMoved(MouseMovedEvent &e);
+        bool onMouseScroll(MouseScrolledEvent &e);
 };
 }  // namespace ic
 
@@ -150,8 +151,10 @@ extern "C"
          * @param float* position array of size 3
          * @param float* orientation array of size 4 (quaternion)
          */
-        void createCamera(ic::Camera::CameraType type, float* position, float* orientation);
+        void createCamera(ic::Camera::CameraType type, float *position, float *orientation);
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

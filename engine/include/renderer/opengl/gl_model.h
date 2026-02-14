@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GL_MODEL_H
+#define GL_MODEL_H
+
 #include "defines.h"
 
 #include "core/assets/types/model.h"
@@ -78,3 +80,5 @@ struct GLModel
 };
 
 }  // namespace ic
+
+#endif

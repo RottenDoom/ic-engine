@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SURFACE_H
+#define SURFACE_H
+
 #include "defines.h"
 
 #define GLFW_INCLUDE_VULKAN
@@ -9,22 +11,24 @@ struct GLFWwindow;
 namespace ic
 {
 
-        class vulkan_surface
-        {
-        private:
-                VkSurfaceKHR m_surface;
+class vulkan_surface
+{
+private:
+        VkSurfaceKHR m_surface;
 
-        public:
-                vulkan_surface() = default;
-                ~vulkan_surface();
+public:
+        vulkan_surface() = default;
+        ~vulkan_surface();
 
-                bool create(VkInstance* instance, GLFWwindow* window);
-                void destroy(VkInstance* instance);
+        bool create(VkInstance *instance, GLFWwindow *window);
+        void destroy(VkInstance *instance);
 
-                operator VkSurfaceKHR() const { return m_surface; }
-                VkSurfaceKHR& get() { return m_surface; }
+        operator VkSurfaceKHR() const { return m_surface; }
+        VkSurfaceKHR &get() { return m_surface; }
 
-                bool isValid() const { return m_surface != VK_NULL_HANDLE; }
-        };
+        bool isValid() const { return m_surface != VK_NULL_HANDLE; }
+};
 
 }  // namespace ic
+
+#endif

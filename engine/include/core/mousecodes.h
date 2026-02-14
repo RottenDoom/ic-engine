@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MOUSECODES_H
+#define MOUSECODES_H
 
 #include "defines.h"
 
@@ -27,3 +28,5 @@ enum : MouseCode
 };
 }
 }  // namespace ic
+
+#endif

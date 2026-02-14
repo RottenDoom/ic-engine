@@ -1,4 +1,5 @@
-#pragma once
+#ifndef APPLICATION_H
+#define APPLICATION_H
 
 #include "defines.h"
 #include "window.h"
@@ -89,4 +90,6 @@ extern "C"
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

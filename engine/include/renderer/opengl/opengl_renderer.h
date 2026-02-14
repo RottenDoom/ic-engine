@@ -1,4 +1,5 @@
-#pragma once
+#ifndef OPENGL_RENDERER_H
+#define OPENGL_RENDERER_H
 
 #include "defines.h"
 #include "renderer/camera.h"
@@ -84,3 +85,5 @@ public:
         ~OpenGLRenderer();
 };
 }  // namespace ic
+
+#endif

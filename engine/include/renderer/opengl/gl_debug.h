@@ -1,5 +1,6 @@
-#pragma once
-#include "../../defines.h"
+#ifndef GL_DEBUG_H
+#define GL_DEBUG_H
+#include "defines.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -10,7 +11,7 @@ namespace ic
 namespace gl::debug
 {
 
-GLenum glCheckError_(const char* file, int line)
+GLenum glCheckError_(const char *file, int line)
 {
         GLenum errorCode;
         while ((errorCode = glGetError()) != GL_NO_ERROR)
@@ -50,8 +51,8 @@ void APIENTRY glDebugOutput(GLenum source,
                             unsigned int id,
                             GLenum severity,
                             GLsizei length,
-                            const char* message,
-                            const void* userParam)
+                            const char *message,
+                            const void *userParam)
 {
         // ignore non-significant error/warning codes
         if (id == 131169 || id == 131185 || id == 131218 || id == 131204)
@@ -148,3 +149,5 @@ void setDebugOutput()
 }  // namespace gl::debug
 
 }  // namespace ic
+
+#endif

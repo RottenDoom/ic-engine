@@ -1,4 +1,5 @@
-#pragma once
+#ifndef KEY_EVENT_H
+#define KEY_EVENT_H
 
 #include "../../defines.h"
 #include "event.h"
@@ -70,3 +71,5 @@ public:
 private:
 };
 }  // namespace ic
+
+#endif

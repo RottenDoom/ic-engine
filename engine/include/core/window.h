@@ -1,4 +1,5 @@
-#pragma once
+#ifndef WINDOW_H
+#define WINDOW_H
 #include "defines.h"
 #include "events/event.h"
 namespace ic
@@ -40,3 +41,5 @@ public:
 };
 
 }  // namespace ic
+
+#endif
