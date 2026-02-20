@@ -8,19 +8,19 @@ namespace ic
 struct renderer::backend_context
 {
         vulkan_context ctx;
-        backend_context(Window& win) : ctx(win) {}
+        backend_context(Window &win) : ctx(win) {}
 };
 
 struct renderer::backend_renderer
 {
         vulkan_renderer renderer;
-        backend_renderer(backend_context* bc) : renderer(&bc->ctx, bc->ctx.getVulkanDevice()) {}
+        backend_renderer(backend_context *bc) : renderer(&bc->ctx, bc->ctx.getVulkanDevice()) {}
 };
 
 renderer::renderer()  = default;
 renderer::~renderer() = default;
 
-bool renderer::init(Window* w)
+bool renderer::init(Window *w)
 {
         if (m_initialized)
                 return false;
@@ -39,13 +39,14 @@ bool renderer::init(Window* w)
         return true;
 }
 
-void renderer::onEvent(event& e)
+void renderer::onEvent(event &e)
 {
         m_renderer->renderer.onEvent(e);
 }
 
 void renderer::renderFrame(float dt)
 {
+
         m_renderer->renderer.render(dt);
 }
 

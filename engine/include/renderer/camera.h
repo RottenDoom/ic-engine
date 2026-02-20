@@ -13,9 +13,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace ic
-{
-class Camera
+class IC_API Camera
 {
 private:
         float fovY;
@@ -131,12 +129,11 @@ public:
 
         void handleInput(float deltaTime);
         void onUpdate(float deltaTime);
-        void onEvent(event &e);
-        bool onKeyPressed(KeyPressedEvent &e);
-        bool onMouseMoved(MouseMovedEvent &e);
-        bool onMouseScroll(MouseScrolledEvent &e);
+        void onEvent(ic::event &e);
+        bool onKeyPressed(ic::KeyPressedEvent &e);
+        bool onMouseMoved(ic::MouseMovedEvent &e);
+        bool onMouseScroll(ic::MouseScrolledEvent &e);
 };
-}  // namespace ic
 
 #ifdef __cplusplus
 extern "C"
@@ -151,7 +148,7 @@ extern "C"
          * @param float* position array of size 3
          * @param float* orientation array of size 4 (quaternion)
          */
-        void createCamera(ic::Camera::CameraType type, float *position, float *orientation);
+        IC_API Camera createCamera(Camera::CameraType type, glm::vec3 position);
 
 #ifdef __cplusplus
 }

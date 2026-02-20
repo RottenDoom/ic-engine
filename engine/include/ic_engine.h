@@ -22,4 +22,5 @@
 
 // renderer
 #include "renderer/camera.h"
+#include "renderer/renderer.h"
 #endif  // IC_ENGINE_H

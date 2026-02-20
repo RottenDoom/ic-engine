@@ -34,22 +34,22 @@ constexpr Index INVALID_INDEX = ~0u;
                 return #type;                                                                                          \
         }
 
-using GUID = uint32_t;
+using GUID = uint64_t;
 extern const GUID INVALID_ID;
 
 enum AssetType : uint8_t
 {
         ASSET_TYPE_NONE = 0,
-        //     ASSET_TYPE_GFX_IMAGE = 0,
-        //     ASSET_TYPE_MATERIAL  = 1,
-        //     ASSET_TYPE_SCRIPT    = 2,
-        ASSET_TYPE_MODEL  = 1,  // 3,
-        ASSET_TYPE_SHADER = 2,  // 4,
-                                //     ASSET_TYPE_UI_LAYOUT = 5,
-                                //     ASSET_TYPE_PIPELINE  = 6,
-                                //     ASSET_TYPE_FONT      = 7,
-                                //     ASSET_TYPE_NON_METADATA_COUNT = 8,
-                                //     ASSET_TYPE_TEXTURESET = 8,
+        ASSET_TYPE_MODEL,
+        ASSET_TYPE_SHADER,
+        ASSET_TYPE_TEXTURE,
+        ASSET_TYPE_MATERIAL,
+        // ASSET_TYPE_GFX_IMAGE,
+        // ASSET_TYPE_SCRIPT,
+        // ASSET_TYPE_UI_LAYOUT,
+        // ASSET_TYPE_PIPELINE,
+        // ASSET_TYPE_FONT,
+        // ASSET_TYPE_NON_METADATA_COUNT,
 
         ASSET_TYPE_COUNT
 };
@@ -75,21 +75,24 @@ public:
         virtual const char *getName() const    = 0;
         virtual string toString() const { return getName(); }
 
-        virtual bool Load(const char *filepath) { return false; };
-        virtual bool CachedLoad(ic::Serializer *serializer)       = 0;
-        virtual bool CachedSave(ic::Serializer *serializer) const = 0;
-        virtual void Free() {}
+        virtual bool load(const char *filepath) { return false; };
+        virtual bool cachedLoad(ic::Serializer *serializer)       = 0;
+        virtual bool cachedSave(ic::Serializer *serializer) const = 0;
+        virtual bool release() { return false; }
 
-        void SetName(char *name) { m_name = name; };
-        const char *GetName() { return m_name; }
+        bool isLoaded() const { return loaded; }
 
-        GUID GetID() { return _id; }
+        void setName(char *name) { m_name = name; };
+        const char *getName() { return m_name; }
 
-        void AddRef() { _ref_count++; }
-        int32_t GetRefNum() { return _ref_count; }
+        GUID getID() { return _id; }
+
+        void addRef() { _ref_count++; }
+        int32_t getRefNum() { return _ref_count; }
 
 private:
         char *m_name       = nullptr;
+        bool loaded        = false;
         GUID _id           = INVALID_ID;
         int32_t _ref_count = 0;
         void serializeName(ic::Serializer *serializer) const;

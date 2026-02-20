@@ -1,7 +1,7 @@
 #engine/src/renderer/CMakeLists.txt
 set(RENDERER_SRC
 	camera.cpp
-	backend_opengl.cpp
+	renderer_frontend.cpp
 )
 
 
@@ -11,7 +11,6 @@ target_include_directories(engine-renderer
     PUBLIC ${CMAKE_SOURCE_DIR}/engine/include
 )
 
-# The renderer depends on Vulkan backend internally
 target_link_libraries(engine-renderer
 PUBLIC
 	engine-core
@@ -23,3 +22,4 @@ PRIVATE
 )
 
 set_target_properties(engine-renderer PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(engine-renderer PRIVATE IC_EXPORT)

@@ -25,19 +25,19 @@ Application::Application(window_props &properties)
         m_Window = Window::create(properties);
         m_Window->setEventCallback(BIND_EVENT(onEvent));
 
-        m_renderer = createRenderer();
-        m_renderer->init(m_Window.get());
-
         fs_init();
-        fs_mount("/", "/");  // Mounting default directory [TODO: Do some changes to mounting logic]
-        asset_manager_init();
+        AssetManager::Initialize("assets/registry.yaml");
+
+        // TODO: CHANGE THE API BASED ON SOME SWITHC OR BUILD SYSTEM
+        m_renderer = createRenderer(RendererAPI::OpenGL);
+        m_renderer->init(m_Window.get());
 
         IC_CORE_INFO("Application Initialized!");
 }
 
 Application::~Application()
 {
-        asset_manager_deinit();
+        AssetManager::Shutdown();
         fs_deinit();
         m_renderer->cleanUp();
         destroyRenderer(m_renderer);

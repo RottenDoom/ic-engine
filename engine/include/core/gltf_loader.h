@@ -48,7 +48,7 @@ public:
         bool loadModel(const char *path, Model *model);
 
 private:
-        bool loadGLTF(std::filesystem::path path, Model *gltf);
+        bool loadGLTF(const char *path, Model *gltf);
 
         // Raw GLTF loading
         bool loadScene(Model *gltf, fastgltf::Scene &scene);
@@ -61,7 +61,7 @@ private:
 
         void loadTexture(Model *gltf, fastgltf::Texture &texture);
         void loadBufferView(Model *gltf, fastgltf::BufferView &bufferView);
-        void loadBuffer(Model *gltf, const fastgltf::Buffer &buffer, const std::filesystem::path &basePath);
+        void loadBuffer(Model *gltf, const fastgltf::Buffer &buffer, const char *basePath);
         void loadAccessor(Model *gltf, fastgltf::Accessor &accessor);
 
         // Geometry processing

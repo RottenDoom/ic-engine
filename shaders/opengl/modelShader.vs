@@ -10,9 +10,9 @@ layout(location = 7) in vec4 a_Color;
 layout(location = 8) in uvec4 a_Joints;
 layout(location = 9) in vec4 a_Weights;
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 u_model;
+uniform mau_t4 u_view;
+uniform mat4 u_projection;
 
 out vec3 v_Position;
 out vec3 v_Normal;
@@ -20,10 +20,10 @@ out vec2 v_TexCoord;
 
 void main()
 {
-        vec4 worldPos = model * vec4(a_Position, 1.0);
+        vec4 worldPos = u_model * vec4(a_Position, 1.0);
         v_Position = worldPos.xyz;
-        v_Normal = mat3(transpose(inverse(model))) * a_Normal;
+        v_Normal = mat3(transpose(inverse(u_model))) * a_Normal;
         v_TexCoord = a_TexCoord0;
         
-        gl_Position = projection * view * worldPos;
+        gl_Position = u_projection * u_view * worldPos;
 }

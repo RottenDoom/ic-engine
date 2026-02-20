@@ -1,4 +1,5 @@
 #include "renderer/opengl/gl_model.h"
+#include "core/assets/types/model.h"
 #include <glad/glad.h>
 
 namespace ic
@@ -55,9 +56,11 @@ void GLModel::uploadMeshes()
         }
 }
 
+void GLModel::clearGPUMemory() {}
+
 void GLModel::draw(Shader &shader)
 {
-        Scene &scene = model->scenes[model->defaultScene];
+        GLTFScene &scene = model->scenes[model->defaultScene];
 
         for (auto &rootNodeIdx : scene.rootNodes)
         {

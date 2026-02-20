@@ -30,6 +30,7 @@ public:
 
         static Application &get();
         Window &getWindow() { return *m_Window; }
+        IRenderer *getRenderer() { return m_renderer; }
 
 private:
         bool onWindowClose(WindowClosedEvent &e);

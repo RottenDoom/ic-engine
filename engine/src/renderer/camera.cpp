@@ -4,6 +4,9 @@
 #include "core/keycodes.h"
 #include "core/mousecodes.h"
 
+// TODO: remove
+#include "core/application.h"
+
 #include <glm/gtx/quaternion.hpp>
 
 /**
@@ -11,8 +14,6 @@
  * Ofcourse adding somethings to the UI to control movements
  */
 
-namespace ic
-{
 #define degreeToRadian(x) (x * (1 / 57.295779513082320876798154814105))
 
 void Camera::updateViewMatrix()
@@ -69,6 +70,7 @@ void Camera::setViewDirection(glm::vec3 position, glm::vec3 direction)
         this->orientation = glm::normalize(glm::quat_cast(rot));
         this->position    = position;
 
+        // FIX THIS
         updateViewMatrix();
 }
 
@@ -124,17 +126,17 @@ void Camera::handleInput(float deltaTime)
                 glm::vec3 right   = orientation * glm::vec3(1.0f, 0.0f, 0.0f);
                 glm::vec3 up      = orientation * glm::vec3(0.0f, 1.0f, 0.0f);
 
-                if (input::isKeyPressed(Key::W))
+                if (ic::input::isKeyPressed(ic::Key::W))
                         position += forward * velocity;
-                if (input::isKeyPressed(Key::S))
+                if (ic::input::isKeyPressed(ic::Key::S))
                         position -= forward * velocity;
-                if (input::isKeyPressed(Key::A))
+                if (ic::input::isKeyPressed(ic::Key::A))
                         position -= right * velocity;
-                if (input::isKeyPressed(Key::D))
+                if (ic::input::isKeyPressed(ic::Key::D))
                         position += right * velocity;
-                if (input::isKeyPressed(Key::Space))
+                if (ic::input::isKeyPressed(ic::Key::Space))
                         position += up * velocity;
-                if (input::isKeyPressed(Key::LeftShift))
+                if (ic::input::isKeyPressed(ic::Key::LeftShift))
                         position -= up * velocity;
         }
 }
@@ -150,21 +152,21 @@ void Camera::onUpdate(float deltaTime)
         fovChanged = false;
 }
 
-void Camera::onEvent(event& e)
+void Camera::onEvent(ic::event &e)
 {
-        eventDispatcher dispatcher(e);
-        dispatcher.dispatch<MouseMovedEvent>(BIND_EVENT(Camera::onMouseMoved));
-        dispatcher.dispatch<MouseScrolledEvent>(BIND_EVENT(Camera::onMouseScroll));
-        dispatcher.dispatch<KeyPressedEvent>(BIND_EVENT(Camera::onKeyPressed));
+        ic::eventDispatcher dispatcher(e);
+        dispatcher.dispatch<ic::MouseMovedEvent>(BIND_EVENT(Camera::onMouseMoved));
+        dispatcher.dispatch<ic::MouseScrolledEvent>(BIND_EVENT(Camera::onMouseScroll));
+        dispatcher.dispatch<ic::KeyPressedEvent>(BIND_EVENT(Camera::onKeyPressed));
 }
 
-bool Camera::onKeyPressed(KeyPressedEvent& e)
+bool Camera::onKeyPressed(ic::KeyPressedEvent &e)
 {
-        if (input::isKeyPressed(Key::R))
+        if (ic::input::isKeyPressed(ic::Key::R))
         {
                 resetCameraPosition();
         }
-        if (input::isKeyPressed(Key::C))
+        if (ic::input::isKeyPressed(ic::Key::C))
         {
                 switch (type)
                 {
@@ -178,7 +180,7 @@ bool Camera::onKeyPressed(KeyPressedEvent& e)
         return false;
 }
 
-bool Camera::onMouseMoved(MouseMovedEvent& e)
+bool Camera::onMouseMoved(ic::MouseMovedEvent &e)
 {
         static bool firstMouse = true;
         static float lastX     = 0.0f;
@@ -216,13 +218,24 @@ bool Camera::onMouseMoved(MouseMovedEvent& e)
         return false;
 }
 
-bool Camera::onMouseScroll(MouseScrolledEvent& e)
+bool Camera::onMouseScroll(ic::MouseScrolledEvent &e)
 {
         fovY       -= e.getYOffset() * zoomSpeed;      // zoom speed
         fovY        = glm::clamp(fovY, 10.0f, 90.0f);  // prevent extreme zoom
         fovChanged  = true;
         return false;
 }
-}  // namespace ic
 
-void createCamera(ic::Camera::CameraType type, float* position, float* orientation) {}
+Camera createCamera(Camera::CameraType type, glm::vec3 position)
+{
+        Camera camera;
+
+        camera.type = Camera::CameraType::firstperson;
+        camera.setViewDirection(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        camera.setPerspectiveProjection(45.0f,
+                                        (float)ic::Application::get().getWindow().getWidth() /
+                                            (float)ic::Application::get().getWindow().getHeight(),
+                                        0.1f,
+                                        256.0f);
+        return camera;
+}

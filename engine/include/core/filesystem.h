@@ -62,7 +62,7 @@ bool fs_rmdir(const char *dirName);
 
 /** Returns joined path using a relative path and a full path, checks if that path exists. If yes returns true.
  * Equivalent to cd command */
-bool fs_joinPath(const char *relPath, const char *fullpath, const char *out);
+bool fs_joinPath(const char *relPath, const char *fullpath, const char **out);
 bool fs_delete(const char *filename);
 
 /** Enumerate files in a directory. dir should be a full path */

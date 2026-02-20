@@ -1,216 +1,177 @@
 #include "core/assets/asset_registry.h"
 #include "core/filesystem.h"
+#include "core/allocators.h"
 #include "core/assets/types/asset_base.h"
 
 #include <yaml-cpp/yaml.h>
 
 const GUID INVALID_ID = ~0u;
-static GUID UUID      = 0u;
 
 namespace ic
 {
 
 AssetRegistry::AssetRegistry() {}
+static GUID UUID = 0u;
 
-bool AssetRegistry::Init(const char *assets_registry_file)
+bool AssetRegistry::init(const char *assets_registry_file)
 {
         try
         {
-                const char *full_path = fs_getfullpath(assets_registry_file);
-                IC_CORE_ASSERT(full_path, "Path does not exist");
-                YAML::Node root = YAML::LoadFile(full_path);  // FIX THIS SOMEHOW
+                const char *full = fs_getfullpath(assets_registry_file);
+                IC_CORE_ASSERT(full, "Invalid registry path");
 
-                IC_CORE_INFO("Path to registry file {}", full_path);
-                ic_free((void *)full_path);
+                YAML::Node root = YAML::LoadFile(full);
+                ic_free((void *)full);
 
-                // Get assets folder
                 if (root["assets_folder"])
-                {
-                        assets_folder_ = root["assets_folder"].as<string>();
-                        IC_CORE_INFO("Assets folder: {}", assets_folder_);
-                }
+                        assets_folder_ = root["assets_folder"].as<std::string>();
 
-                // Parse all assets
                 if (!root["assets"])
                 {
-                        IC_CORE_ERROR("No 'assets' section in registry!");
+                        IC_CORE_ERROR("Registry missing 'assets' section");
                         return false;
                 }
 
-                YAML::Node assets = root["assets"];
-                for (const auto &asset_node : assets)
-                {
-                        ParseAssetEntry(asset_node);
-                }
+                for (const auto &node : root["assets"])
+                        parseAssetEntry(node);
 
-                IC_CORE_INFO("Loaded {} assets from registry", file_paths_.size());
+                IC_CORE_INFO("Loaded {} assets from registry", assets_.size());
                 return true;
         }
         catch (const YAML::Exception &e)
         {
-                IC_CORE_ERROR("Failed to parse registry: {}", e.what());
+                IC_CORE_ERROR("Registry parse failed: {}", e.what());
                 return false;
         }
 }
 
-void AssetRegistry::ParseAssetEntry(const YAML::Node &node)
+AssetType AssetRegistry::getAssetType(GUID id) const
 {
-        // Parse ID (supports hex format)
-        GUID id = 0;
-        if (node["id"])
-        {
-                string id_str = node["id"].as<std::string>();
+        auto it = assets_.find(id);
+        if (it == assets_.end())
+                return AssetType::ASSET_TYPE_NONE;
 
-                // Parse hex string (0x...)
-                if (id_str.substr(0, 2) == "0x")
-                {
-                        id = std::stoull(id_str, nullptr, 16);
-                }
-                else
-                {
-                        id = std::stoull(id_str);
-                }
-                IC_CORE_TRACE("Asset ID {}", id_str);
-        }
-        else
-        {
-                IC_CORE_ERROR("Asset entry missing 'id' field");
+        return it->second.type;
+}
+
+void AssetRegistry::parseAssetEntry(const YAML::Node &node)
+{
+        if (!node["id"] || !node["filepath"])
                 return;
-        }
 
-        // Parse filepath
-        // std::filesystem::path filepath;
-        // if (node["filepath"])
-        // {
-        //         filepath = assets_folder_ / node["filepath"].as<std::string>();
-        // }
-        // else
-        // {
-        //         IC_CORE_ERROR("Asset {} missing 'filepath' field", id);
-        //         return;
-        // }
+        std::string idStr = node["id"].as<std::string>();
+        GUID id           = 0;
 
-        // Register the asset
-        // file_paths_[id] = filepath;
-        // ids_[filepath]  = id;
+        if (idStr.rfind("0x", 0) == 0)
+                id = std::stoull(idStr, nullptr, 16);
+        else
+                id = std::stoull(idStr);
 
-        // IC_CORE_TRACE("Registered asset: {} -> {}", id, filepath.string());
+        AssetMeta meta;
 
-        // Parse dependencies
+        // ---- filepath ----
+        std::string relPath = node["filepath"].as<std::string>();
+
+        const char *full    = nullptr;
+        if (!fs_joinPath(relPath.c_str(), assets_folder_.c_str(), &full))
+                return;
+
+        meta.filepath = full;
+        ic_free((void *)full);
+
+        // ---- cache ----
+        if (node["cache"])
+                meta.cachePath = node["cache"].as<std::string>();
+
+        // ---- type ----
+        if (node["type"])
+                meta.type = assetTypeFromString(node["type"].as<std::string>());
+
+        assets_[id]         = meta;
+        ids_[meta.filepath] = id;
+
+        // ---- dependencies ----
         if (node["dependencies"])
         {
-                std::unordered_set<GUID> deps;
-
-                for (const auto &dep_node : node["dependencies"])
+                for (auto depNode : node["dependencies"])
                 {
-                        std::string dep_str = dep_node.as<std::string>();
-                        GUID dep_id;
+                        std::string depStr = depNode.as<std::string>();
+                        GUID depId         = 0;
 
-                        if (dep_str.substr(0, 2) == "0x")
-                        {
-                                dep_id = std::stoull(dep_str, nullptr, 16);
-                        }
+                        if (depStr.rfind("0x", 0) == 0)
+                                depId = std::stoull(depStr, nullptr, 16);
                         else
-                        {
-                                dep_id = std::stoull(dep_str);
-                        }
+                                depId = std::stoull(depStr);
 
-                        deps.insert(dep_id);
+                        dependencies_[id].insert(depId);
                 }
-
-                dependencies_[id] = deps;
-                IC_CORE_TRACE("  {} dependencies", deps.size());
         }
 }
 
-bool AssetRegistry::Save(const char *assets_registry_file)
+bool AssetRegistry::save(const char *assets_registry_file)
 {
-        try
-        {
-                YAML::Emitter out;
+        YAML::Emitter out;
 
+        out << YAML::BeginMap;
+
+        out << YAML::Key << "assets_folder";
+        out << YAML::Value << assets_folder_;
+
+        out << YAML::Key << "assets";
+        out << YAML::Value << YAML::BeginSeq;
+
+        for (const auto &[id, meta] : assets_)
+        {
                 out << YAML::BeginMap;
-                out << YAML::Key << "assets_folder";
-                out << YAML::Value << assets_folder_;
 
-                out << YAML::Key << "assets";
-                out << YAML::Value << YAML::BeginSeq;
+                std::stringstream ss;
+                ss << "0x" << std::hex << id;
 
-                // Write each asset
-                for (const auto &[id, filepath] : file_paths_)
+                out << YAML::Key << "id" << YAML::Value << ss.str();
+                out << YAML::Key << "filepath" << YAML::Value << meta.filepath;
+
+                if (!meta.cachePath.empty())
+                        out << YAML::Key << "cache" << YAML::Value << meta.cachePath;
+
+                out << YAML::Key << "type" << YAML::Value << assetTypeToString(meta.type);
+
+                auto depIt = dependencies_.find(id);
+                if (depIt != dependencies_.end() && !depIt->second.empty())
                 {
-                        out << YAML::BeginMap;
+                        out << YAML::Key << "dependencies";
+                        out << YAML::Value << YAML::BeginSeq;
 
-                        // Write ID as hex
-                        std::stringstream ss;
-                        ss << "0x" << std::hex << id;
-                        out << YAML::Key << "id" << YAML::Value << ss.str();
-
-                        // Write relative filepath
-                        // auto rel_path = std::filesystem::relative(filepath, assets_folder_);
-                        // out << YAML::Key << "filepath" << YAML::Value << rel_path.string();
-
-                        // Write dependencies if any
-                        auto deps_it = dependencies_.find(id);
-                        if (deps_it != dependencies_.end() && !deps_it->second.empty())
+                        for (GUID dep : depIt->second)
                         {
-                                out << YAML::Key << "dependencies";
-                                out << YAML::Value << YAML::BeginSeq;
-
-                                for (GUID dep_id : deps_it->second)
-                                {
-                                        std::stringstream dep_ss;
-                                        dep_ss << "0x" << std::hex << dep_id;
-                                        out << dep_ss.str();
-                                }
-
-                                out << YAML::EndSeq;
+                                std::stringstream depSS;
+                                depSS << "0x" << std::hex << dep;
+                                out << depSS.str();
                         }
 
-                        out << YAML::EndMap;
+                        out << YAML::EndSeq;
                 }
 
-                out << YAML::EndSeq;
                 out << YAML::EndMap;
-
-                // Write to file
-                // std::ofstream fout(registry_file);
-                // fout << out.c_str();
-
-                return true;
         }
-        catch (const YAML::Exception &e)
-        {
-                IC_CORE_ERROR("Failed to save registry: {}", e.what());
-                return false;
-        }
+
+        out << YAML::EndSeq;
+        out << YAML::EndMap;
+
+        std::ofstream fout(assets_registry_file);
+        fout << out.c_str();
+
+        return true;
 }
-bool AssetRegistry::Contains(GUID id) const
+bool AssetRegistry::contains(GUID id) const
 {
-        // Find the element
-        auto it = file_paths_.find(id);
-
-        // Not found in registry
-        if (it == file_paths_.end())
-        {
+        auto it = assets_.find(id);
+        if (it == assets_.end())
                 return false;
-        }
 
-        // Found in registry - check if file exists
-        const auto &filepath = it->second;  // Use the iterator!
-
-        if (fs_exists(filepath))
-        {
-                return true;
-        }
-        else
-        {
-                IC_CORE_WARN("The ID {} is in the registry but couldn't find the file path: {}", id, filepath);
-                return false;
-        }
+        return fs_exists(it->second.filepath.c_str());
 }
 
-GUID AssetRegistry::GetAssetId(const char *file_path) const
+GUID AssetRegistry::getAssetId(const char *file_path) const
 {
         auto it = ids_.find(file_path);
         if (it == ids_.end())
@@ -220,72 +181,48 @@ GUID AssetRegistry::GetAssetId(const char *file_path) const
         return it->second;
 }
 
-const char *AssetRegistry::GetFilePath(GUID id) const
+const char *AssetRegistry::getFilePath(GUID id) const
 {
-        if (Contains(id))
-        {
-                return file_paths_.at(id);
-        }
+        auto it = assets_.find(id);
+        if (it == assets_.end())
+                return nullptr;
 
-        IC_CORE_ERROR("Could not find file path to id: {}", id);
-        return nullptr;
+        return it->second.filepath.c_str();
 }
 
-char *AssetRegistry::GetRelFilePath(GUID id) const
+const char *AssetRegistry::getCachePath(GUID id) const
 {
-        if (Contains(id))
-        {
-                // fs_filename(file_paths_.at(id));
-                char *path = nullptr;
-                fs_joinPath(assets_folder_.c_str(), file_paths_.at(id), path);
-                return path;
-        }
-        return nullptr;
+        auto it = assets_.find(id);
+        if (it == assets_.end())
+                return nullptr;
+
+        return it->second.cachePath.c_str();
 }
 
-GUID AssetRegistry::Register(const char *file_path)
+GUID AssetRegistry::registerAsset(const char *file_path, AssetType type)
 {
-        auto id = ids_.find(file_path);
-        if (id != ids_.end())
-        {
-                if (Contains(id->second))
-                {
+        auto it = ids_.find(file_path);
+        if (it != ids_.end())
+                return it->second;
 
-                        IC_CORE_INFO("File path {} already in registry with id: {}", file_path, id->second);
-                        return id->second;
-                }
-                else
-                {
-                        IC_CORE_INFO("File path {} exists in registry but not the mapping for id: {}. Registering now.",
-                                     file_path,
-                                     id->second);
+        GUID newId = UUID++;
 
-                        file_paths_[id->second] = file_path;
-                        return INVALID_ID;
-                }
-        }
+        AssetMeta meta;
+        meta.filepath   = file_path;
+        meta.type       = type;
 
-        GUID NEW_ID = ++UUID; /** TODO: Chenge this to some UUID generator */
-        IC_CORE_INFO("Registering file_path to id: {}");
-        file_paths_[NEW_ID] = file_path;
-        ids_[file_path]     = NEW_ID;
-        return NEW_ID;
+        assets_[newId]  = meta;
+        ids_[file_path] = newId;
+
+        return newId;
 }
 
-void AssetRegistry::RegisterDependency(GUID id, GUID dependency_id)
+void AssetRegistry::registerDependency(GUID id, GUID dependency_id)
 {
-        auto it = dependencies_.find(id);
-        if (it != dependencies_.end())
-        {
-                it->second.insert(dependency_id);
-        }
-        else
-        {
-                dependencies_[id] = std::unordered_set<GUID>({dependency_id});
-        }
+        dependencies_[id].insert(dependency_id);
 }
 
-const std::unordered_set<GUID> *AssetRegistry::GetDependencies(GUID id) const
+const std::unordered_set<GUID> *AssetRegistry::getDependencies(GUID id) const
 {
         auto it = dependencies_.find(id);
         if (it == dependencies_.end())
@@ -296,19 +233,45 @@ const std::unordered_set<GUID> *AssetRegistry::GetDependencies(GUID id) const
         return &it->second;
 }
 
-void AssetRegistry::Unregister(GUID id)
+void AssetRegistry::unregister(GUID id)
 {
-        auto it = file_paths_.find(id);
+        auto it = assets_.find(id);
+        if (it == assets_.end())
+                return;
 
-        if (it == file_paths_.end())
-        {
-                IC_CORE_WARN("Already unregistered id: {}", id);
-        }
-
-        const char *file_path = it->second;
-        file_paths_.erase(id);
-        ids_.erase(file_path);
+        ids_.erase(it->second.filepath);
         dependencies_.erase(id);
+        assets_.erase(it);
+}
+
+AssetType AssetRegistry::assetTypeFromString(const string &s)
+{
+        if (s == "model")
+                return AssetType::ASSET_TYPE_MODEL;
+        if (s == "texture")
+                return AssetType::ASSET_TYPE_TEXTURE;
+        if (s == "material")
+                return AssetType::ASSET_TYPE_MATERIAL;
+        if (s == "shader")
+                return AssetType::ASSET_TYPE_SHADER;
+        return AssetType::ASSET_TYPE_NONE;
+}
+
+string AssetRegistry::assetTypeToString(AssetType type)
+{
+        switch (type)
+        {
+        case AssetType::ASSET_TYPE_MODEL:
+                return "model";
+        case AssetType::ASSET_TYPE_TEXTURE:
+                return "texture";
+        case AssetType::ASSET_TYPE_MATERIAL:
+                return "material";
+        case AssetType::ASSET_TYPE_SHADER:
+                return "shader";
+        default:
+                return "unknown";
+        }
 }
 
 }  // namespace ic

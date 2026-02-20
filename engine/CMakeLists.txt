@@ -32,6 +32,8 @@ endif()
 
 target_link_libraries(engine PUBLIC spdlog::spdlog glm)
 
+target_compile_definitions(engine PRIVATE IC_EXPORT)
+
 set_target_properties(engine PROPERTIES
     OUTPUT_NAME "engine"
     POSITION_INDEPENDENT_CODE ON

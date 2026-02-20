@@ -2,7 +2,7 @@
 #include "core/assets/types/model.h"
 
 #include <filesystem>
-#include <string>
+
 #include <variant>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -26,15 +26,15 @@ bool GLTFLoader::loadModel(const char *path, Model *model)
         return loadGLTF(path, model);
 }
 
-bool GLTFLoader::loadGLTF(std::filesystem::path path, Model *gltf)
+bool GLTFLoader::loadGLTF(const char *path, Model *gltf)
 {
-        if (!std::filesystem::exists(path))
+        if (!fs_exists(path))
         {
-                IC_CORE_WARN("Failed to find {}!", path.string());
+                IC_CORE_WARN("Failed to find {}!", path);
                 return false;
         }
 
-        IC_CORE_INFO("Loading {}", path.string());
+        IC_CORE_INFO("Loading {}", path);
 
         static constexpr auto supportedExtensions = fastgltf::Extensions::KHR_mesh_quantization |
                                                     fastgltf::Extensions::KHR_texture_transform |
@@ -46,19 +46,20 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model *gltf)
                                      fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages |
                                      fastgltf::Options::GenerateMeshIndices;
 
-        auto gltfFile = fastgltf::MappedGltfFile::FromPath(path);
+        auto gltfFile = fastgltf::MappedGltfFile::FromPath(std::filesystem::path(path));
         if (!bool(gltfFile))
         {
                 IC_CORE_WARN("Failed to open glTF file: {}", fastgltf::getErrorMessage(gltfFile.error()));
                 return false;
         }
 
-        auto expectedAsset = parser.loadGltf(gltfFile.get(), path.parent_path(), gltfOptions);
+        const char *parentPath = fs_getParentPath(path);
+        auto expectedAsset     = parser.loadGltf(gltfFile.get(), std::filesystem::path(parentPath), gltfOptions);
         if (expectedAsset.error() != fastgltf::Error::None)
         {
                 IC_CORE_WARN("Failed to load glTF: {}\nDirectory: {}",
                              fastgltf::getErrorMessage(expectedAsset.error()),
-                             path.parent_path().generic_string());
+                             parentPath);
                 return false;
         }
 
@@ -157,7 +158,7 @@ bool GLTFLoader::loadGLTF(std::filesystem::path path, Model *gltf)
 
 bool GLTFLoader::loadScene(Model *gltf, fastgltf::Scene &scene)
 {
-        Scene engineScene{};
+        GLTFScene engineScene{};
         engineScene.name = scene.name;
         engineScene.rootNodes.reserve(scene.nodeIndices.size());
 
@@ -653,7 +654,7 @@ void GLTFLoader::loadBufferView(Model *gltf, fastgltf::BufferView &bufferView)
         gltf->bufferViews.push_back(std::move(bufView));
 }
 
-void GLTFLoader::loadBuffer(Model *gltf, const fastgltf::Buffer &buffer, const std::filesystem::path &basePath)
+void GLTFLoader::loadBuffer(Model *gltf, const fastgltf::Buffer &buffer, const char *basePath)
 {
         Buffer buf;
         std::visit(fastgltf::visitor{[&](const fastgltf::sources::Array &array)
@@ -674,13 +675,13 @@ void GLTFLoader::loadBuffer(Model *gltf, const fastgltf::Buffer &buffer, const s
                                      [&](const fastgltf::sources::URI &uri)
                                      {
                                              // External file - need to load it
-                                             std::filesystem::path bufferPath = basePath / uri.uri.path();
+                                             const char *bufferPath;
+                                             fs_joinPath(uri.uri.path().data(), basePath, &bufferPath);
 
                                              std::ifstream file(bufferPath, std::ios::binary | std::ios::ate);
                                              if (!file)
                                              {
-                                                     IC_CORE_ERROR("Failed to open buffer file: {}",
-                                                                   bufferPath.string());
+                                                     IC_CORE_ERROR("Failed to open buffer file: {}", bufferPath);
                                                      return;
                                              }
 

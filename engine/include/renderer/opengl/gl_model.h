@@ -72,6 +72,8 @@ struct GLModel
         void uploadTextures();
         void uploadMeshes();
 
+        void clearGPUMemory();
+
         void draw(Shader &shader);
         void drawNode(Shader &shader, Index nodeIndex, glm::mat4 parentTransform);
         void drawMesh(Shader &shader, GLMesh glMesh, Mesh &mesh, glm::mat4 worldTransform);

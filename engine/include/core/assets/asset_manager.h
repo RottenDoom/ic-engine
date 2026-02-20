@@ -4,6 +4,7 @@
 #include "defines.h"
 #include "core/assets/types/asset_base.h"
 #include "core/assets/asset_registry.h"
+#include "core/iterator.h"
 
 /**
  * TODO:
@@ -18,55 +19,59 @@
 namespace ic
 {
 
-void asset_manager_init(void);
-void asset_manager_deinit(void);
-
 class Serializer;
 
 class AssetManager
 {
 public:
-        AssetManager() {}
+        static void Initialize(const char *registryFile);
+        static void Shutdown();
+        static AssetManager *Get();
 
-        void Init(const char *assets_registry_file);
+        bool loadRegistry(const char *registry_file);
+        AssetRegistry *getRegistry();
 
-        /**
-         * @brief Checks if the asset is already loaded if its loaded returns it else returns nullptr
-         */
-        template <typename T>
-        T *Get(GUID asset_id);
-
-        /**
-         * @param file_path File path relative to the assets folder.
-         */
-        template <typename T>
-        T *Load(const char *file_path);
-
-        bool ReloadAsset(IAsset *asset);
-
-        /**
-         * @brief Decrements the ref count of the asset and if it reaches 0 unloads the asset.
-         */
-        void ReleaseAsset(IAsset *asset);
-
-        /**
-         * @brief Serializes the asset to file.
-         * @param filename File path NOT relative to the assets folder.
-         */
-        template <typename T>
-        void SerializeAsset(T *asset, const char *filename);
-
-        bool LoadRegistry(const char *registry_file_path);
-        AssetRegistry *GetRegistry();
+        IAsset *load(GUID id);
 
         template <typename T>
-        bool AddSerializer(Serializer *serializer);
+        T *loadAs(GUID id)
+        {
+                return dynamic_cast<T *>(load(id));
+        }
+
+        // Unload model
+        void unload(GUID id);
+
+        template <typename T>
+        T *getAsset(GUID id)
+        {
+                auto it = assets_.find(id);
+                if (it == assets_.end())
+                {
+                        IC_CORE_ERROR("Could not find the asset requested for ID: {}", id);
+                        return nullptr;
+                }
+
+                return (T *)assets_[id];
+        }
+
+        using InternalIterator = std::unordered_map<GUID, IAsset *>::iterator;
+        using Iterator         = MapIterator<InternalIterator, GUID, IAsset *>;
+
+        Iterator begin() { return Iterator(assets_.begin()); }
+        Iterator end() { return Iterator(assets_.end()); }
+
+        ~AssetManager();
 
 private:
+        static AssetManager *s_instance;
+
+        AssetManager() = default;
+
+        std::unordered_map<GUID, IAsset *> assets_;
         AssetRegistry registry_;
 
-        std::unordered_map<GUID, IAsset *> assets_;                      // THIS TOO;
-        std::unordered_map<AssetType, Serializer *> asset_serializers_;  // REPLACE THIS SHIT
+        IAsset *createAsset(AssetType type, GUID id);
 };
 
 }  // namespace ic
@@ -95,6 +100,8 @@ extern "C"
 
          */
         IC_API Model *ic_load_model(GUID modelId);
+
+        IC_API bool ic_render_model(GUID modelID, float *transform4x4);
 
         /** @function ic_unload_model
          * @category assets

@@ -342,7 +342,50 @@ bool fs_removeFromSearchPath(const char *rmDir)
 
 char *fs_getParentPath(const char *path)
 {
-        return NULL;
+        if (!g_filesystem || !path)
+                return NULL;
+
+        size_t len = strlen(path);
+
+        if (len == 0)
+                return nullptr;
+
+        // copy path so we can operate safely
+        char *buffer = (char *)ic_malloc(len + 1);
+        if (!buffer)
+                return nullptr;
+
+        strcpy(buffer, path);
+
+        // remove trailing slashes
+        while (len > 0 && (buffer[len - 1] == '/' || buffer[len - 1] == '\\'))
+        {
+                buffer[len - 1] = '\0';
+                len--;
+        }
+
+        // find last separator
+        char *lastSlash = strrchr(buffer, '/');
+        char *lastBack  = strrchr(buffer, '\\');
+
+        char *lastSep   = lastSlash > lastBack ? lastSlash : lastBack;
+
+        if (!lastSep)
+        {
+                ic_free(buffer);
+                return nullptr;
+        }
+
+        // if separator is first character → root directory
+        if (lastSep == buffer)
+        {
+                buffer[1] = '\0';
+                return buffer;
+        }
+
+        *lastSep = '\0';
+
+        return buffer;
 }
 
 char *fs_getfullpath(const char *filename)
@@ -357,6 +400,20 @@ char *fs_getfullpath(const char *filename)
                 }
                 ic_free(full);
         }
+
+        // check for search paths as well (this mostly works out if you put the desired search paths here)
+        for (size_t i = 0; i < g_filesystem->search_path_count; i++)
+        {
+                char *full = join_path(g_filesystem->search_paths[i], filename);
+                IC_CORE_ASSERT(full, "Path could not be joined");
+                if (__platformFileExists(full))
+                {
+                        return full;
+                }
+                ic_free(full);
+        }
+
+        /** TODO: Better error handling. */
         return nullptr;
 }
 
@@ -488,18 +545,17 @@ bool fs_isDirectory(const char *dir)
         return __platformIsDirectory(dir);
 }
 
-bool fs_joinPath(const char *relPath, const char *fullpath, const char *out)
+bool fs_joinPath(const char *relPath, const char *fullpath, const char **out)
 {
-        if (!relPath || !fullpath || g_filesystem)
-                return false;
+        IC_CORE_ASSERT(relPath && fullpath && g_filesystem, "Filesystem error.");
 
-        out = nullptr;  // just making sure
-        out = join_path(fullpath, relPath);
+        *out = join_path(fullpath, relPath);
 
-        if (!fs_isDirectory(out))
+        if (!fs_exists(*out))
         {
-                IC_CORE_WARN("The directory {} does not exist cant join", out);
-                ic_free((void *)out);
+                IC_CORE_WARN("The directory {} does not exist cant join", *out);
+                ic_free((void *)(*out));
+                out = nullptr;
                 return false;
         }
 
@@ -955,20 +1011,14 @@ static bool translate_mount_path(const char *virtual_path, char *out_buffer, siz
                 if (path_matches_mount(virtual_path, mount->virtual_path))
                 {
                         size_t mount_len = strlen(mount->virtual_path);
-                        const char *relative_part;
 
-                        // Root mount: use full virtual path
-                        if (mount_len == 1 && mount->virtual_path[0] == '/')
-                        {
-                                relative_part = virtual_path + 1;  // Skip leading '/'
-                        }
-                        else
-                        {
-                                relative_part = virtual_path + mount_len;
-                                // Skip leading '/' after mount point
-                                if (relative_part[0] == '/')
-                                        relative_part++;
-                        }
+                        if (strncmp(virtual_path, mount->virtual_path, mount_len) != 0)
+                                continue;
+
+                        const char *relative_part = virtual_path + mount_len;
+
+                        if (*relative_part == '/')
+                                relative_part++;
 
                         // Build physical path
                         snprintf(out_buffer, buffer_size, "%s/%s", mount->physical_path, relative_part);

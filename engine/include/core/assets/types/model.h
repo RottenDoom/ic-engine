@@ -285,7 +285,7 @@ struct ImageData
         // #endif
 };
 
-struct Scene
+struct GLTFScene
 {
         std::string name;
         std::vector<Index> rootNodes;
@@ -307,7 +307,7 @@ public:
         std::vector<AssetCamera> cameras;
         std::vector<Skin> skins;
         std::vector<Animation> animations;
-        std::vector<Scene> scenes;
+        std::vector<GLTFScene> scenes;
 
         Index defaultScene = INVALID_INDEX;
 
@@ -321,13 +321,15 @@ public:
 
         ASSET_CLASS_TYPE(ASSET_TYPE_MODEL)
 
-        bool Load(const char *filepath) override;
-        bool CachedLoad(ic::Serializer *serializer) override;
-        bool CachedSave(ic::Serializer *serializer) const override;
-        void Free() override;
+        Model(GUID id) : IAsset(id) {}
 
-        void FreeCPU();
-        void FreeGPU();
+        bool load(const char *filepath) override;
+        bool cachedLoad(ic::Serializer *serializer) override;
+        bool cachedSave(ic::Serializer *serializer) const override;
+        bool release() override;
+
+        void freeCPU();
+        void freeGPU();
 
         // Editor-friendly queries
         size_t GetMeshCount() const { return meshes.size(); }
@@ -359,6 +361,7 @@ private:
         // Internal state flags
         bool gpuDataDirty    = false;
         bool transformsDirty = false;
+        bool loaded          = false;
 
         // void FreeLoadingData();
 

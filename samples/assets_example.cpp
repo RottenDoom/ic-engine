@@ -13,7 +13,7 @@ int main()
         ic_load_registry("registry.yaml");
 
         // load model
-        uint32_t id = 69420u;
+        GUID id = 0x1000000000000001;
         ic_load_model(id);
 
         ic_app_destroy();

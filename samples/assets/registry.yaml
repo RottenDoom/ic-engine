@@ -1,27 +1,23 @@
-assets_folder: "assets"
+assets_folder: "/assets"
 
 assets:
   - id: 0x1000000000000001
-    filepath: textures/player_albedo.png
-    type: texture
+    filepath: cube/shape.gltf
+    cache: cube/shape.icm
+    type: model
+
+  - id: 0x1000000000000004
+    filepath: shibahu/scene.gltf
+    cache: shibahu/scene.icm
+    type: model
 
   - id: 0x1000000000000002
-    filepath: textures/player_normal.png
+    filepath: tree_house/scene.gltf
+    cache: tree_house/scene.icm
+    type: model
+    dependencies:
+      - 0x1000000000000003
+
+  - id: 0x1000000000000003
+    filepath: tree_house/textures/Envi_baseColor.png
     type: texture
-
-  - id: 0x2000000000000001
-    filepath: materials/player.mtl
-    type: material
-    dependencies:
-      - 0x1000000000000001
-      - 0x1000000000000002
-
-  - id: 0x3000000000000001
-    filepath: models/player.gltf
-    type: model
-    dependencies:
-      - 0x2000000000000001
-
-  - id: 0x3000000000000002
-    filepath: models/enemy.gltf
-    type: model

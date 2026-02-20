@@ -9,6 +9,7 @@ SortIncludes: false
 NamespaceIndentation: None
 AccessModifierOffset: -8
 ArrayInitializerAlignmentStyle: Right
+SkipMacroDefinitionBody: true
 
 # declaration/call alignment
 BinPackArguments: false

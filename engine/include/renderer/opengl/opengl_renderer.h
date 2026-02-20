@@ -3,11 +3,13 @@
 
 #include "defines.h"
 #include "renderer/camera.h"
+#include "renderer/scene.h"
 #include "renderer/renderer.h"
 
 #include "gl_shader.h"
 #include "gl_model.h"
 #include "core/gltf_loader.h"
+#include "core/application.h"
 
 #include "core/window.h"
 #include "core/events/event.h"
@@ -26,39 +28,16 @@ struct PointLight
 namespace ic
 {
 
-// Concrete renderer implementation
-class Renderer : public IRenderer
-{
-public:
-        Renderer();
-        ~Renderer() override;
-
-        bool init(Window *w) override;
-        void onEvent(event &e) override;
-        void renderFrame(float dt) override;
-        void cleanUp() override;
-
-private:
-        struct backend_context;
-        struct backend_renderer;
-
-        std::unique_ptr<backend_context> m_context;
-        std::unique_ptr<backend_renderer> m_renderer;
-
-        bool m_initialized = false;
-};
-
-class OpenGLRenderer
+class OpenGLRenderer : public IRenderer
 {
 private:
         bool m_IsMinimized = false;  //[TODO] handle minimized
 
-        Camera m_camera;
-        Window &m_window;
+        Window *m_window;
 
-        /** TODO: Make these a handle library */
-        Model model;
-        GLModel gpuHandle;
+        /** TODO: Make a scene class */
+        Scene *m_scene;
+        std::unordered_map<GUID, GLModel *> m_gpuCache;
 
         /** TODO: Lighting class */
         // std::vector<PointLight> pointLights;
@@ -74,16 +53,20 @@ private:
         void setupBuffers();
 
 public:
-        bool init();
+        bool init(Window *w) override;
+        void onEvent(event &e) override;
+        void renderFrame(float dt) override;
+        void cleanUp() override;
+        void setScene(Scene *scene) override { m_scene = scene; }
+
         void update(float deltaTime);  // Make a timestep module
-        void onEvent(event &e);
         void loadAssets();
         void draw(float deltaTime);
-        void destroy();
 
-        OpenGLRenderer(Window &window);
+        OpenGLRenderer();
         ~OpenGLRenderer();
 };
+
 }  // namespace ic
 
 #endif
