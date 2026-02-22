@@ -13,47 +13,85 @@
 
 namespace ic
 {
-/**
- * The filesystem for my project will be hierarchial filesystem. No '..', '\\' or ':' which will pollute the filesystem
- */
 
-typedef struct File File;
+typedef struct
+{
+        /* basic file handle info*/
+        void  *handle;
+        int    flags; /* flags for open, read and write */
+        size_t size;
 
-/** Mount type only contains a path for now can be later used for archiving. */
-typedef struct Mount Mount;
+        /* mmap file info */
+        void  *mmap_addr;
+        size_t mmap_size;
 
-// File types
+        /* modified time info */
+        uint64_t modified_time;
+} File;
+
+/* mounttypes to correctly resolve file directories */
 typedef enum
 {
-        FS_NONE = 0,
-        FS_FILE,
-        FS_DIRECTORY,
-        FS_SYMLINK,
-        FS_UNKNOWN
-} FSFileType;
+        MOUNT_TYPE_DIRECTORY, /* only support this for now. */
+        MOUNT_TYPE_ARCHIVE,
+        MOUNT_TYPE_SYMLINK,
+} MountType;
+
+/** Mount type only contains a path for now can be later used for archiving. */
+typedef struct
+{
+        char     *virtual_path;
+        char     *physical_path;
+        MountType type;
+        void     *driver;    // future: archive handle
+        uint16_t  priority;  // higher = checked first
+} Mount;
+
+typedef enum
+{
+        FS_OPEN_READ   = 1 << 0,
+        FS_OPEN_WRITE  = 1 << 1,
+        FS_OPEN_APPEND = 1 << 2,
+        FS_OPEN_CREATE = 1 << 3,
+} FSOpenFlags;
 
 /** Filesystem struct for holding mounts and standard paths for a FS */
-typedef struct FS_Info FS_Info;
+typedef struct
+{
+        bump_allocator_t *allocator;  // usually bump/linear allocators work well with FS
 
-/** File struct for file handles and lifetimes */
-typedef struct File File;
+        /* mount info */
+        Mount  mounts[FS_MAX_MOUNTS];
+        size_t mount_count;
+        char **mount_points;
+
+        /* base directories for OS */
+        char *base_dir;
+        char *user_dir;
+        char *root_dir;
+        char *write_dir;
+
+        /* search paths for falling back from mount paths */
+        char **search_paths;
+        size_t search_path_count;
+} FS_Info;
 
 bool fs_init(void);
 void fs_deinit(void);
 
 /** Mount a path onto a physical path on a drive */
-bool fs_mount(const char *virtual_path, const char *physical_path);
+bool fs_mount(const char *virtual_path, const char *physical_path, MountType type, uint16_t priority);
 
 /** Returns the directory seporator for a filesystem */
 const char *fs_getDirSeperator(void);
 const char *fs_getWriteDirectory(void);
-void fs_setWriteDirectory(char *dir);
+void        fs_setWriteDirectory(char *dir);
 
 /** @brief adds a directory to a search path. The directory should be normalized and full. if append is true we add it
  * to the last of search paths else at the start
  * @note newDir should be a full path to the directory. Use fs base or user or root to access some directories. */
-bool fs_addToSearchPath(char *newDir, bool appendToPath);
-bool fs_removeFromSearchPath(const char *rmDir);
+bool   fs_addToSearchPath(char *newDir, bool appendToPath);
+bool   fs_removeFromSearchPath(const char *rmDir);
 char **fs_getSearchPath(void);
 
 /** By defualt mkdir makes the directory in the application base directory */
@@ -74,25 +112,22 @@ char *fs_getfullpath(const char *filename);
 /** Get parent path from a file path or directory */
 char *fs_getParentPath(const char *path);
 
-/** Check if a file exists in the search paths*/
-bool fs_exists(const char *relative_path);
-
-/** Check if a file exists. filepath should be a normalized full path to the file */
-bool fs_fileExists(const char *filepath);
-bool fs_isDirectory(const char *dir);
+/** File and directory checks */
+bool     fs_exists(const char *relative_path);
+bool     fs_isDirectory(const char *dir);
 uint64_t fs_getLastModificationTime(const char *filename);
 
-File *fs_openRead(const char *filename);
-bool fs_close(File *handle);
+File  *fs_openRead(const char *filename);
+bool   fs_close(File *handle);
 size_t fs_read(File *handle, void *buffer, size_t objSize, size_t objCount);
 size_t fs_write(File *handle, void *buffer, size_t objSize, size_t objCount);
-bool fs_eof(File *handle);
+bool   fs_eof(File *handle);
 size_t fs_tell(File *handle);
-bool fs_seek(File *handle, size_t pos);
+bool   fs_seek(File *handle, size_t pos);
 size_t fs_fileLength(File *handle);
 size_t fs_setBuffer(File *handle, size_t bufsize);
-bool fs_flush(File *handle);
-bool fs_compress(File *handle);
+bool   fs_flush(File *handle);
+bool   fs_compress(File *handle);
 
 }  // namespace ic
 
@@ -101,36 +136,36 @@ extern "C"
 {
 #endif
         /**
-         * @function IC_getfilename
+         * @function ic_getfilename
          * @category filesystem
          * @brief Get the filename with extension from a path
          * @param path: virtual path to a file
          * @returns filename with extension, or NULL if path is invalid
          *
          * @example
-         * const char* name = IC_getfilename("/assets/textures/player.png");
+         * const char* name = ic_getfilename("/assets/textures/player.png");
          * // Returns: "player.png"
          */
-        IC_API const char *IC_getfilename(const char *path);
+        IC_API const char *ic_getfilename(const char *path);
 
         /**
-         * @function IC_fs_open
+         * @function ic_open
          * @category filesystem
          * @brief Open a file for reading (searches all mount points)
          * @param path: virtual path to the file
          * @returns FILE handle for reading, or NULL if not found
          *
          * @example
-         * FILE* fp = IC_openFile("config.ini");
+         * FILE* fp = ic_open("config.ini");
          * if (fp) {
          *     // Read from file
          *     fclose(fp);
          * }
          */
-        IC_API FILE *IC_fs_open(const char *path);
+        IC_API FILE *ic_open(const char *path);
 
         /**
-         * @function IC_fs_read
+         * @function ic_read
          * @category filesystem
          * @brief Read entire file contents into a buffer (allocated from bump allocator)
          * @param path: virtual path of the file
@@ -142,15 +177,15 @@ extern "C"
          *
          * @example
          * size_t size;
-         * char* content = IC_fs_read("shader.glsl", &size);
+         * char* content = ic_read("shader.glsl", &size);
          * if (content) {
          *     printf("Loaded %zu bytes: %s\n", size, content);
          * }
          */
-        IC_API char *IC_fs_read(const char *path, size_t *out_size);
+        IC_API char *ic_read(const char *path, size_t *out_size);
 
         /**
-         * @function IC_fs_write
+         * @function ic_write
          * @category filesystem
          * @brief Write data to a file
          * @param path: file path to write to
@@ -160,31 +195,31 @@ extern "C"
          *
          * @example
          * const char* data = "Hello, World!";
-         * if (IC_fs_write("output.txt", data, strlen(data))) {
+         * if (ic_write("output.txt", data, strlen(data))) {
          *     printf("File written successfully\n");
          * }
          */
-        IC_API bool IC_fs_write(const char *path, const void *data, size_t size);
+        IC_API bool ic_write(const char *path, const void *data, size_t size);
 
         /**
-         * @function IC_listfiles
+         * @function ic_listfiles
          * @category filesystem
          * @brief List all files in a directory
          * @param dir: directory path to enumerate
          * @returns null-terminated array of filenames (allocated from bump allocator), or NULL on failure
          *
          * @example
-         * char** files = IC_listfiles("./assets");
+         * char** files = ic_listfiles("./assets");
          * if (files) {
          *     for (int i = 0; files[i] != NULL; i++) {
          *         printf("File: %s\n", files[i]);
          *     }
          * }
          */
-        IC_API char **IC_listfiles(const char *dir);
+        IC_API char **ic_listfiles(const char *dir);
 
         /**
-         * @function IC_fs_getbasedir
+         * @function ic_getbasedir
          * @category filesystem
          * @brief Get the base directory (where the executable is located)
          * @returns base directory path (never NULL after fs_init)
@@ -193,13 +228,13 @@ extern "C"
          *       All relative paths are relative to this directory.
          *
          * @example
-         * const char* base = IC_fs_getbasedir();
+         * const char* base = ic_getbasedir();
          * printf("Running from: %s\n", base);
          */
-        IC_API const char *IC_fs_getbasedir(void);
+        IC_API const char *ic_getbasedir(void);
 
         /**
-         * @function IC_fs_getcwddir
+         * @function ic_getcwddir
          * @category filesystem
          * @brief Get the cwd directory (get the current main file directory)
          * @returns cwd directory path (never NULL after fs_init)
@@ -207,25 +242,25 @@ extern "C"
          * @note The cwd directory cannot be modified after initialization.
          *
          * @example
-         * const char* cwd = IC_fs_getcwddir();
+         * const char* cwd = ic_getcwddir();
          * printf("Running from: %s\n", cwd);
          */
-        IC_API const char *IC_fs_getcwddir(void);
+        IC_API const char *ic_getcwddir(void);
 
         /**
-         * @function IC_fs_getuserdir
+         * @function ic_getuserdir
          * @category filesystem
          * @brief Get the user's home directory
          * @returns user directory path (e.g., C:/Users/Username on Windows, /home/username on Linux)
          *
          * @example
-         * const char* user_dir = IC_fs_getuserdir();
+         * const char* user_dir = ic_getuserdir();
          * printf("User directory: %s\n", user_dir);
          */
-        IC_API const char *IC_fs_getuserdir(void);
+        IC_API const char *ic_getuserdir(void);
 
         /**
-         * @function IC_fs_mount
+         * @function ic_mount
          * @category filesystem
          * @brief Mount a physical directory to a virtual path
          * @param physical_path: physical directory path (e.g., "./game_data/assets")
@@ -237,68 +272,68 @@ extern "C"
          *
          * @example
          * // Mount game assets
-         * IC_fs_mount("/assets", "./data/assets", true);
-         * IC_fs_mount("/levels", "./data/levels", true);
+         * ic_mount("/assets", "./data/assets", true);
+         * ic_mount("/levels", "./data/levels", true);
          *
          * // Now files can be accessed via virtual paths:
          * FILE* fp = IC_openFile("/assets/texture.png");
          */
-        IC_API bool IC_fs_mount(const char *physical_path, const char *virtual_path, bool append_path);
+        IC_API bool ic_mount(const char *virtual_path, const char *physical_path, uint16_t priority);
 
         /**
-         * @function IC_fs_exists
+         * @function ic_exists
          * @category filesystem
          * @brief Check if a file exists in any search path
          * @param filename: file to check for
          * @returns true if file exists, false otherwise
          *
          * @example
-         * if (IC_fs_exists("save_game.dat")) {
+         * if (ic_exists("save_game.dat")) {
          *     printf("Save file found\n");
          * }
          */
-        IC_API bool IC_fs_exists(const char *filename);
+        IC_API bool ic_exists(const char *filename);
 
         /**
-         * @function IC_fs_mkdir
+         * @function ic_mkdir
          * @category filesystem
          * @brief Create a directory
          * @param dirName: directory path to create
          * @returns true on success, false on failure
          *
          * @example
-         * IC_fs_mkdir("./saves");
-         * IC_fs_mkdir("./screenshots");
+         * ic_mkdir("./saves");
+         * ic_mkdir("./screenshots");
          */
-        IC_API bool IC_fs_mkdir(const char *dirName);
+        IC_API bool ic_mkdir(const char *dirName);
 
         /**
-         * @function IC_fs_delete
+         * @function ic_delete
          * @category filesystem
          * @brief Delete a file
          * @param filename: file to delete
          * @returns true on success, false on failure
          *
          * @example
-         * if (IC_fs_delete("temp.dat")) {
+         * if (ic_delete("temp.dat")) {
          *     printf("Temp file deleted\n");
          * }
          */
-        IC_API bool IC_fs_delete(const char *filename);
+        IC_API bool ic_delete(const char *filename);
 
         /**
-         * @function IC_fs_isDirectory
+         * @function ic_isDirectory
          * @category filesystem
          * @brief Check if a path is a directory
          * @param path: path to check
          * @returns true if directory, false otherwise
          *
          * @example
-         * if (IC_fs_isDirectory("./assets")) {
+         * if (ic_isDirectory("./assets")) {
          *     printf("Assets directory exists\n");
          * }
          */
-        IC_API bool IC_fs_isDirectory(const char *path);
+        IC_API bool ic_isDirectory(const char *path);
 
 #ifdef __cplusplus
 }

@@ -11,6 +11,14 @@
 #include <string>  // [TODO] Make string class using std::vector or a custom dynamic array
 #include <vector>
 
+// TODO:
+/**
+ * 1. Make the fast file load functions
+ * 2. Write an AABB class and improve the structs to actually hold the data rather than anything relating to the gltf
+ * file.
+ * 3. Load using Fast file loads and test it.
+ */
+
 // #if USING(GPU_DATA)
 // #include "renderer/graphics_api/buffer.hpp"
 // #include "renderer/graphics_api/texture.hpp"

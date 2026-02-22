@@ -7,7 +7,7 @@ int main()
         /** TODO: Inconsistency in filesystem gotta write some tests */
 
         // path after post-build
-        IC_fs_mount("/assets", "assets", true);
+        ic_mount("/assets", "assets", 1);
 
         // load the registry (IN some functions you would have to put assets at the start in some you dont have to)
         ic_load_registry("registry.yaml");

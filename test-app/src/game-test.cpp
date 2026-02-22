@@ -28,8 +28,8 @@ void render() {}
 void createApplication()
 {
         ApplicationState state;
-        const char *title = "IC Engine test v0.02";
-        state.props       = new ic::window_props(title);
+        const char      *title = "IC Engine test v0.02";
+        state.props            = new ic::window_props(title);
 
         ic_create_application(state.props);
 }
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
          */
 
         // path after post-build
-        IC_fs_mount("/assets", "assets", true);
+        ic_mount("/assets", "assets", 1);
 
         // load the registry (IN some functions you would have to put assets at the start in some you dont have
         // to)
