@@ -92,20 +92,26 @@ public:
 
         bool isLoaded() const { return loaded; }
 
+        // Identifiable
+        GUID        getID() { return _id; }
         void        setName(char *name) { m_name = name; };
         const char *getName() { return m_name; }
 
-        GUID getID() { return _id; }
-
+        // RefCountable
         void    addRef() { _ref_count++; }
         int32_t getRefNum() { return _ref_count; }
 
 private:
-        char   *m_name     = nullptr;
-        bool    loaded     = false;
-        GUID    _id        = INVALID_ID;
+        bool loaded = false;
+
+        // Identifiable
+        GUID  _id    = INVALID_ID;
+        char *m_name = nullptr;
+
+        // Refcountable - Not every object is refcountable so maybe add refcountable object but we are not worried right
+        // now until we get an asset like that. Probably Shader would be like that.
         int32_t _ref_count = 0;
-        void    serializeName(ic::Serializer *serializer) const;
+        // void    serializeName(ic::Serializer *serializer) const;
 };
 
 #endif
