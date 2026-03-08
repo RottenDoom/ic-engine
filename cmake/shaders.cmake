@@ -44,6 +44,7 @@ function(target_link_spv_shaders TARGET)
             add_custom_command(
                 OUTPUT ${out_spv}
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shader
+                COMMAND ${CMAKE_COMMAND} -E echo "Compiling shader: ${src} -> ${out_spv}"
                 COMMAND Vulkan::glslc -MD -MF ${depfile} --target-env=${arg_TARGET_ENV} ${macro_cli_defs} ${src} -o ${out_spv}
                 DEPENDS ${src}
                 BYPRODUCTS ${depfile}
@@ -55,6 +56,7 @@ function(target_link_spv_shaders TARGET)
             add_custom_command(
                 OUTPUT ${out_spv}
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shader
+                COMMAND ${CMAKE_COMMAND} -E echo "Compiling shader (glslangValidator): ${src} -> ${out_spv}"
                 COMMAND Vulkan::glslangValidator -V --target-env ${arg_TARGET_ENV} ${macro_cli_defs} ${src} -o ${out_spv}
                 DEPENDS ${src}
                 COMMAND_EXPAND_LISTS
@@ -110,6 +112,7 @@ function(target_link_shaders TARGET SCOPE)
             set(depfile "${CMAKE_CURRENT_BINARY_DIR}/shader_depfile/${filename}.d")
             add_custom_command(
                 OUTPUT ${spirv_num_filename}
+                COMMAND ${CMAKE_COMMAND} -E echo "Compiling shader (num format): ${source} -> ${spirv_num_filename}"
                 COMMAND Vulkan::glslc -MD -MF ${depfile} --target-env=${arg_TARGET_ENV} -mfmt=num ${macro_cli_defs} ${source} -o ${spirv_num_filename}
                 DEPENDS ${source}
                 BYPRODUCTS ${depfile}
@@ -193,8 +196,7 @@ function(target_link_shader_variants TARGET SCOPE)
                 set(depfile "${CMAKE_CURRENT_BINARY_DIR}/shader_depfile/${filename}_${variant_filename}.d")
                 add_custom_command(
                     OUTPUT ${spirv_num_filename}
-                    # Compile GLSL to SPIR-V.
-                    COMMAND Vulkan::glslc -MD -MF ${depfile} --target-env=${arg_TARGET_ENV} -mfmt=num ${macro_cli_defs} ${source} -o ${spirv_num_filename}
+                    # Compile GLSL to SPIR-V.                    COMMAND ${CMAKE_COMMAND} -E echo "Compiling shader variant (num format): ${source} -> ${spirv_num_filename}"                    COMMAND Vulkan::glslc -MD -MF ${depfile} --target-env=${arg_TARGET_ENV} -mfmt=num ${macro_cli_defs} ${source} -o ${spirv_num_filename}
                     DEPENDS ${source}
                     BYPRODUCTS ${depfile}
                     DEPFILE ${depfile}

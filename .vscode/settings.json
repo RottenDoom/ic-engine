@@ -1,7 +1,7 @@
 {
 	"window.commandCenter": false,
 	"breadcrumbs.enabled": false,
-	"workbench.colorTheme": "Gruvbox Dark Hard",
+	"workbench.colorTheme": "Jellybeans Theme",
 	"workbench.activityBar.iconClickBehavior": "toggle",
 	"editor.detectIndentation": false,
 	"editor.fontFamily": "Liberation Mono",
@@ -118,5 +118,6 @@
 		"shared_mutex": "cpp",
 		"typeindex": "cpp",
 		"valarray": "cpp"
-	}
+	},
+	"C_Cpp.errorSquiggles": "enabled"
 }

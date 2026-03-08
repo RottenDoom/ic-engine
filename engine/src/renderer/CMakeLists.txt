@@ -1,25 +1,25 @@
 #engine/src/renderer/CMakeLists.txt
 set(RENDERER_SRC
-    camera.cpp
-    renderer.cpp
+	camera.cpp
+	renderer_frontend.cpp
 )
+
 
 add_library(engine-renderer OBJECT ${RENDERER_SRC})
 
 target_include_directories(engine-renderer
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..
+    PUBLIC ${CMAKE_SOURCE_DIR}/engine/include
 )
-set_target_properties(engine-renderer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# The renderer depends on Vulkan backend internally
 target_link_libraries(engine-renderer
-    PRIVATE
-	Vulkan::Vulkan
-	renderer_dependencies
-	engine-vulkan
+PUBLIC
+	engine-core
     	dependencies
+	spdlog::spdlog
+	glm
+PRIVATE
+	glad
 )
 
-# Same export propagation for renderer sub-target so its public classes
-# are built with dllexport when the final `engine` shared lib is created.
+set_target_properties(engine-renderer PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(engine-renderer PRIVATE IC_EXPORT)

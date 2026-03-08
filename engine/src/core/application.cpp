@@ -1,8 +1,11 @@
-#include "application.h"
-#include "defines.h"
-#include "input.h"
+#include "core/application.h"
+#include "core/input.h"
+#include "core/logger.h"
+#include "core/filesystem.h"
+#include "core/allocators.h"
+#include "core/assets/asset_manager.h"
+#include "renderer/renderer.h"
 
-#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 // TODO: add a linux build with wayland to start building with valgrind memory checks
@@ -11,66 +14,111 @@
 
 namespace ic
 {
-#define BIND_EVENT_FN(x) std::bind(&application::x, this, std::placeholders::_1)
 
-        application* application::s_Instance = nullptr;
+Application *Application::s_Instance = nullptr;
 
-        application::application()
+Application::Application(window_props &properties)
+{
+        isRunning = true;
+        ic::logger::init();
+
+        m_Window = Window::create(properties);
+        m_Window->setEventCallback(BIND_EVENT(onEvent));
+
+        fs_init();
+        AssetManager::Initialize("assets/registry.yaml");
+
+        // TODO: CHANGE THE API BASED ON SOME SWITHC OR BUILD SYSTEM
+        m_renderer = createRenderer(RendererAPI::OpenGL);
+        m_renderer->init(m_Window.get());
+
+        IC_CORE_INFO("Application Initialized!");
+}
+
+Application::~Application()
+{
+        AssetManager::Shutdown();
+        fs_deinit();
+        m_renderer->cleanUp();
+        destroyRenderer(m_renderer);
+}
+
+bool Application::run()
+{
+        while (isRunning)
         {
-                ic::logger::init();
-                s_Instance = this;
+                float time      = glfwGetTime();
+                float delta     = time - m_lastFrameTime;
+                m_lastFrameTime = time;
 
-                m_Window   = Window::create();
-                m_Window->setEventCallback(BIND_EVENT_FN(onEvent));
-
-                m_renderer = new renderer();
-                m_renderer->init(m_Window.get());
-                IC_CORE_INFO("Application Initialized!");
-        }
-
-        application::~application()
-        {
-                m_renderer->cleanUp();
-                delete m_renderer;
-        }
-
-        bool application::run()
-        {
-                while (m_Running)
+                if (user_update)
                 {
-                        float time      = glfwGetTime();
-                        float delta     = time - m_lastFrameTime;
-                        m_lastFrameTime = time;
-
-                        m_Window->onUpdate();
-                        m_renderer->renderFrame(delta);
+                        user_update(delta);
                 }
 
-                return true;
+                m_Window->onUpdate();
+
+                if (user_render)
+                {
+                        user_render();
+                }
+                m_renderer->renderFrame(delta);
         }
 
-        void application::onEvent(event& e)
-        {
-                eventDispatcher dispatcher(e);
-                dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT_FN(onWindowClose));
+        return true;
+}
 
-                m_renderer->onEvent(e);
+void Application::onEvent(event &e)
+{
+        eventDispatcher dispatcher(e);
+        dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT(onWindowClose));
 
-                // IC_CORE_TRACE("{0}", e.toString()); TODO: get a better understanding of this
-        }
+        m_renderer->onEvent(e);
+}
 
-        bool application::applicationCreate(game* game_inst)
-        {
-                return true;
-        }
+Application &Application::get()
+{
+        return *s_Instance;
+}
+bool Application::onWindowClose(WindowClosedEvent &e)
+{
+        isRunning = false;
+        return true;
+}
 
-        application& application::get()
-        {
-                return *s_Instance;
-        }
-        bool application::onWindowClose(WindowClosedEvent& e)
-        {
-                m_Running = false;
-                return true;
-        }
 }  // namespace ic
+
+void ic_create_application(ic::window_props *windowProperties)
+{
+        if (ic::Application::s_Instance)
+                return;
+        void *application_memory    = ic_malloc(sizeof(ic::Application));
+        ic::Application::s_Instance = new (application_memory) ic::Application(*windowProperties);
+}
+
+bool ic_app_is_running(void)
+{
+        return ic::Application::get().isRunning;
+}
+
+void ic_app_set_callback(AppUpdateFn update_fn, AppRenderFn render_fn)
+{
+        ic::Application::get().user_update = update_fn;
+        ic::Application::get().user_render = render_fn;
+}
+
+void ic_app_run(void)
+{
+        ic::Application::get().run();
+}
+
+void ic_app_destroy(void)
+{
+        ic::Application::get().~Application();
+        ic_free(ic::Application::s_Instance);
+
+#if defined(_DEBUG)
+        ic::heap_dump_leaks();
+#endif
+        ic::Application::s_Instance = nullptr;
+}

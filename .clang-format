@@ -6,9 +6,10 @@ ColumnLimit: 120
 IndentWidth: 8
 UseTab: Never
 SortIncludes: false
-NamespaceIndentation: All
+NamespaceIndentation: None
 AccessModifierOffset: -8
 ArrayInitializerAlignmentStyle: Right
+SkipMacroDefinitionBody: true
 
 # declaration/call alignment
 BinPackArguments: false
@@ -20,16 +21,21 @@ AllowShortLambdasOnASingleLine: All
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments:
   Enabled: true
-  AcrossEmptyLines: true
+  AcrossEmptyLines: false
   AcrossComments: false
   AlignCompound: true
   AlignFunctionDeclarations: true
   AlignFunctionPointers: true
 
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+
 # function declaration
 AlwaysBreakAfterReturnType: None
 BreakBeforeBraces: Allman
-PointerAlignment: Left
+PointerAlignment: Right
 AlwaysBreakTemplateDeclarations: Yes
 
 # breaking and alignment
