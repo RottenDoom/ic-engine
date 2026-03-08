@@ -6,16 +6,6 @@
 #include "core/assets/asset_registry.h"
 #include "core/iterator.h"
 
-/**
- * TODO:
- * 1. Implement and test all the functions.
- * 2. Write an asset parser that parses gltf to internal binary asset types (deserializer + parser + emmitter)
- * 3. Define the workflow somewhere.
- * 4. Fix the filesystem with some tests
- * 5. Add more functions that might be used internally or externally
- * 6. Fix the formatting to be consistent.
- */
-
 namespace ic
 {
 
@@ -24,11 +14,11 @@ class Serializer;
 class AssetManager
 {
 public:
-        static void Initialize(const char *registryFile);
-        static void Shutdown();
+        static void          Initialize(const char *registryFile);
+        static void          Shutdown();
         static AssetManager *Get();
 
-        bool loadRegistry(const char *registry_file);
+        bool           loadRegistry(const char *registry_file);
         AssetRegistry *getRegistry();
 
         IAsset *load(GUID id);
@@ -39,7 +29,6 @@ public:
                 return dynamic_cast<T *>(load(id));
         }
 
-        // Unload model
         void unload(GUID id);
 
         template <typename T>
@@ -69,15 +58,13 @@ private:
         AssetManager() = default;
 
         std::unordered_map<GUID, IAsset *> assets_;
-        AssetRegistry registry_;
+        AssetRegistry                      registry_;
 
         IAsset *createAsset(AssetType type, GUID id);
 };
 
 }  // namespace ic
 
-/** TODO design dark souls type game from scratch and make it work with a certain type of asset manager and then
- * abstract it. */
 #ifdef __cplusplus
 extern "C"
 {

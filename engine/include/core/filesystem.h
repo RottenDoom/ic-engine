@@ -3,6 +3,7 @@
 
 #include "defines.h"
 #include "allocators.h"
+#include "mmapped.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -20,10 +21,11 @@ typedef struct
         void  *handle;
         int    flags; /* flags for open, read and write */
         size_t size;
+        char   physical_path[FS_MAX_PATH];
 
         /* mmap file info */
-        void  *mmap_addr;
-        size_t mmap_size;
+        Mmap mmap;
+        bool is_mmap_open;
 
         /* modified time info */
         uint64_t modified_time;
@@ -117,10 +119,10 @@ bool     fs_exists(const char *relative_path);
 bool     fs_isDirectory(const char *dir);
 uint64_t fs_getLastModificationTime(const char *filename);
 
-File  *fs_openRead(const char *filename);
-bool   fs_close(File *handle);
-size_t fs_read(File *handle, void *buffer, size_t objSize, size_t objCount);
-size_t fs_write(File *handle, void *buffer, size_t objSize, size_t objCount);
+File  *fs_open(const char *filename, int flags);
+void   fs_close(File *file);
+size_t fs_read(File *file, void *buffer, size_t size);
+size_t fs_write(File *file, const void *buffer, size_t size);
 bool   fs_eof(File *handle);
 size_t fs_tell(File *handle);
 bool   fs_seek(File *handle, size_t pos);
@@ -128,6 +130,11 @@ size_t fs_fileLength(File *handle);
 size_t fs_setBuffer(File *handle, size_t bufsize);
 bool   fs_flush(File *handle);
 bool   fs_compress(File *handle);
+
+// TODO Implement these functions inside the asset system and other places.
+const void *fs_read_mmap(File *file, MmapHint hint);
+const void *fs_read_mmap_range(File *file, uint64_t offset, size_t size, MmapHint hint);
+void        fs_mmap_unload(File *file);
 
 }  // namespace ic
 

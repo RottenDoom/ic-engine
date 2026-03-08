@@ -31,15 +31,15 @@ class GLTFLoader;
 
 struct Vertex
 {
-        vec3 pos;
-        vec3 normal;
-        vec2 uv0;
-        vec2 uv1;
-        vec2 uv2;
-        vec4 color;
-        vec4 tangent;
+        vec3  pos;
+        vec3  normal;
+        vec2  uv0;
+        vec2  uv1;
+        vec2  uv2;
+        vec4  color;
+        vec4  tangent;
         uvec4 joint0;
-        vec4 weight0;
+        vec4  weight0;
 };
 
 /** GPU data with the actual buffer*/
@@ -50,10 +50,10 @@ struct Buffer
 
 struct BufferView
 {
-        Index bufferIndex = INVALID_INDEX;
-        size_t byteOffset = 0;
-        size_t byteLength = 0;
-        size_t byteStride = 0;
+        Index  bufferIndex = INVALID_INDEX;
+        size_t byteOffset  = 0;
+        size_t byteLength  = 0;
+        size_t byteStride  = 0;
 
         std::string name;
 
@@ -62,9 +62,9 @@ struct BufferView
 
 struct Accessor
 {
-        Index bufferView = INVALID_INDEX;
-        size_t offset    = 0;
-        size_t count     = 0;
+        Index  bufferView = INVALID_INDEX;
+        size_t offset     = 0;
+        size_t count      = 0;
 
         enum class Type
         {
@@ -93,7 +93,7 @@ struct Accessor
 
         std::vector<double> min;
         std::vector<double> max;
-        bool normalized = false;
+        bool                normalized = false;
         /** TODO: Sparse accessor handling */
 };
 
@@ -111,14 +111,14 @@ struct MeshPrimitive
         };
 
         // std::string name;
-        Mode mode           = Mode::TRIANGLES;
+        Mode  mode          = Mode::TRIANGLES;
         Index materialIndex = INVALID_INDEX;
 
         // CPU-side geometry data (serializable)
         // #if USING(GPU_DATA)
         //         // Empty on CPU when GPU data is present
         // #else
-        std::vector<Vertex> vertices;
+        std::vector<Vertex>   vertices;
         std::vector<uint32_t> indices;
         // #endif
 
@@ -145,7 +145,7 @@ struct MeshPrimitive
 
 struct Mesh
 {
-        std::string name;
+        std::string                name;
         std::vector<MeshPrimitive> primitives;
 
         // Make AABB struct
@@ -163,13 +163,13 @@ struct Node
         glm::mat4 localTransform = glm::mat4(1.0f);
         glm::mat4 worldTransform = glm::mat4(1.0f);  // Computed from hierarchy
 
-        Index meshIndex          = INVALID_INDEX;
-        Index skinIndex          = INVALID_INDEX;
-        Index cameraIndex        = INVALID_INDEX;
-        Index lightIndex         = INVALID_INDEX;
+        Index meshIndex   = INVALID_INDEX;
+        Index skinIndex   = INVALID_INDEX;
+        Index cameraIndex = INVALID_INDEX;
+        Index lightIndex  = INVALID_INDEX;
 
         std::vector<Index> children;
-        Index parent = INVALID_INDEX;
+        Index              parent = INVALID_INDEX;
 };
 
 struct AssetCamera
@@ -196,18 +196,18 @@ struct AssetCamera
                 float znear = 0.0f;
         };
 
-        string name;
-        Type type;
-        Perspective perspective;
+        string       name;
+        Type         type;
+        Perspective  perspective;
         Orthographic orthographic;
 };
 
 struct Skin
 {
-        std::string name;
-        std::vector<Index> jointIndices;             // Indices into nodes array
+        std::string            name;
+        std::vector<Index>     jointIndices;         // Indices into nodes array
         std::vector<glm::mat4> inverseBindMatrices;  // Actual matrices, not accessor reference
-        Index skeletonRootIndex = INVALID_INDEX;
+        Index                  skeletonRootIndex = INVALID_INDEX;
 };
 
 struct Animation
@@ -229,22 +229,22 @@ struct Animation
 
         struct Sampler
         {
-                std::vector<float> inputTimes;        // Actual keyframe times
+                std::vector<float>     inputTimes;    // Actual keyframe times
                 std::vector<glm::vec4> outputValues;  // Actual keyframe values (vec4 to handle all types)
-                Interpolation interpolation = Interpolation::LINEAR;
+                Interpolation          interpolation = Interpolation::LINEAR;
         };
 
         struct Channel
         {
                 Index samplerIndex    = INVALID_INDEX;
                 Index targetNodeIndex = INVALID_INDEX;
-                Path targetPath;
+                Path  targetPath;
         };
 
-        string name;
+        string               name;
         std::vector<Sampler> samplers;
         std::vector<Channel> channels;
-        float duration = 0.0f;  // Computed from max input time
+        float                duration = 0.0f;  // Computed from max input time
 };
 
 struct Sampler
@@ -270,8 +270,8 @@ struct Sampler
 
         Filter magFilter = Filter::NoFilter;  // GL_TEXTURE_MAG_FILTER
         Filter minFilter = Filter::NoFilter;  // GL_TEXTURE_MIN_FILTER
-        Wrap wrapS       = Wrap::NoWrap;
-        Wrap wrapT       = Wrap::NoWrap;
+        Wrap   wrapS     = Wrap::NoWrap;
+        Wrap   wrapT     = Wrap::NoWrap;
 };
 
 struct ImageData
@@ -279,7 +279,7 @@ struct ImageData
         uint32_t width    = 0;
         uint32_t height   = 0;
         uint32_t channels = 0;
-        bool srgb         = false;
+        bool     srgb     = false;
 
         // #if USING(GPU_DATA)
         //         Gfx::Texture *gpuTexture = nullptr;
@@ -295,7 +295,7 @@ struct ImageData
 
 struct GLTFScene
 {
-        std::string name;
+        std::string        name;
         std::vector<Index> rootNodes;
 };
 
@@ -305,17 +305,17 @@ class Model : public IAsset
         friend class ic::GLTFLoader;
 
 public:
-        std::vector<Mesh> meshes;
-        std::vector<Material> materials;
+        std::vector<Mesh>      meshes;
+        std::vector<Material>  materials;
         std::vector<ImageData> images;
-        std::vector<Sampler> samplers;
-        std::vector<Texture> textures;
+        std::vector<Sampler>   samplers;
+        std::vector<Texture>   textures;
 
-        std::vector<Node> nodes;
+        std::vector<Node>        nodes;
         std::vector<AssetCamera> cameras;
-        std::vector<Skin> skins;
-        std::vector<Animation> animations;
-        std::vector<GLTFScene> scenes;
+        std::vector<Skin>        skins;
+        std::vector<Animation>   animations;
+        std::vector<GLTFScene>   scenes;
 
         Index defaultScene = INVALID_INDEX;
 
@@ -323,17 +323,17 @@ public:
         std::vector<std::string> extensionsUsed;
         std::vector<std::string> extensionsRequired;
 
-        std::vector<Buffer> buffers;
+        std::vector<Buffer>     buffers;
         std::vector<BufferView> bufferViews;
-        std::vector<Accessor> accessors;
+        std::vector<Accessor>   accessors;
 
         ASSET_CLASS_TYPE(ASSET_TYPE_MODEL)
 
         Model(GUID id) : IAsset(id) {}
 
         bool load(const char *filepath) override;
-        bool cachedLoad(ic::Serializer *serializer) override;
-        bool cachedSave(ic::Serializer *serializer) const override;
+        bool serializedLoad(ic::Serializer *serializer) override;
+        bool serializedSave(ic::Serializer *serializer) const override;
         bool release() override;
 
         void freeCPU();

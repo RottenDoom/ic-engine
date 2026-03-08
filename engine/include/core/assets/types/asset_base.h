@@ -54,6 +54,14 @@ enum AssetType : uint8_t
         ASSET_TYPE_COUNT
 };
 
+struct AssetMeta
+{
+        GUID      id;
+        string    filepath;
+        string    cachePath;
+        AssetType type;
+};
+
 /**
  * IAsset Interface class. This internal class is a base class that gets inherited by most resources.
  * IAsset contains a asset type, a global unique id, and a reference count of it.
@@ -68,34 +76,36 @@ public:
                 m_name = strdup(name);
                 _id    = HASH(m_name);
         };
+
         virtual ~IAsset() { m_name = nullptr; }
 
-        // Types
-        virtual AssetType getAssetType() const = 0;
-        virtual const char *getName() const    = 0;
-        virtual string toString() const { return getName(); }
+        // Type Signatures Load this using ASSET_CLASS_TYPE(type)
+        virtual AssetType   getAssetType() const = 0;
+        virtual const char *getName() const      = 0;
+        virtual string      toString() const { return getName(); }
 
+        // Implementation details to be implemented
         virtual bool load(const char *filepath) { return false; };
-        virtual bool cachedLoad(ic::Serializer *serializer)       = 0;
-        virtual bool cachedSave(ic::Serializer *serializer) const = 0;
+        virtual bool serializedLoad(ic::Serializer *serializer)       = 0;
+        virtual bool serializedSave(ic::Serializer *serializer) const = 0;
         virtual bool release() { return false; }
 
         bool isLoaded() const { return loaded; }
 
-        void setName(char *name) { m_name = name; };
+        void        setName(char *name) { m_name = name; };
         const char *getName() { return m_name; }
 
         GUID getID() { return _id; }
 
-        void addRef() { _ref_count++; }
+        void    addRef() { _ref_count++; }
         int32_t getRefNum() { return _ref_count; }
 
 private:
-        char *m_name       = nullptr;
-        bool loaded        = false;
-        GUID _id           = INVALID_ID;
+        char   *m_name     = nullptr;
+        bool    loaded     = false;
+        GUID    _id        = INVALID_ID;
         int32_t _ref_count = 0;
-        void serializeName(ic::Serializer *serializer) const;
+        void    serializeName(ic::Serializer *serializer) const;
 };
 
 #endif

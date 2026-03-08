@@ -1,5 +1,10 @@
 #engine/src/core/CMakeLists.txt
 set(CORE_SRC
+    platform/mmapped.c
+    platform/win32/input_win32.cpp
+    platform/win32/window_win32.cpp
+    platform/win32/filesystem_win32.cpp
+
     application.cpp
     filesystem.cpp
     input.cpp
@@ -12,9 +17,6 @@ set(CORE_SRC
     assets/asset_manager.cpp
     assets/asset_registry.cpp
     assets/asset_serializer.cpp
-    platform/win32/input_win32.cpp
-    platform/win32/window_win32.cpp
-    platform/win32/filesystem_win32.cpp
 )
 
 add_library(engine-core OBJECT ${CORE_SRC})

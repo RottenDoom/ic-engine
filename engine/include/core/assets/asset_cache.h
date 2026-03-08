@@ -11,6 +11,7 @@
  * 2. Timestamp and fix the filesystem mounting logic better instead of using the full path function everytime. Its time
  * consuming and not cool
  * 3. Correctly implement cacheasset and asset raw here.
+ * 4. LRU Cached loads (Very later)
  */
 
 namespace ic
@@ -19,9 +20,9 @@ namespace ic
 namespace AssetCache
 {
 
-void Init();
+void     Init();
 uint64_t GetAssetTimeStamp(AssetType type, const GUID id);
-bool CacheAsset(AssetType type, const GUID id, IAsset *asset);
+bool     CacheAsset(AssetType type, const GUID id, IAsset *asset);
 uint8_t *GetCachedAssetRaw(AssetType type, const GUID id, size_t numBytes);
 
 }  // namespace AssetCache

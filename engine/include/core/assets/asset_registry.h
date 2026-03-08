@@ -54,20 +54,13 @@ private:
         // common asset folder
         string assets_folder_;
 
-        struct AssetMeta
-        {
-                string filepath;
-                string cachePath;
-                AssetType type;
-        };
-
-        std::unordered_map<GUID, AssetMeta> assets_;
-        std::unordered_map<string, GUID> ids_;
+        std::unordered_map<GUID, AssetMeta>                assets_;
+        std::unordered_map<string, GUID>                   ids_;
         std::unordered_map<GUID, std::unordered_set<GUID>> dependencies_;
 
-        void parseAssetEntry(const YAML::Node &node);
+        void             parseAssetEntry(const YAML::Node &node);
         static AssetType assetTypeFromString(const string &s);
-        static string assetTypeToString(AssetType type);
+        static string    assetTypeToString(AssetType type);
 };
 
 }  // namespace ic

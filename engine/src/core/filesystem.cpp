@@ -1,6 +1,7 @@
 #include "core/filesystem.h"
 #include "core/allocators.h"
 #include "core/platform/platform.h"
+#include "core/mmapped.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -550,109 +551,218 @@ uint64_t fs_getLastModificationTime(const char *filename)
 }
 
 /** REWRITE */
-File *fs_openRead(const char *filename)
+File *fs_open(const char *filename, int flags)
 {
         if (!filename || !g_filesystem)
                 return nullptr;
 
-        char *full_path = (char *)ic_malloc(FS_MAX_PATH);
-        bool  found     = false;
-
-        if (fs_exists(filename))
+        char physical[FS_MAX_PATH];
+        if (!resolve(filename, physical, sizeof(physical)))
         {
-                found = true;
-        }
-
-        if (!found)
-        {
-                for (uint32_t i = 0; i < g_filesystem->search_path_count; i++)
+                if (!(flags & FS_OPEN_CREATE))
                 {
-                        snprintf(full_path, FS_MAX_PATH, "%s/%s", g_filesystem->search_paths[i], filename);
-                        normalize(full_path);
+                        IC_CORE_ERROR("Could not resolve path: {}", filename);
+                        return nullptr;
+                }
 
-                        if (!__platformFileExists(full_path))
-                        {
-                                found = false;
-                                IC_CORE_ERROR("Could not find the file at path {}", full_path);
-                                ic_free(full_path);
-                                return nullptr;
-                        }
+                bool found = false;
+                for (int i = 0; i < g_filesystem->mount_count; i++)
+                {
+                        Mount *mnt = &g_filesystem->mounts[i];
+                        if (mnt->type != MOUNT_TYPE_DIRECTORY)
+                                continue;
+                        size_t prefix_len = strlen(mnt->virtual_path);
+                        if (strncmp(filename, mnt->virtual_path, prefix_len) != 0)
+                                continue;
+                        const char *remainder = filename + prefix_len;
+                        if (*remainder == '/')
+                                remainder++;
+                        snprintf(physical, sizeof(physical), "%s/%s", mnt->physical_path, remainder);
+                        normalize(physical);
+                        found = true;
+                        break;
+                }
+
+                if (!found)
+                {
+                        IC_CORE_ERROR("No writable mount for path: {}", filename);
+                        return nullptr;
                 }
         }
 
-        if (!resolve(filename, full_path, FS_MAX_PATH))
-        {
-                IC_CORE_WARN("Could not resolve mount path from given file: '{}'!", filename);
-                return nullptr;
-        }
+        const char *mode;
+        if (flags & FS_OPEN_APPEND)
+                mode = "ab";
+        else if (flags & FS_OPEN_WRITE)
+                mode = (flags & FS_OPEN_CREATE) ? "wb" : "r+b";
+        else
+                mode = "rb";
 
-        FILE *r = fopen(full_path, "rb");
-        if (!r)
+        FILE *f = fopen(physical, mode);
+        if (!f)
         {
-                IC_CORE_ERROR("Failed to open: {} (resolved to {})", filename, full_path);
-                IC_CORE_ERROR("Check file permissions and path");
-                ic_free(full_path);
-                return nullptr;
-        }
-
-        // Get file size
-        fseek(r, 0, SEEK_END);
-        long size = ftell(r);
-        fseek(r, 0, SEEK_SET);
-
-        if (size < 0)
-        {
-                IC_CORE_ERROR("Failed to get file size: {}", filename);
-                fclose(r);
-                ic_free(full_path);
+                IC_CORE_ERROR("Could not open file: {}", physical);
                 return NULL;
         }
 
-        // Allocate File structure
-        File *file = (File *)bump_allocate(g_filesystem->allocator, sizeof(File), alignof(File), IC_TAG_FILESYSTEM);
+        File *file = (File *)ic_malloc(sizeof(File));
         if (!file)
         {
-                IC_CORE_ERROR("Failed to allocate File structure");
-                fclose(r);
-                ic_free(full_path);
+                fclose(f);
                 return NULL;
         }
 
-        file->size   = (size_t)size;
-        file->handle = r;
+        file->handle       = f;
+        file->flags        = flags;
+        file->is_mmap_open = false;
+        memset(&file->mmap, 0, sizeof(Mmap));
+        strncpy(file->physical_path, physical, FS_MAX_PATH - 1);
 
-        IC_CORE_INFO("Opened '{}' ({} bytes) from '{}'", filename, file->size, full_path);
-        ic_free(full_path);
+        // get file size
+        fseek(f, 0, SEEK_END);
+        file->size = (size_t)ftell(f);
+        fseek(f, 0, SEEK_SET);
+
+        IC_CORE_INFO("Opened '{}' ({} bytes) from '{}'", filename, file->size, physical);
         return file;
 }
 
-bool fs_close(File *handle)
+void fs_close(File *file)
 {
-        if (!handle || !handle->handle)
-                return false;
 
-        FILE *fp = (FILE *)handle->handle;
-        fclose(fp);
+        if (!file)
+                return;
 
-        return true;
+        if (file->is_mmap_open)
+        {
+                mmap_close(&file->mmap);
+                file->is_mmap_open = 0;
+        }
+
+        if (file->handle)
+        {
+                fclose((FILE *)file->handle);
+                file->handle = NULL;
+        }
+
+        ic_free(file);
 }
 
-size_t fs_read(File *handle, void *buffer, size_t objSize, size_t objCount)
+size_t fs_read(File *file, void *buffer, size_t size)
 {
-        if (!handle || !handle->handle || !buffer)
+        if (!file || !buffer)
                 return 0;
-
-        FILE *fp = (FILE *)handle->handle;
-        return fread(buffer, objSize, objCount, fp);
+        if (!(file->flags & FS_OPEN_READ))
+        {
+                IC_CORE_WARN("Attempted read on non-readable file handle");
+                return 0;
+        }
+        if (file->is_mmap_open)
+        {
+                // if already mmapped this file cant use this
+                IC_CORE_WARN("File is memory mapped, use fs_read_mmap instead: {}", file->physical_path);
+                return 0;
+        }
+        return fread(buffer, 1, size, (FILE *)file->handle);
 }
 
-size_t fs_write(File *handle, void *buffer, size_t objSize, size_t objCount)
+// maps the whole file and returns a pointer into mapped memory
+// the pointer is valid until fs_close or fs_mmap_unload is called
+const void *fs_read_mmap(File *file, MmapHint hint)
 {
-        if (!handle || !handle->handle || !buffer)
-                return 0;
+        if (!file)
+                return NULL;
+        if (!(file->flags & FS_OPEN_READ))
+        {
+                IC_CORE_WARN("File not opened for reading: {}", file->physical_path);
+                return NULL;
+        }
+        if (file->flags & (FS_OPEN_WRITE | FS_OPEN_APPEND))
+        {
+                IC_CORE_WARN("Cannot mmap a file opened for writing: {}", file->physical_path);
+                return NULL;
+        }
 
-        FILE *fp = (FILE *)handle->handle;
-        return fwrite(buffer, objSize, objCount, fp);
+        // already mapped, just return existing pointer
+        if (file->is_mmap_open && mmap_valid(&file->mmap))
+                return file->mmap.data;
+
+        if (!mmap_open(&file->mmap, file->physical_path, hint))
+        {
+                IC_CORE_ERROR("Failed to memory map file: {}", file->physical_path);
+                return NULL;
+        }
+
+        file->is_mmap_open = true;
+        return file->mmap.data;
+}
+
+// map only a region — useful for streaming large assets in chunks
+// offset must be aligned to ic_mmap_page_size()
+const void *fs_read_mmap_range(File *file, uint64_t offset, size_t size, MmapHint hint)
+{
+        if (!file)
+                return NULL;
+        if (!(file->flags & FS_OPEN_READ))
+        {
+                IC_CORE_WARN("File not opened for reading: {}", file->physical_path);
+                return NULL;
+        }
+
+        size_t page = mmap_page_size();
+        if (offset % page != 0)
+        {
+                IC_CORE_ERROR("mmap offset {} is not page aligned (page size: {})", offset, page);
+                return NULL;
+        }
+
+        if (file->is_mmap_open)
+        {
+                // remap to the new region
+                if (!mmap_remap(&file->mmap, offset, size, hint))
+                {
+                        IC_CORE_ERROR("Failed to remap file: {}", file->physical_path);
+                        return NULL;
+                }
+                return file->mmap.data;
+        }
+
+        if (!mmap_open_range(&file->mmap, file->physical_path, offset, size, hint))
+        {
+                IC_CORE_ERROR("Failed to memory map range of file: {}", file->physical_path);
+                return NULL;
+        }
+
+        file->is_mmap_open = true;
+        return file->mmap.data;
+}
+
+// explicitly unload the mmap without closing the file
+// useful if you want to mmap, process, free memory, then do buffered reads
+void fs_mmap_unload(File *file)
+{
+        if (!file || !file->is_mmap_open)
+                return;
+        mmap_close(&file->mmap);
+        file->is_mmap_open = false;
+}
+
+size_t fs_write(File *file, const void *buffer, size_t size)
+{
+        if (!file || !buffer)
+                return 0;
+        if (!(file->flags & (FS_OPEN_WRITE | FS_OPEN_APPEND)))
+        {
+                IC_CORE_WARN("Attempted write on read-only file handle");
+                return 0;
+        }
+        if (file->is_mmap_open)
+        {
+                IC_CORE_WARN("Cannot write to a memory mapped file, call fs_mmap_unload first: {}",
+                             file->physical_path);
+                return 0;
+        }
+        return fwrite(buffer, 1, size, (FILE *)file->handle);
 }
 
 bool fs_eof(File *handle)
@@ -743,7 +853,7 @@ const char *ic_getfilename(const char *path)
 
 FILE *ic_open(const char *path)
 {
-        ic::File *f = ic::fs_openRead(path);
+        ic::File *f = ic::fs_open(path, 0);
         return (FILE *)f->handle;
 }
 
@@ -752,7 +862,7 @@ char *ic_read(const char *path, size_t *out_size)
         if (!path || !g_filesystem)
                 return nullptr;
 
-        ic::File *file = ic::fs_openRead(path);
+        ic::File *file = ic::fs_open(path, 0);
         if (!file)
                 return nullptr;
 
@@ -764,7 +874,7 @@ char *ic_read(const char *path, size_t *out_size)
                 return nullptr;
         }
 
-        size_t bytes_read  = ic::fs_read(file, buffer, 1, file->size);
+        size_t bytes_read  = ic::fs_read(file, buffer, file->size);
         buffer[bytes_read] = '\0';
 
         if (out_size)

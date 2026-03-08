@@ -2,7 +2,7 @@
 #define ASSET_SERIALIZER_H
 
 #include "defines.h"
-#include <MemoryMapped.h>
+#include "core/mmapped.h"
 
 namespace ic
 {
@@ -19,7 +19,7 @@ public:
         bool isOpen() const;
 
         // if opened for reading, return how many bytes are left to read. Else 0
-        size_t bytesLeft() const;
+        size_t         bytesLeft() const;
         const uint8_t *getData() const;
 
         void write(const void *buffer, size_t bytes);
@@ -101,9 +101,9 @@ public:
         }
 
 private:
-        string filename;
+        string        filename;
         std::ofstream writeFile;
-        MemoryMapped memMappedFile;
+        // MemoryMapped   memMappedFile;
         unsigned char *currentReadPos = nullptr;
 };
 
