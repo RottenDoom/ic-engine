@@ -2,23 +2,49 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "Build GCC Debug",
 			"type": "shell",
-			"label": "Build Everything",
-			"command": "build-all.bat",
+			"command": "${workspaceFolder}/build-all.bat",
+			"args": [
+				"gcc",
+				"debug"
+			],
 			"group": {
 				"kind": "build",
 				"isDefault": true
-			},
-			"problemMatcher": [],
-			"detail": "Builds all components using build-all.bat"
+			}
 		},
 		{
+			"label": "Build GCC Release",
 			"type": "shell",
-			"label": "Clean Everything",
-			"command": "clean-all.bat",
-			"group": "build",
-			"problemMatcher": [],
-			"detail": "Cleans all build artifacts using clean-all.bat"
+			"command": "${workspaceFolder}/build-all.bat",
+			"args": [
+				"gcc",
+				"release"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Clang Debug",
+			"type": "shell",
+			"command": "${workspaceFolder}/build-all.bat",
+			"args": [
+				"clang",
+				"debug"
+			],
+			"group": {
+				"kind": "build"
+			}
+		},
+		{
+			"label": "Build Clang Release",
+			"type": "shell",
+			"command": "${workspaceFolder}/build-all.bat",
+			"args": [
+				"clang",
+				"release"
+			],
+			"group": "build"
 		}
 	]
 }

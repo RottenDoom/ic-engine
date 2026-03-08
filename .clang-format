@@ -1,0 +1,55 @@
+Language: Cpp
+BasedOnStyle: LLVM
+
+# alignment settings
+ColumnLimit: 120
+IndentWidth: 8
+UseTab: Never
+SortIncludes: false
+NamespaceIndentation: All
+AccessModifierOffset: -8
+ArrayInitializerAlignmentStyle: Right
+
+# declaration/call alignment
+BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowAllArgumentsOnNextLine: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: All
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: false
+  AlignCompound: true
+  AlignFunctionDeclarations: true
+  AlignFunctionPointers: true
+
+# function declaration
+AlwaysBreakAfterReturnType: None
+BreakBeforeBraces: Allman
+PointerAlignment: Left
+AlwaysBreakTemplateDeclarations: Yes
+
+# breaking and alignment
+PenaltyBreakAssignment: 100
+PenaltyBreakBeforeFirstCallParameter: 100
+PenaltyBreakComment: 100
+PenaltyBreakFirstLessLess: 100
+PenaltyBreakString: 100
+PenaltyExcessCharacter: 100
+PenaltyReturnTypeOnItsOwnLine: 100
+
+# spacing
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false

@@ -2,62 +2,75 @@
 #include "defines.h"
 #include "input.h"
 
-// TODO: Refactor the code to be more modular and easier to understand
-// TODO: Add logging wherever required
-// TODO: Create input system and start creating the graphics library frontend first and then the backend.
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
+// TODO: add a linux build with wayland to start building with valgrind memory checks
+// TODO: maybe write a memory effecient class for checking how much memory is being used. I suspect that memory of
+// Validation layers of vilkan engine is being leaked
 
 namespace ic
 {
 #define BIND_EVENT_FN(x) std::bind(&application::x, this, std::placeholders::_1)
 
-    application *application::s_Instance = nullptr;
+        application* application::s_Instance = nullptr;
 
-    application::application()
-    {
-        s_Instance = this;
-
-        m_Window = window::create();
-        m_Window->setEventCallback(BIND_EVENT_FN(onEvent));
-
-        // Initialize the logger testing logger
-        ic::logger::init();
-    }
-
-    application::~application()
-    {
-        delete m_Window;
-    }
-
-    bool application::run()
-    {
-        while (m_Running)
+        application::application()
         {
-            m_Window->onUpdate();
+                ic::logger::init();
+                s_Instance = this;
+
+                m_Window   = Window::create();
+                m_Window->setEventCallback(BIND_EVENT_FN(onEvent));
+
+                m_renderer = new renderer();
+                m_renderer->init(m_Window.get());
+                IC_CORE_INFO("Application Initialized!");
         }
 
-        return true;
-    }
+        application::~application()
+        {
+                m_renderer->cleanUp();
+                delete m_renderer;
+        }
 
-    void application::onEvent(event &e)
-    {
-        eventDispatcher dispatcher(e);
-        dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT_FN(onWindowClose));
+        bool application::run()
+        {
+                while (m_Running)
+                {
+                        float time      = glfwGetTime();
+                        float delta     = time - m_lastFrameTime;
+                        m_lastFrameTime = time;
 
-        IC_CORE_TRACE("{0}", e.toString());
-    }
+                        m_Window->onUpdate();
+                        m_renderer->renderFrame(delta);
+                }
 
-    bool application::applicationCreate(game *game_inst)
-    {
-        return true;
-    }
+                return true;
+        }
 
-    application &application::get()
-    {
-        return *s_Instance;
-    }
-    bool application::onWindowClose(WindowClosedEvent &e)
-    {
-        m_Running = false;
-        return true;
-    }
-} // namespace ic
+        void application::onEvent(event& e)
+        {
+                eventDispatcher dispatcher(e);
+                dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT_FN(onWindowClose));
+
+                m_renderer->onEvent(e);
+
+                // IC_CORE_TRACE("{0}", e.toString()); TODO: get a better understanding of this
+        }
+
+        bool application::applicationCreate(game* game_inst)
+        {
+                return true;
+        }
+
+        application& application::get()
+        {
+                return *s_Instance;
+        }
+        bool application::onWindowClose(WindowClosedEvent& e)
+        {
+                m_Running = false;
+                return true;
+        }
+}  // namespace ic

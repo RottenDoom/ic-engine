@@ -22,7 +22,7 @@
             "includePath": [
                 "${workspaceFolder}/engine/src/**",
                 "${VULKAN_SDK}/include",
-                "${workspaceFolder}/build/_deps/**"
+                "${workspaceFolder}/build/build-gcc/_deps/**"
             ],
             "defines": [
                 "_DEBUG",
@@ -31,7 +31,7 @@
                 "IC_EXPORT"
             ],
             "windowsSdkVersion": "10.0.18362.0",
-            "compilerPath": "C:\\mingw64\\bin\\g++.exe",
+            "compilerPath": "C:/mingw64/bin/g++.exe",
             "cStandard": "c17",
             "cppStandard": "c++17",
             "intelliSenseMode": "gcc-x64"
