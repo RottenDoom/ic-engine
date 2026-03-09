@@ -114,6 +114,9 @@ char *fs_getfullpath(const char *filename);
 /** Get parent path from a file path or directory */
 char *fs_getParentPath(const char *path);
 
+/** Get extension/file format of any path given */
+const char *fs_getExtension(const char *path);
+
 /** File and directory checks */
 bool     fs_exists(const char *relative_path);
 bool     fs_isDirectory(const char *dir);

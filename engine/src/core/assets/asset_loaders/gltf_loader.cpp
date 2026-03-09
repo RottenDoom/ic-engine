@@ -20,7 +20,7 @@ namespace ic
  *
  * Implementation notes:
  *
- *  Load order matters — GLTF indices are positional:
+ *  Load order matters -> GLTF indices are positional:
  *    buffers → bufferViews → accessors   (intermediate layer)
  *    samplers → images → textures        (resource layer, order-dependent)
  *    materials → nodes → meshes → scenes (scene-graph layer)
@@ -106,8 +106,6 @@ static glm::vec3 boundsToVec3(const std::vector<double> &v, glm::vec3 fallback =
         return glm::vec3(static_cast<float>(v[0]), static_cast<float>(v[1]), static_cast<float>(v[2]));
 }
 
-GLTFLoader::~GLTFLoader() {}
-
 bool GLTFLoader::canLoad(const char *ext) const
 {
         if (!ext)
@@ -117,15 +115,16 @@ bool GLTFLoader::canLoad(const char *ext) const
 
 bool GLTFLoader::load(const char *path, ModelImportData *out)
 {
-        IC_CORE_ASSERT(path, "GLTFLoader::load — null path");
+        IC_CORE_ASSERT(path, "GLTFLoader::load -> null path");
 
         if (!fs_exists(path))
         {
                 IC_CORE_WARN("GLTFLoader: file not found: {}", path);
                 return false;
         }
+        const char *fullpath = fs_getfullpath(path);
 
-        IC_CORE_INFO("GLTFLoader: loading {}", path);
+        IC_CORE_INFO("GLTFLoader: loading {}", fullpath);
 
         // -----------------------------------------------------------------------
         // Configure fastgltf parser
@@ -140,14 +139,14 @@ bool GLTFLoader::load(const char *path, ModelImportData *out)
 
         fastgltf::Parser parser(kExtensions);
 
-        auto gltfFile = fastgltf::MappedGltfFile::FromPath(std::filesystem::path(path));
+        auto gltfFile = fastgltf::MappedGltfFile::FromPath(std::filesystem::path(fullpath));
         if (!bool(gltfFile))
         {
                 IC_CORE_WARN("GLTFLoader: failed to open file: {}", fastgltf::getErrorMessage(gltfFile.error()));
                 return false;
         }
 
-        const char *parentPath    = fs_getParentPath(path);
+        const char *parentPath    = fs_getParentPath(fullpath);
         auto        expectedAsset = parser.loadGltf(gltfFile.get(), std::filesystem::path(parentPath), kOptions);
 
         if (expectedAsset.error() != fastgltf::Error::None)
@@ -171,6 +170,7 @@ bool GLTFLoader::load(const char *path, ModelImportData *out)
 
         // Always clear per-load temp state, even on failure
         m_tempPrimitiveData.clear();
+        ic_free((void *)fullpath);
 
         return ok;
 }
@@ -226,7 +226,7 @@ bool GLTFLoader::parseAsset(fastgltf::Asset *asset, const char *basePath, ModelI
         for (const auto &skin : asset->skins)
                 loadSkin(asset, &skin, out);
 
-        // --- Mesh layer (pass 1 — records accessor indices) ---
+        // --- Mesh layer (pass 1 -> records accessor indices) ---
         out->meshes.reserve(asset->meshes.size());
         m_tempPrimitiveData.reserve(std::accumulate(asset->meshes.begin(),
                                                     asset->meshes.end(),
@@ -255,10 +255,10 @@ bool GLTFLoader::parseAsset(fastgltf::Asset *asset, const char *basePath, ModelI
         else
                 out->defaultScene = INVALID_INDEX;
 
-        // --- Mesh layer pass 2 — geometry extraction ---
+        // --- Mesh layer pass 2 -> geometry extraction ---
         processMeshGeometry(out);
 
-        // --- Free buffer intermediates — nothing downstream needs them ---
+        // --- Free buffer intermediates -> nothing downstream needs them ---
         out->freeIntermediates();
 
         IC_CORE_TRACE("GLTFLoader: {} scenes, {} nodes, {} meshes, {} materials, {} images, {} animations",
@@ -355,7 +355,7 @@ void GLTFLoader::loadSampler(const fastgltf::Sampler *src, ModelImportData *out)
                 s.minFilter = static_cast<SamplerImportData::Filter>(src->minFilter.value());
         s.wrapS = static_cast<SamplerImportData::Wrap>(src->wrapS);
         s.wrapT = static_cast<SamplerImportData::Wrap>(src->wrapT);
-        out->samplers.push_back(s);
+        out->samplers.push_back(std::move(s));
 }
 
 bool GLTFLoader::loadImage(fastgltf::Asset *asset, const fastgltf::Image *src, ModelImportData *out)
@@ -415,7 +415,7 @@ bool GLTFLoader::loadImage(fastgltf::Asset *asset, const fastgltf::Image *src, M
                 },
                 [&](const fastgltf::sources::BufferView &bvSrc)
                 {
-                        // Image embedded in a buffer view — need to reach into fastgltf's asset buffers
+                        // Image embedded in a buffer view -> need to reach into fastgltf's asset buffers
                         const auto &bv  = asset->bufferViews[bvSrc.bufferViewIndex];
                         const auto &buf = asset->buffers[bv.bufferIndex];
 
@@ -447,7 +447,7 @@ void GLTFLoader::loadTexture(const fastgltf::Texture *src, ModelImportData *out)
                 tex.image = toIdx(src->imageIndex.value());
         if (src->samplerIndex.has_value())
                 tex.sampler = toIdx(src->samplerIndex.value());
-        out->textures.push_back(tex);
+        out->textures.push_back(std::move(tex));
 }
 
 void GLTFLoader::loadMaterial(const fastgltf::Material *src, ModelImportData *out)
@@ -545,7 +545,7 @@ void GLTFLoader::loadNode(const fastgltf::Node *src, ModelImportData *out)
         else if (std::holds_alternative<fastgltf::math::fmat4x4>(src->transform))
         {
                 const auto &fm = std::get<fastgltf::math::fmat4x4>(src->transform);
-                // fastgltf is column-major, GLM is column-major — direct copy
+                // fastgltf is column-major, GLM is column-major -> direct copy
                 memcpy(&node.localTransform[0][0], fm.data(), 16 * sizeof(float));
 
                 // Decompose for TRS fields so ModelBuilder can animate them
@@ -669,7 +669,7 @@ void GLTFLoader::loadMesh(const fastgltf::Mesh *src, ModelImportData *out)
                 if (prim.indicesAccessor.has_value())
                         temp.indicesAccessor = toIdx(prim.indicesAccessor.value());
 
-                m_tempPrimitiveData.push_back(temp);
+                m_tempPrimitiveData.push_back(std::move(temp));
                 mesh.primitives.push_back(std::move(outPrim));
         }
 
@@ -681,7 +681,7 @@ void GLTFLoader::loadAnimation(fastgltf::Asset * /*asset*/, const fastgltf::Anim
         AnimationImportData anim;
         anim.name = src->name;
 
-        // Decode samplers — resolve both input (times) and output (values) accessors
+        // Decode samplers -> resolve both input (times) and output (values) accessors
         anim.samplers.reserve(src->samplers.size());
         for (const auto &s : src->samplers)
         {
@@ -700,17 +700,17 @@ void GLTFLoader::loadAnimation(fastgltf::Asset * /*asset*/, const fastgltf::Anim
                         break;
                 }
 
-                // Input times — always float scalars
+                // Input times -> always float scalars
                 readAccessorFloat(toIdx(s.inputAccessor), sampler.inputTimes, out);
 
                 // Update animation duration from this sampler's max input time
                 if (!sampler.inputTimes.empty())
                         anim.duration = std::max(anim.duration, sampler.inputTimes.back());
 
-                // Output values — type depends on the target channel, but we store as vec4
+                // Output values -> type depends on the target channel, but we store as vec4
                 // Translation → vec3 (w=0), Rotation → quat/vec4, Scale → vec3 (w=1), Weights → float
                 // We read vec4 for rotation, and vec3 padded for the rest during channel processing.
-                // For now, read raw as vec4 — the runtime animator unpacks based on channel path.
+                // For now, read raw as vec4 -> the runtime animator unpacks based on channel path.
                 readAccessorVec4(toIdx(s.outputAccessor), sampler.outputValues, out);
 
                 anim.samplers.push_back(std::move(sampler));
@@ -754,11 +754,11 @@ void GLTFLoader::processMeshGeometry(ModelImportData *out)
 
         for (auto &mesh : out->meshes)
         {
-                // Track mesh-level AABB — start with inverted infinity bounds
+                // Track mesh-level AABB -> start with inverted infinity bounds
                 glm::vec3 meshMin(std::numeric_limits<float>::max());
                 glm::vec3 meshMax(-std::numeric_limits<float>::max());
 
-                for (auto prim : mesh.primitives)
+                for (auto &prim : mesh.primitives)
                 {
                         if (tempIdx >= m_tempPrimitiveData.size())
                         {
@@ -798,7 +798,7 @@ void GLTFLoader::extractVertices(const TempPrimitiveData *temp, MeshPrimitiveImp
                         prim->vertices[i].pos = positions[i];
         }
 
-        // --- AABB from accessor min/max — avoids iterating vertices again ---
+        // --- AABB from accessor min/max -> avoids iterating vertices again ---
         prim->aabbMin = boundsToVec3(posAcc.min, glm::vec3(std::numeric_limits<float>::max()));
         prim->aabbMax = boundsToVec3(posAcc.max, glm::vec3(-std::numeric_limits<float>::max()));
 

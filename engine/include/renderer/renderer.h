@@ -26,19 +26,19 @@ enum class RendererAPI
 class IRenderer
 {
 public:
-        virtual ~IRenderer()                = default;
+        virtual ~IRenderer() = default;
 
-        virtual bool init(Window *w)        = 0;
-        virtual void onEvent(event &e)      = 0;
-        virtual void renderFrame(float dt)  = 0;
-        virtual void cleanUp()              = 0;
+        virtual bool init(Window *w)       = 0;
+        virtual void onEvent(event &e)     = 0;
+        virtual void renderFrame(float dt) = 0;
+        virtual void cleanUp()             = 0;
 
-        virtual void setScene(Scene *scene) = 0;
+        virtual void setScene(ICScene *scene) = 0;
 };
 
 // Factory function to create the renderer (implemented in engine-renderer)
 IRenderer *createRenderer(RendererAPI api);
-void destroyRenderer(IRenderer *renderer);
+void       destroyRenderer(IRenderer *renderer);
 
 }  // namespace ic
 
@@ -47,7 +47,7 @@ extern "C"
 {
 #endif
 
-        IC_API void ic_set_scene(Scene *scene);
+        IC_API void ic_set_scene(ICScene *scene);
 
 #ifdef __cplusplus
 }

@@ -11,21 +11,22 @@
 
 struct RenderNode
 {
-        GUID modelID;
+        GUID      modelID;
+        string    modelPath;
         glm::mat4 transform;
 };
 
-// See if this can be a struct
-class IC_API Scene
+/** Scene class that can be setup by user or anyone. */
+class IC_API ICScene
 {
 public:
-        Camera camera;
+        Camera                  camera;
         std::vector<RenderNode> nodes;
 
-        void AddModel(GUID id, glm::mat4 transform)
+        void AddModel(GUID id, string modelPath, glm::mat4 transform)
         {
                 IC_CORE_TRACE("Added model ID = {} to the scene!", id);
-                nodes.push_back({id, transform});
+                nodes.push_back({id, modelPath, transform});
         }
 
         /** TODO: IMPORTANT: Fix this and better camera setup */

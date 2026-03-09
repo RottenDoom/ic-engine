@@ -26,27 +26,13 @@ typedef enum ModelType
         LOADER_FBX
 } ModelType;
 
-struct TempPrimitiveData
-{
-        Index positionAccessor  = INVALID_INDEX;
-        Index normalAccessor    = INVALID_INDEX;
-        Index tangentAccessor   = INVALID_INDEX;
-        Index colorAccessor     = INVALID_INDEX;
-        Index texCoord0Accessor = INVALID_INDEX;
-        Index texCoord1Accessor = INVALID_INDEX;
-        Index texCoord2Accessor = INVALID_INDEX;
-        Index jointsAccessor    = INVALID_INDEX;
-        Index weightsAccessor   = INVALID_INDEX;
-        Index indicesAccessor   = INVALID_INDEX;
-};
-
 class GLTFLoader : public IModelLoader
 {
 public:
         GLTFLoader()  = default;
         ~GLTFLoader() = default;
 
-        // Non-copyable — owns temporary per-load state
+        // Non-copyable -> owns temporary per-load state
         GLTFLoader(const GLTFLoader &)            = delete;
         GLTFLoader &operator=(const GLTFLoader &) = delete;
 

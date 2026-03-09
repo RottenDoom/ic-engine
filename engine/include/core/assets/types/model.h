@@ -11,157 +11,148 @@
 #include <string>  // [TODO] Make string class using std::vector or a custom dynamic array
 #include <vector>
 
-// TODO:
 /**
- * 1. Make the fast file load functions
- * 2. Write an AABB class and improve the structs to actually hold the data rather than anything relating to the gltf
- * file.
- * 3. Load using Fast file loads and test it.
+ * model.h -> Runtime Model asset.
+ *
+ * Build pipeline:
+ *   Cold path:  filepath → IModelLoader → ModelImportData → ic::buildModel() → Model (CPUReady)
+ *   Warm path:  .icache  → serializedLoad()                                  → Model (CPUReady)
+ *   GPU upload: GLModel::upload(model) transitions Model to GPUReady
+ *
+ * Private data is written ONLY by ic::buildModel() and ic::Serializer.
+ * No friend class -> a single friend free function limits access precisely.
  */
-
-// #if USING(GPU_DATA)
-// #include "renderer/graphics_api/buffer.hpp"
-// #include "renderer/graphics_api/texture.hpp"
-// #endif
 
 namespace ic
 {
-class GLTFLoader;
-}
 
-struct Vertex
+class Serializer;
+struct ModelImportData;
+class Model;
+
+/**
+ * Consumes import data and produces a CPUReady Model.
+ * This is the only function that may write into Model's private members.
+ * Defined in model_builder.cpp.
+ */
+Model buildModel(ModelImportData *data, GUID id);
+
+// ---------------------------------------------------------------------------
+// AABB
+// ---------------------------------------------------------------------------
+
+struct AABB
 {
-        vec3  pos;
-        vec3  normal;
-        vec2  uv0;
-        vec2  uv1;
-        vec2  uv2;
-        vec4  color;
-        vec4  tangent;
-        uvec4 joint0;
-        vec4  weight0;
-};
+        glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+        glm::vec3 max = glm::vec3(-std::numeric_limits<float>::max());
 
-/** GPU data with the actual buffer*/
-struct Buffer
-{
-        std::vector<uint8_t> data;  // char data from the the uri or glb
-};
+        bool      isValid() const { return min.x <= max.x; }
+        glm::vec3 center() const { return (min + max) * 0.5f; }
+        glm::vec3 extents() const { return (max - min) * 0.5f; }
+        glm::vec3 size() const { return max - min; }
 
-struct BufferView
-{
-        Index  bufferIndex = INVALID_INDEX;
-        size_t byteOffset  = 0;
-        size_t byteLength  = 0;
-        size_t byteStride  = 0;
-
-        std::string name;
-
-        /* TODO OpenGL specific Target*/
-};
-
-struct Accessor
-{
-        Index  bufferView = INVALID_INDEX;
-        size_t offset     = 0;
-        size_t count      = 0;
-
-        enum class Type
+        void expand(const glm::vec3 &p)
         {
-                SCALAR,
-                VEC2,
-                VEC3,
-                VEC4,
-                MAT4,
-                UNKNOWN
-        } type;
-
-        enum class ComponentType : uint8_t
+                min = glm::min(min, p);
+                max = glm::max(max, p);
+        }
+        void merge(const AABB &other)
         {
-                Byte,
-                UByte,
-                Short,
-                UShort,
-                Int,
-                UInt,
-                Float,
-                Double
-        };
+                min = glm::min(min, other.min);
+                max = glm::max(max, other.max);
+        }
 
-        /** OpenGL specific */
-        ComponentType componentType = ComponentType::UByte;
+        bool contains(const glm::vec3 &p) const
+        {
+                return glm::all(glm::greaterThanEqual(p, min)) && glm::all(glm::lessThanEqual(p, max));
+        }
+        bool intersects(const AABB &other) const
+        {
+                return glm::all(glm::lessThanEqual(min, other.max)) && glm::all(glm::greaterThanEqual(max, other.min));
+        }
 
-        std::vector<double> min;
-        std::vector<double> max;
-        bool                normalized = false;
-        /** TODO: Sparse accessor handling */
+        static AABB makeInvalid() { return AABB{}; }
 };
+
+// ---------------------------------------------------------------------------
+// VertexAttributeFlags
+// Bitmask stored per-primitive. Set by buildModel(), read by the renderer
+// to know what attributes are packed into vertexData and at what stride.
+// Lives here so Model owns its own vertex layout description.
+// ---------------------------------------------------------------------------
+
+enum VertexAttributeFlags : uint32_t
+{
+        ATTRIB_NONE      = 0,
+        ATTRIB_POSITION  = 1 << 0,  // vec3  -> always present
+        ATTRIB_NORMAL    = 1 << 1,  // vec3
+        ATTRIB_TANGENT   = 1 << 2,  // vec4  (xyz + handedness)
+        ATTRIB_TEXCOORD0 = 1 << 3,  // vec2
+        ATTRIB_TEXCOORD1 = 1 << 4,  // vec2
+        ATTRIB_TEXCOORD2 = 1 << 5,  // vec2
+        ATTRIB_COLOR     = 1 << 6,  // vec4
+        ATTRIB_JOINTS    = 1 << 7,  // uvec4
+        ATTRIB_WEIGHTS   = 1 << 8,  // vec4
+};
+
+// ---------------------------------------------------------------------------
+// MeshPrimitive -> one draw call's worth of geometry
+// ---------------------------------------------------------------------------
 
 struct MeshPrimitive
 {
         enum class Mode : uint8_t
         {
-                POINTS        = 0,
-                LINES         = 1,
-                LINELOOP      = 2,
-                LINESTRIP     = 3,
-                TRIANGLES     = 4,
-                TRIANGLESTRIP = 5,
-                TRIANGLEFAN   = 6,
-        };
+                Points        = 0,
+                Lines         = 1,
+                LineLoop      = 2,
+                LineStrip     = 3,
+                Triangles     = 4,
+                TriangleStrip = 5,
+                TriangleFan   = 6,
+        } mode = Mode::Triangles;
 
-        // std::string name;
-        Mode  mode          = Mode::TRIANGLES;
         Index materialIndex = INVALID_INDEX;
 
-        // CPU-side geometry data (serializable)
-        // #if USING(GPU_DATA)
-        //         // Empty on CPU when GPU data is present
-        // #else
-        std::vector<Vertex>   vertices;
+        // Packed, interleaved vertex data.
+        // Layout: [pos][normal?][tangent?][uv0?][uv1?][uv2?][color?][joints?][weights?]
+        // Attribute presence and per-vertex byte stride are described below.
+        // Freed by Model::freeCPU() after GPU upload.
+        std::vector<uint8_t>  vertexData;
         std::vector<uint32_t> indices;
-        // #endif
+        uint32_t              vertexCount    = 0;
+        uint32_t              vertexStride   = 0;  // bytes per vertex
+        uint32_t              attributeFlags = ATTRIB_NONE;
 
-        // #if USING(GPU_DATA)
-        //         // GPU buffers (not serialized, recreated on load)
-        //         Gfx::Buffer *vertexBuffer    = nullptr;
-        //         Gfx::Buffer *indexBuffer     = nullptr;
-        //         uint32_t numVertices         = 0;
-        //         uint32_t numIndices          = 0;
-        //         uint32_t bindlessBuffersSlot = 0;
-
-        //         // Attribute info for rendering
-        //         bool hasNormals   = false;
-        //         bool hasTangents  = false;
-        //         bool hasTexCoord0 = false;
-        //         bool hasTexCoord1 = false;
-        //         bool hasColors    = false;
-        //         bool hasSkinning  = false;
-        // #endif
-
-        // Morph targets (if needed)
         std::vector<float> morphWeights;
+
+        AABB bounds;
 };
+
+// ---------------------------------------------------------------------------
+// Mesh
+// ---------------------------------------------------------------------------
 
 struct Mesh
 {
         std::string                name;
         std::vector<MeshPrimitive> primitives;
-
-        // Make AABB struct
-        glm::vec3 aabbMin = glm::vec3(0.0f);
-        glm::vec3 aabbMax = glm::vec3(0.0f);
+        AABB                       bounds;
 };
+
+// ---------------------------------------------------------------------------
+// Node
+// ---------------------------------------------------------------------------
 
 struct Node
 {
-        string name;
+        std::string name;
 
         glm::vec3 translation    = glm::vec3(0.0f);
         glm::quat rotation       = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
         glm::vec3 scale          = glm::vec3(1.0f);
         glm::mat4 localTransform = glm::mat4(1.0f);
-        glm::mat4 worldTransform = glm::mat4(1.0f);  // Computed from hierarchy
+        glm::mat4 worldTransform = glm::mat4(1.0f);  // computed during hierarchy pass
 
         Index meshIndex   = INVALID_INDEX;
         Index skinIndex   = INVALID_INDEX;
@@ -172,15 +163,19 @@ struct Node
         Index              parent = INVALID_INDEX;
 };
 
-struct AssetCamera
+// ---------------------------------------------------------------------------
+// Camera
+// ---------------------------------------------------------------------------
+
+struct Camera
 {
-        enum class Type
+        enum class Type : uint8_t
         {
                 Perspective,
                 Orthographic
-        };
+        } type = Type::Perspective;
 
-        struct Perspective
+        struct PerspectiveData
         {
                 float aspectRatio = 0.0f;
                 float yfov        = 0.0f;
@@ -188,7 +183,7 @@ struct AssetCamera
                 float znear       = 0.0f;
         };
 
-        struct Orthographic
+        struct OrthographicData
         {
                 float xmag  = 0.0f;
                 float ymag  = 0.0f;
@@ -196,185 +191,258 @@ struct AssetCamera
                 float znear = 0.0f;
         };
 
-        string       name;
-        Type         type;
-        Perspective  perspective;
-        Orthographic orthographic;
+        std::string      name;
+        PerspectiveData  perspective;
+        OrthographicData orthographic;
 };
 
-struct Skin
+// ---------------------------------------------------------------------------
+// Image -> decoded RGBA8 pixel data (CPU-side only)
+// Freed by Model::freeCPU() after GPU upload.
+// ---------------------------------------------------------------------------
+
+struct Image
 {
-        std::string            name;
-        std::vector<Index>     jointIndices;         // Indices into nodes array
-        std::vector<glm::mat4> inverseBindMatrices;  // Actual matrices, not accessor reference
-        Index                  skeletonRootIndex = INVALID_INDEX;
+        uint32_t width    = 0;
+        uint32_t height   = 0;
+        uint32_t channels = 0;  // original channel count before RGBA8 conversion
+        bool     srgb     = false;
+
+        std::vector<uint8_t> pixels;  // always RGBA8: width * height * 4 bytes
+
+#if defined(IC_ASSET_NAMES)
+        std::string name;
+#endif
 };
 
-struct Animation
-{
-        enum class Path
-        {
-                TRANSLATION,
-                ROTATION,
-                SCALE,
-                WEIGHTS
-        };
-
-        enum class Interpolation
-        {
-                LINEAR,
-                STEP,
-                CUBICSPLINE
-        };
-
-        struct Sampler
-        {
-                std::vector<float>     inputTimes;    // Actual keyframe times
-                std::vector<glm::vec4> outputValues;  // Actual keyframe values (vec4 to handle all types)
-                Interpolation          interpolation = Interpolation::LINEAR;
-        };
-
-        struct Channel
-        {
-                Index samplerIndex    = INVALID_INDEX;
-                Index targetNodeIndex = INVALID_INDEX;
-                Path  targetPath;
-        };
-
-        string               name;
-        std::vector<Sampler> samplers;
-        std::vector<Channel> channels;
-        float                duration = 0.0f;  // Computed from max input time
-};
+// ---------------------------------------------------------------------------
+// Sampler -> texture filter/wrap state
+// Enum values match OpenGL constants for zero-cost API mapping.
+// ---------------------------------------------------------------------------
 
 struct Sampler
 {
-        enum class Filter : std::uint16_t
+        enum class Filter : uint16_t
         {
-                Nearest              = 9728,  // GL_NEAREST
-                Linear               = 9729,  // GL_LINEAR
-                NearestMipMapNearest = 9984,  // GL_NEAREST_MIPMAP_NEAREST
-                LinearMipMapNearest  = 9985,  // GL_LINEAR_MIPMAP_NEAREST
-                NearestMipMapLinear  = 9986,  // GL_NEAREST_MIPMAP_LINEAR
-                LinearMipMapLinear   = 9987,  // GL_LINEAR_MIPMAP_LINEAR
-                NoFilter             = 0
+                Nearest              = 9728,
+                Linear               = 9729,
+                NearestMipMapNearest = 9984,
+                LinearMipMapNearest  = 9985,
+                NearestMipMapLinear  = 9986,
+                LinearMipMapLinear   = 9987,
+                None                 = 0
         };
 
-        enum class Wrap : std::uint16_t
+        enum class Wrap : uint16_t
         {
                 ClampToEdge    = 33071,
                 MirroredRepeat = 33648,
                 Repeat         = 10497,
-                NoWrap         = 0
+                None           = 0
         };
 
-        Filter magFilter = Filter::NoFilter;  // GL_TEXTURE_MAG_FILTER
-        Filter minFilter = Filter::NoFilter;  // GL_TEXTURE_MIN_FILTER
-        Wrap   wrapS     = Wrap::NoWrap;
-        Wrap   wrapT     = Wrap::NoWrap;
+        Filter magFilter = Filter::None;
+        Filter minFilter = Filter::None;
+        Wrap   wrapS     = Wrap::None;
+        Wrap   wrapT     = Wrap::None;
 };
 
-struct ImageData
+// ---------------------------------------------------------------------------
+// Skin
+// ---------------------------------------------------------------------------
+
+struct Skin
 {
-        uint32_t width    = 0;
-        uint32_t height   = 0;
-        uint32_t channels = 0;
-        bool     srgb     = false;
-
-        // #if USING(GPU_DATA)
-        //         Gfx::Texture *gpuTexture = nullptr;
-        // #else
-        std::vector<uint8_t> pixels;
-        // #endif
-
-        // #if USING(ASSET_NAMES)
-        string name;
-        string uri;
-        // #endif
+        std::string            name;
+        std::vector<Index>     jointIndices;
+        std::vector<glm::mat4> inverseBindMatrices;
+        Index                  skeletonRootIndex = INVALID_INDEX;
 };
 
-struct GLTFScene
+// ---------------------------------------------------------------------------
+// Animation
+// ---------------------------------------------------------------------------
+
+struct AnimationSampler
+{
+        enum class Interpolation : uint8_t
+        {
+                Linear,
+                Step,
+                CubicSpline
+        } interpolation = Interpolation::Linear;
+
+        std::vector<float>     inputTimes;
+        std::vector<glm::vec4> outputValues;  // vec4 covers all target types
+};
+
+struct AnimationChannel
+{
+        enum class Path : uint8_t
+        {
+                Translation,
+                Rotation,
+                Scale,
+                Weights
+        } targetPath = Path::Translation;
+
+        Index samplerIndex    = INVALID_INDEX;
+        Index targetNodeIndex = INVALID_INDEX;
+};
+
+struct Animation
+{
+        std::string                   name;
+        std::vector<AnimationSampler> samplers;
+        std::vector<AnimationChannel> channels;
+        float                         duration = 0.0f;
+};
+
+// ---------------------------------------------------------------------------
+// Scene
+// ---------------------------------------------------------------------------
+
+struct Scene
 {
         std::string        name;
         std::vector<Index> rootNodes;
 };
 
+// ---------------------------------------------------------------------------
+// Model -> the runtime asset
+//
+// Lifecycle states:
+//   Unloaded  → load() called            → Pending
+//   Pending   → CPU data ready           → CPUReady
+//   CPUReady  → GPU upload complete      → GPUReady
+//   GPUReady  → freeCPU() called         → GPUReady  (pixel/vertex data freed)
+//   any       → release() called         → Unloaded
+//   any       → unrecoverable error      → Failed
+// ---------------------------------------------------------------------------
+
 class Model : public IAsset
 {
-        // NOT SURE ABOUT THE FRIEND CLASSES I THINK ONE SINGLE FRIEND FUNCTION SHOULD SUFFICE
-        friend class ic::GLTFLoader;
+        // Only these two may write into private data.
+        // A free function is preferred over a friend class -> it grants
+        // access to exactly one operation rather than an entire class scope.
+        friend Model ic::buildModel(ic::ModelImportData *data, GUID id);
+        friend class ic::Serializer;
 
 public:
-        std::vector<Mesh>      meshes;
-        std::vector<Material>  materials;
-        std::vector<ImageData> images;
-        std::vector<Sampler>   samplers;
-        std::vector<Texture>   textures;
-
-        std::vector<Node>        nodes;
-        std::vector<AssetCamera> cameras;
-        std::vector<Skin>        skins;
-        std::vector<Animation>   animations;
-        std::vector<GLTFScene>   scenes;
-
-        Index defaultScene = INVALID_INDEX;
-
-        // TODO: SOMEDAY
-        std::vector<std::string> extensionsUsed;
-        std::vector<std::string> extensionsRequired;
-
-        std::vector<Buffer>     buffers;
-        std::vector<BufferView> bufferViews;
-        std::vector<Accessor>   accessors;
-
         ASSET_CLASS_TYPE(ASSET_TYPE_MODEL)
 
-        Model(GUID id) : IAsset(id) {}
+        explicit Model(GUID id) : IAsset(id) {}
 
+        // Non-copyable -> owns potentially large vertex/pixel buffers
+        Model(const Model &)            = delete;
+        Model &operator=(const Model &) = delete;
+        Model(Model &&)                 = default;
+        Model &operator=(Model &&)      = default;
+
+        // -----------------------------------------------------------------------
+        // IAsset -> cold load path
+        // -----------------------------------------------------------------------
+
+        /**
+         * Load from disk using the appropriate IModelLoader.
+         * Internally: calls GLTFLoader → buildModel().
+         * Transitions: Unloaded → Pending → CPUReady (or Failed)
+         */
         bool load(const char *filepath) override;
-        bool serializedLoad(ic::Serializer *serializer) override;
-        bool serializedSave(ic::Serializer *serializer) const override;
+
+        /**
+         * Fast warm load from a .icache binary.
+         * Skips the loader and builder entirely.
+         * Transitions: Unloaded → CPUReady
+         */
+        bool serializedLoad(ic::Serializer *s) override;
+
+        /** Write CPUReady data to .icache binary for future warm loads. */
+        bool serializedSave(ic::Serializer *s) const override;
+
+        /**
+         * Release all CPU and GPU data. Returns to Unloaded.
+         * Safe to call in any state.
+         */
         bool release() override;
 
+        bool isLoaded() const override { return m_state >= State::CPUReady; }
+
+        // -----------------------------------------------------------------------
+        // GPU lifecycle -> called by GLModel
+        // -----------------------------------------------------------------------
+
+        /**
+         * Free CPU-side vertexData and Image::pixels after successful GPU upload.
+         * State stays GPUReady. After this call the model cannot be re-uploaded
+         * without reloading from disk or cache.
+         */
         void freeCPU();
-        void freeGPU();
 
-        // Editor-friendly queries
-        size_t GetMeshCount() const { return meshes.size(); }
-        size_t GetNodeCount() const { return nodes.size(); }
-        size_t GetAnimationCount() const { return animations.size(); }
+        // -----------------------------------------------------------------------
+        // State machine
+        // -----------------------------------------------------------------------
 
-        // const Mesh *GetMesh(Index index) const;
-        // Mesh *GetMesh(Index index);
-        // const Node *GetNode(Index index) const;
-        // Node *GetNode(Index index);
-        // const Material *GetMaterial(Index index) const;
-        // Material *GetMaterial(Index index);
+        enum class State : uint8_t
+        {
+                Unloaded = 0,
+                Pending,   // load() in progress
+                CPUReady,  // data in RAM, GPU upload pending
+                GPUReady,  // data on GPU (CPU data may or may not still be present)
+                Failed
+        };
 
-        // // Hierarchy queries
-        // void GetRootNodes(std::vector<Index> &outRootNodes) const;
-        // void GetNodeChildren(Index nodeIndex, std::vector<Index> &outChildren) const;
-        // glm::mat4 GetNodeWorldTransform(Index nodeIndex) const;
+        State getState() const { return m_state; }
+        bool  isCPUReady() const { return m_state == State::CPUReady || m_state == State::GPUReady; }
+        bool  isGPUReady() const { return m_state == State::GPUReady; }
 
-        // // Animation control
-        // void UpdateAnimation(Index animIndex, float time);
-        // float GetAnimationDuration(Index animIndex) const;
+        // -----------------------------------------------------------------------
+        // Accessors -> all const, no copies
+        // -----------------------------------------------------------------------
 
-        // // Rebuild operations (for editor modifications)
-        // void RebuildNodeTransforms();
-        // void RebuildBoundingBoxes();
-        // void MarkGPUDirty();  // Flags that GPU data needs re-upload
+        const std::vector<Mesh>      &meshes() const { return m_meshes; }
+        const std::vector<Material>  &materials() const { return m_materials; }
+        const std::vector<Image>     &images() const { return m_images; }
+        const std::vector<Sampler>   &samplers() const { return m_samplers; }
+        const std::vector<Node>      &nodes() const { return m_nodes; }
+        const std::vector<Camera>    &cameras() const { return m_cameras; }
+        const std::vector<Skin>      &skins() const { return m_skins; }
+        const std::vector<Animation> &animations() const { return m_animations; }
+        const std::vector<Scene>     &scenes() const { return m_scenes; }
+
+        const AABB  &getWorldBounds() const { return m_worldBounds; }
+        Index        getDefaultSceneIndex() const { return m_defaultScene; }
+        const Scene *getDefaultScene() const { return getScene(m_defaultScene); }
+
+        size_t getMeshCount() const { return m_meshes.size(); }
+        size_t getNodeCount() const { return m_nodes.size(); }
+        size_t getMaterialCount() const { return m_materials.size(); }
+        size_t getAnimationCount() const { return m_animations.size(); }
+
+        const Mesh      *getMesh(Index i) const { return i < m_meshes.size() ? &m_meshes[i] : nullptr; }
+        const Node      *getNode(Index i) const { return i < m_nodes.size() ? &m_nodes[i] : nullptr; }
+        const Material  *getMaterial(Index i) const { return i < m_materials.size() ? &m_materials[i] : nullptr; }
+        const Animation *getAnimation(Index i) const { return i < m_animations.size() ? &m_animations[i] : nullptr; }
+        const Scene     *getScene(Index i) const { return i < m_scenes.size() ? &m_scenes[i] : nullptr; }
+        const Image     *getImage(Index i) const { return i < m_images.size() ? &m_images[i] : nullptr; }
+        const Sampler   *getSampler(Index i) const { return i < m_samplers.size() ? &m_samplers[i] : nullptr; }
 
 private:
-        // Internal state flags
-        bool gpuDataDirty    = false;
-        bool transformsDirty = false;
-        bool loaded          = false;
+        std::vector<Mesh>      m_meshes;
+        std::vector<Material>  m_materials;
+        std::vector<Image>     m_images;
+        std::vector<Sampler>   m_samplers;
+        std::vector<Node>      m_nodes;
+        std::vector<Camera>    m_cameras;
+        std::vector<Skin>      m_skins;
+        std::vector<Animation> m_animations;
+        std::vector<Scene>     m_scenes;
 
-        // void FreeLoadingData();
-
-        // // Processing pipeline (called during Load)
-        // void LoadFromGLTF();
+        AABB  m_worldBounds;
+        Index m_defaultScene = INVALID_INDEX;
+        State m_state        = State::Unloaded;
 };
+
+}  // namespace ic
 
 #endif

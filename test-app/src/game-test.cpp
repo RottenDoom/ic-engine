@@ -53,16 +53,16 @@ int main(int argc, char *argv[])
 
         // load the registry (IN some functions you would have to put assets at the start in some you dont have
         // to)
-        ic_load_registry("registry.yaml");
+        ic_load_registry("assets/registry.yaml");
 
         // load model
         GUID id = 0x1000000000000004;
         ic_load_model(id);
         g_state.models.push_back(id);
 
-        Scene defaultScene;
+        ICScene defaultScene;
 
-        defaultScene.AddModel(id, glm::mat4(1.0f));
+        defaultScene.AddModel(id, ic_get_model_path(id), glm::mat4(1.0f));
         defaultScene.SetupCamera();
         ic_set_scene(&defaultScene);
 

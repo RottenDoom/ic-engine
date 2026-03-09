@@ -7,7 +7,7 @@ namespace ic
 
 void GLModel::upload(Model &model)
 {
-        this->model = &model;
+        m_model = &model;
 
         /** Check if the textures exist first or not */
         uploadTextures();
@@ -17,183 +17,210 @@ void GLModel::upload(Model &model)
 
 void GLModel::uploadTextures()
 {
-        textures.resize(model->textures.size());
+        const auto &images   = m_model->images();
+        const auto &samplers = m_model->samplers();
 
-        for (size_t i = 0; i < model->textures.size(); ++i)
+        // GLModel owns one GLTexture per Image (not per Texture-list entry).
+        // Materials hold resolved (image, sampler) pairs -> we just upload each image once.
+        m_textures.resize(images.size());
+
+        for (size_t i = 0; i < images.size(); ++i)
         {
-                Texture &tex = model->textures[i];
-                if (tex.image != INVALID_INDEX)
-                {
-                        ImageData &img = model->images[tex.image];
-                        textures[i].createTexture(*model, tex, img);
-                }
+                const Image img = images[i];
+                if (img.pixels.empty())
+                        continue;
 
-                // Apply sampler if present
-                if (tex.sampler != INVALID_INDEX)
-                {
-                        Sampler &sampler = model->samplers[tex.sampler];
-                        textures[i].applySampler(sampler);
-                }
+                m_textures[i].upload(img);
+        }
+
+        // Apply sampler state per texture slot.
+        // Since materials store image+sampler pairs, we apply the sampler
+        // at bind time in bindMaterial() rather than here, to handle
+        // the case where the same image is used with different samplers.
+        // This loop pre-applies the default if no per-draw override exists.
+        for (size_t i = 0; i < images.size(); ++i)
+        {
+                // Sampler application is deferred to bind time see bindMaterial().
+                (void)samplers;
         }
 }
 
 void GLModel::uploadMeshes()
 {
-        meshes.resize(model->meshes.size());
-        IC_CORE_TRACE("No. of meshes: {}", meshes.size());
+        const auto &meshes = m_model->meshes();
+        m_meshes.resize(meshes.size());
 
-        for (size_t i = 0; i < model->meshes.size(); ++i)
+        IC_CORE_TRACE("GLModel: uploading {} meshes", meshes.size());
+
+        for (size_t i = 0; i < meshes.size(); ++i)
         {
-                Mesh &mesh = model->meshes[i];
-
-                meshes[i].primitives.resize(mesh.primitives.size());
+                const Mesh &mesh = meshes[i];
+                m_meshes[i].primitives.resize(mesh.primitives.size());
 
                 for (size_t j = 0; j < mesh.primitives.size(); ++j)
                 {
-                        meshes[i].primitives[j].setupBuffers(*model, mesh.primitives[j]);
-                        IC_CORE_TRACE("Mesh primitive EBO {}", meshes[i].primitives[j].EBO);
+                        m_meshes[i].primitives[j].setupBuffers(mesh.primitives[j]);
+                        IC_CORE_TRACE("  mesh[{}] prim[{}] EBO={}", i, j, m_meshes[i].primitives[j].EBO);
                 }
         }
 }
 
-void GLModel::clearGPUMemory() {}
-
-void GLModel::draw(Shader &shader)
+void GLModel::clearGPUMemory()
 {
-        GLTFScene &scene = model->scenes[model->defaultScene];
+        for (auto &mesh : m_meshes)
+                for (auto &prim : mesh.primitives)
+                        prim.destroy();
 
-        for (auto &rootNodeIdx : scene.rootNodes)
-        {
-                drawNode(shader, rootNodeIdx, glm::mat4(1.0f));  //** Transform needs to be checked. */
-        }
+        for (auto &tex : m_textures)
+                tex.destroy();
+
+        m_meshes.clear();
+        m_textures.clear();
+        m_model = nullptr;
 }
 
-void GLModel::drawNode(Shader &shader, Index idx, glm::mat4 parent)
+void GLModel::draw(Shader *shader)
 {
-        Node &node      = model->nodes[idx];
-        glm::mat4 world = parent * node.localTransform;
+        if (!m_model)
+                return;
 
-        if (node.meshIndex != INVALID_INDEX)
+        const Scene *scene = m_model->getDefaultScene();
+        if (!scene)
+                return;
+
+        for (Index rootIdx : scene->rootNodes)
+                drawNode(shader, rootIdx, glm::mat4(1.0f));
+}
+
+void GLModel::drawNode(Shader *shader, Index idx, const glm::mat4 &parentWorld)
+{
+        const Node *node = m_model->getNode(idx);
+        if (!node)
+                return;
+
+        glm::mat4 world = parentWorld * node->localTransform;
+
+        if (node->meshIndex != INVALID_INDEX && node->meshIndex < m_meshes.size())
         {
-                drawMesh(shader, meshes[node.meshIndex], model->meshes[node.meshIndex], world);
+                const Mesh *mesh = m_model->getMesh(node->meshIndex);
+                if (mesh)
+                        drawMesh(shader, &m_meshes[node->meshIndex], mesh, world);
         }
 
-        for (Index childIdx : node.children)
-        {
+        for (Index childIdx : node->children)
                 drawNode(shader, childIdx, world);
-        }
 }
 
-void GLModel::drawMesh(Shader &shader, GLMesh glMesh, Mesh &mesh, glm::mat4 world)
+void GLModel::drawMesh(Shader *shader, GLMesh *glMesh, const Mesh *mesh, const glm::mat4 &world)
 {
+        shader->setMat4("model", world);
 
-        //  Set model matrix uniform
-        shader.setMat4("model", world);
-
-        for (size_t i = 0; i < glMesh.primitives.size(); ++i)
+        for (size_t i = 0; i < glMesh->primitives.size(); ++i)
         {
-                GLPrimitive &prim       = glMesh.primitives[i];
-                MeshPrimitive &meshPrim = mesh.primitives[i];
+                if (i >= mesh->primitives.size())
+                        break;
 
-                // Bind material if present
-                if (meshPrim.materialIndex != INVALID_INDEX)
+                GLPrimitive         glPrim = glMesh->primitives[i];
+                const MeshPrimitive prim   = mesh->primitives[i];
+
+                if (prim.materialIndex != INVALID_INDEX)
                 {
-                        Material &mat = model->materials[meshPrim.materialIndex];
-                        bindMaterial(shader, mat, prim);
+                        const Material *mat = m_model->getMaterial(prim.materialIndex);
+                        if (mat)
+                                bindMaterial(shader, mat, &glPrim);
                 }
 
-                glBindVertexArray(prim.VAO);
+                glBindVertexArray(glPrim.VAO);
 
-                if (prim.draw.count > 0)
+                if (glPrim.draw.count > 0)
                 {
+                        const size_t indexSize = (glPrim.indexType == GL_UNSIGNED_SHORT) ? 2 : 4;
+
                         glDrawElementsBaseVertex(GL_TRIANGLES,
-                                                 prim.draw.count,
-                                                 prim.indexType,
-                                                 (void *)(prim.draw.firstIndex *
-                                                          (prim.indexType == GL_UNSIGNED_SHORT ? 2 : 4)),
-                                                 prim.draw.baseVertex);
+                                                 glPrim.draw.count,
+                                                 glPrim.indexType,
+                                                 reinterpret_cast<void *>(glPrim.draw.firstIndex * indexSize),
+                                                 glPrim.draw.baseVertex);
                 }
         }
 }
 
-void GLModel::bindMaterial(Shader &shader, Material &mat, GLPrimitive &primitive)
+void GLModel::bindMaterial(Shader *shader, const Material *mat, GLPrimitive * /*primitive*/)
 {
-        /** TODO: default material handling */
-        shader.setInt("u_defaultMaterial", 0);
-        shader.setBool("u_usedefaultMaterial", false);
+        shader->setBool("u_useDefaultMaterial", false);
 
-        // base color
-        shader.setVec4("u_BaseColorFactor", mat.pbrMaterial.baseColorFactor);
-        if (mat.pbrMaterial.baseColorTexture.textureInfo.idx != INVALID_INDEX)
+        // --- Base color ---
+        shader->setVec4("u_BaseColorFactor", mat->pbr.baseColorFactor);
+        if (mat->pbr.baseColorTexture.isValid())
         {
-                shader.setTexture("u_BaseColorTexture",
-                                  0,
-                                  textures[mat.pbrMaterial.baseColorTexture.textureInfo.idx].textureHandle);
-                shader.setBool("u_HasBaseColorTexture", true);
+                // TextureRef->image is a direct index into Model::images → m_textures
+                bindTexture(
+                    shader, "u_BaseColorTexture", 0, &mat->pbr.baseColorTexture, mat->pbr.baseColorTexture.sampler);
+                shader->setBool("u_HasBaseColorTexture", true);
         }
         else
         {
-                shader.setBool("u_HasBaseColorTexture", false);
+                shader->setBool("u_HasBaseColorTexture", false);
         }
 
-        shader.setFloat("u_MetallicFactor", mat.pbrMaterial.metallicFactor);
-        shader.setFloat("u_RoughnessFactor", mat.pbrMaterial.roughnessFactor);
-        if (mat.pbrMaterial.metallicRoughnessTexture.textureInfo.idx != INVALID_INDEX)
+        // --- Metallic / roughness ---
+        shader->setFloat("u_MetallicFactor", mat->pbr.metallicFactor);
+        shader->setFloat("u_RoughnessFactor", mat->pbr.roughnessFactor);
+        if (mat->pbr.metallicRoughnessTexture.isValid())
         {
-                shader.setTexture("u_MetallicRoughnessTexture",
-                                  1,
-                                  textures[mat.pbrMaterial.metallicRoughnessTexture.textureInfo.idx].textureHandle);
-                shader.setBool("u_HasMetallicRoughnessTexture", true);
+                bindTexture(shader,
+                            "u_MetallicRoughnessTexture",
+                            1,
+                            &mat->pbr.metallicRoughnessTexture,
+                            mat->pbr.metallicRoughnessTexture.sampler);
+                shader->setBool("u_HasMetallicRoughnessTexture", true);
         }
         else
         {
-                shader.setBool("u_HasMetallicRoughnessTexture", false);
+                shader->setBool("u_HasMetallicRoughnessTexture", false);
         }
 
-        // Normal
-        if (mat.normalTexture.textureInfo.idx != INVALID_INDEX)
+        // --- Normal ---
+        if (mat->normalTexture.isValid())
         {
-                shader.setTexture("u_NormalTexture", 2, textures[mat.normalTexture.textureInfo.idx].textureHandle);
-                shader.setFloat("u_NormalScale", mat.normalTexture.scale);
-                shader.setBool("u_HasNormalTexture", true);
+                bindTexture(shader, "u_NormalTexture", 2, &mat->normalTexture.ref, mat->normalTexture.ref.sampler);
+                shader->setFloat("u_NormalScale", mat->normalTexture.scale);
+                shader->setBool("u_HasNormalTexture", true);
         }
         else
         {
-                shader.setBool("u_HasNormalTexture", false);
+                shader->setBool("u_HasNormalTexture", false);
         }
 
-        // Occlusion
-        if (mat.occlusionTexture.textureInfo.idx != INVALID_INDEX)
+        // --- Occlusion ---
+        if (mat->occlusionTexture.isValid())
         {
-                shader.setTexture("u_OcclusionTexture",
-                                  3,
-                                  textures[mat.occlusionTexture.textureInfo.idx].textureHandle);
-                shader.setFloat("u_OcclusionStrength", mat.occlusionTexture.strength);
-                shader.setBool("u_HasOcclusionTexture", true);
+                bindTexture(
+                    shader, "u_OcclusionTexture", 3, &mat->occlusionTexture.ref, mat->occlusionTexture.ref.sampler);
+                shader->setFloat("u_OcclusionStrength", mat->occlusionTexture.strength);
+                shader->setBool("u_HasOcclusionTexture", true);
         }
         else
         {
-                shader.setBool("u_HasOcclusionTexture", false);
+                shader->setBool("u_HasOcclusionTexture", false);
         }
 
-        // Emissive
-        shader.setVec3("u_EmissiveFactor", mat.emissiveFactor);
-
-        if (mat.emissiveTexture.textureInfo.idx != INVALID_INDEX)
+        // --- Emissive ---
+        shader->setVec3("u_EmissiveFactor", mat->emissiveFactor);
+        if (mat->emissiveTexture.isValid())
         {
-                shader.setTexture("u_EmissiveTexture", 4, textures[mat.emissiveTexture.textureInfo.idx].textureHandle);
-                shader.setBool("u_HasEmissiveTexture", true);
+                bindTexture(shader, "u_EmissiveTexture", 4, &mat->emissiveTexture, mat->emissiveTexture.sampler);
+                shader->setBool("u_HasEmissiveTexture", true);
         }
         else
         {
-                shader.setBool("u_HasEmissiveTexture", false);
+                shader->setBool("u_HasEmissiveTexture", false);
         }
 
-        // Alpha
-        shader.setFloat("u_AlphaCutoff", mat.alphaCutoff);
+        // --- Alpha ---
+        shader->setFloat("u_AlphaCutoff", mat->alphaCutoff);
 
-        // Set render state based on material
-        if (mat.alphaMode == Material::AlphaMode::BLEND)
+        if (mat->alphaMode == Material::AlphaMode::Blend)
         {
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -203,371 +230,141 @@ void GLModel::bindMaterial(Shader &shader, Material &mat, GLPrimitive &primitive
                 glDisable(GL_BLEND);
         }
 
-        if (mat.doubleSided)
-        {
+        if (mat->doubleSided)
                 glDisable(GL_CULL_FACE);
-        }
         else
-        {
                 glEnable(GL_CULL_FACE);
+}
+
+/** Bind a texture slot and apply its sampler state. */
+void GLModel::bindTexture(Shader *shader, const char *uniformName, int unit, const TextureRef *ref, Index samplerIdx)
+{
+        if (ref->image >= m_textures.size())
+                return;
+
+        GLuint handle = m_textures[ref->image].textureHandle;
+        shader->setTexture(uniformName, unit, handle);
+
+        // Apply sampler wrapping/filtering if one is specified
+        if (samplerIdx != INVALID_INDEX)
+        {
+                const Sampler *sampler = m_model->getSampler(samplerIdx);
+                if (sampler)
+                        m_textures[ref->image].applySampler(sampler);
         }
 }
 
-void GLPrimitive::setupBuffers(Model &model, MeshPrimitive &primitive)
+// ---------------------------------------------------------------------------
+// GLPrimitive
+// ---------------------------------------------------------------------------
+
+void GLPrimitive::setupBuffers(const MeshPrimitive &prim)
 {
-        // Check if we have vertices
-        if (primitive.vertices.empty())
+        if (prim.vertexData.empty())
         {
-                IC_CORE_ERROR("Primitive has no vertices!");
+                IC_CORE_ERROR("GLPrimitive::setupBuffers -> empty vertexData");
                 return;
         }
 
-        size_t vertexCount = primitive.vertices.size();
+        // All layout information is already computed by buildModel() and stored
+        // on the primitive. No first-vertex heuristic needed here.
+        attributeFlags = prim.attributeFlags;
+        vertexStride   = prim.vertexStride;
 
-        // Determine which attributes are present by checking the first vertex
-        attributeFlags = 0;
-        IC_CORE_TRACE("Active vertex attributes:");
+        IC_CORE_TRACE("GLPrimitive: vertices={}, stride={}, flags=0x{:x}, totalBytes={}",
+                      prim.vertexCount,
+                      prim.vertexStride,
+                      prim.attributeFlags,
+                      prim.vertexData.size());
 
-        // Position is always present (we checked vertices.empty() above)
-        attributeFlags |= ATTRIB_POSITION;
-        IC_CORE_TRACE("  - POSITION");
-
-        // Check first vertex to see what attributes have non-zero/valid data
-        const Vertex &firstVert = primitive.vertices[0];
-
-        // Check if normals are present (non-zero normal indicates it's present)
-        if (glm::length(firstVert.normal) > 0.0f)
-        {
-                IC_CORE_TRACE("  - NORMAL");
-                attributeFlags |= ATTRIB_NORMAL;
-        }
-
-        // Check UVs
-        if (firstVert.uv0 != glm::vec2(0.0f))
-        {
-                IC_CORE_TRACE("  - TEXCOORD0");
-                attributeFlags |= ATTRIB_TEXCOORD0;
-        }
-
-        if (firstVert.uv1 != glm::vec2(0.0f))
-        {
-                IC_CORE_TRACE("  - TEXCOORD1");
-                attributeFlags |= ATTRIB_TEXCOORD1;
-        }
-
-        if (firstVert.uv2 != glm::vec2(0.0f))
-        {
-                IC_CORE_TRACE("  - TEXCOORD2");
-                attributeFlags |= ATTRIB_TEXCOORD2;
-        }
-
-        // Check color
-        if (firstVert.color != glm::vec4(0.0f))
-        {
-                IC_CORE_TRACE("  - COLOR");
-                attributeFlags |= ATTRIB_COLOR;
-        }
-
-        // Check tangent
-        if (glm::length(glm::vec3(firstVert.tangent)) > 0.0f)
-        {
-                IC_CORE_TRACE("  - TANGENT");
-                attributeFlags |= ATTRIB_TANGENT;
-        }
-
-        // Check skinning data
-        if (firstVert.joint0 != glm::uvec4(0))
-        {
-                IC_CORE_TRACE("  - JOINTS");
-                attributeFlags |= ATTRIB_JOINTS;
-        }
-
-        if (glm::length(firstVert.weight0) > 0.0f)
-        {
-                IC_CORE_TRACE("  - WEIGHTS");
-                attributeFlags |= ATTRIB_WEIGHTS;
-        }
-
-        // Calculate vertex stride based on present attributes
-        vertexStride = calculateStride(attributeFlags);
-
-        // Allocate interleaved vertex buffer
-        std::vector<uint8_t> vertexBuffer(vertexCount * vertexStride, 0);
-
-        // Pack vertices into interleaved format
-        for (size_t i = 0; i < vertexCount; ++i)
-        {
-                const Vertex &vert = primitive.vertices[i];
-                uint8_t *dst       = vertexBuffer.data() + i * vertexStride;
-                size_t offset      = 0;
-
-                // Write each attribute that's present
-                if (attributeFlags & ATTRIB_POSITION)
-                {
-                        memcpy(dst + offset, &vert.pos, sizeof(glm::vec3));
-                        offset += sizeof(glm::vec3);
-                }
-
-                if (attributeFlags & ATTRIB_NORMAL)
-                {
-                        memcpy(dst + offset, &vert.normal, sizeof(glm::vec3));
-                        offset += sizeof(glm::vec3);
-                }
-
-                if (attributeFlags & ATTRIB_TANGENT)
-                {
-                        memcpy(dst + offset, &vert.tangent, sizeof(glm::vec4));
-                        offset += sizeof(glm::vec4);
-                }
-
-                if (attributeFlags & ATTRIB_TEXCOORD0)
-                {
-                        memcpy(dst + offset, &vert.uv0, sizeof(glm::vec2));
-                        offset += sizeof(glm::vec2);
-                }
-
-                if (attributeFlags & ATTRIB_TEXCOORD1)
-                {
-                        memcpy(dst + offset, &vert.uv1, sizeof(glm::vec2));
-                        offset += sizeof(glm::vec2);
-                }
-
-                if (attributeFlags & ATTRIB_TEXCOORD2)
-                {
-                        memcpy(dst + offset, &vert.uv2, sizeof(glm::vec2));
-                        offset += sizeof(glm::vec2);
-                }
-
-                if (attributeFlags & ATTRIB_COLOR)
-                {
-                        memcpy(dst + offset, &vert.color, sizeof(glm::vec4));
-                        offset += sizeof(glm::vec4);
-                }
-
-                if (attributeFlags & ATTRIB_JOINTS)
-                {
-                        memcpy(dst + offset, &vert.joint0, sizeof(glm::uvec4));
-                        offset += sizeof(glm::uvec4);
-                }
-
-                if (attributeFlags & ATTRIB_WEIGHTS)
-                {
-                        memcpy(dst + offset, &vert.weight0, sizeof(glm::vec4));
-                        offset += sizeof(glm::vec4);
-                }
-        }
-
-        // Create OpenGL buffers
+        // Create and upload VBO
         glCreateVertexArrays(1, &VAO);
         glCreateBuffers(1, &VBO);
+        glNamedBufferData(VBO, static_cast<GLsizeiptr>(prim.vertexData.size()), prim.vertexData.data(), GL_STATIC_DRAW);
 
-        // Upload vertex data
-        glNamedBufferData(VBO, vertexBuffer.size(), vertexBuffer.data(), GL_STATIC_DRAW);
-
-        IC_CORE_TRACE("Uploading VBO: vertices={}, stride={}, totalBytes={}",
-                      vertexCount,
-                      vertexStride,
-                      vertexBuffer.size());
-
-        // Upload index data if present
-        if (!primitive.indices.empty())
+        // Create and upload EBO
+        if (!prim.indices.empty())
         {
                 glCreateBuffers(1, &EBO);
                 glNamedBufferData(EBO,
-                                  primitive.indices.size() * sizeof(uint32_t),
-                                  primitive.indices.data(),
+                                  static_cast<GLsizeiptr>(prim.indices.size() * sizeof(uint32_t)),
+                                  prim.indices.data(),
                                   GL_STATIC_DRAW);
                 glVertexArrayElementBuffer(VAO, EBO);
 
-                IC_CORE_TRACE("Uploading EBO: indices={}, indexType=GL_UNSIGNED_INT, totalBytes={}",
-                              primitive.indices.size(),
-                              primitive.indices.size() * sizeof(uint32_t));
-
                 indexType  = GL_UNSIGNED_INT;
-                draw.count = static_cast<uint32_t>(primitive.indices.size());
+                draw.count = static_cast<uint32_t>(prim.indices.size());
         }
         else
         {
                 EBO        = 0;
-                draw.count = static_cast<uint32_t>(vertexCount);
+                draw.count = prim.vertexCount;
         }
 
-        // Setup vertex attributes
-        glVertexArrayVertexBuffer(VAO, 0, VBO, 0, vertexStride);
+        // Bind VBO to binding point 0 with the known stride
+        glVertexArrayVertexBuffer(VAO, 0, VBO, 0, static_cast<GLsizei>(vertexStride));
+
         setupVertexAttributes();
 
-        // Setup draw command
         draw.instanceCount = 1;
         draw.firstIndex    = 0;
         draw.baseVertex    = 0;
         draw.baseInstance  = 0;
 
-        IC_CORE_TRACE("==== Primitive Layout ====");
-        IC_CORE_TRACE("VAO: {}", VAO);
-        IC_CORE_TRACE("VBO: {}", VBO);
-        IC_CORE_TRACE("EBO: {}", EBO);
-        IC_CORE_TRACE("Vertex stride: {}", vertexStride);
-        IC_CORE_TRACE("Vertex count: {}", vertexCount);
-        IC_CORE_TRACE("Index count: {}", draw.count);
-        IC_CORE_TRACE("==========================");
+        IC_CORE_TRACE("GLPrimitive: VAO={} VBO={} EBO={} indices={}", VAO, VBO, EBO, draw.count);
 }
 
 void GLPrimitive::setupVertexAttributes()
 {
-        GLuint attribIndex = 0;
+        // Attribute layout must match the packing order in model_builder.cpp::packVertices().
+        // Order: POSITION, NORMAL, TANGENT, TEXCOORD0, TEXCOORD1, TEXCOORD2, COLOR, JOINTS, WEIGHTS
 
-        if (attributeFlags & ATTRIB_POSITION)
-        {
-                glEnableVertexArrayAttrib(VAO, attribIndex);
-                glVertexArrayAttribFormat(
-                    VAO, attribIndex, 3, GL_FLOAT, GL_FALSE, getAttributeOffset(attributeFlags, ATTRIB_POSITION));
-                glVertexArrayAttribBinding(VAO, attribIndex, 0);
-                attribIndex++;
-        }
+        GLuint attrib = 0;
+        GLuint offset = 0;
 
-        if (attributeFlags & ATTRIB_NORMAL)
+        auto enableAttrib =
+            [&](VertexAttributeFlags flag, GLint components, GLenum type, GLboolean normalized, GLuint sz)
         {
-                glEnableVertexArrayAttrib(VAO, attribIndex);
-                glVertexArrayAttribFormat(
-                    VAO, attribIndex, 3, GL_FLOAT, GL_FALSE, getAttributeOffset(attributeFlags, ATTRIB_NORMAL));
-                glVertexArrayAttribBinding(VAO, attribIndex, 0);
-                attribIndex++;
-        }
+                if (!(attributeFlags & flag))
+                        return;
+                glEnableVertexArrayAttrib(VAO, attrib);
+                if (type == GL_UNSIGNED_INT)
+                        glVertexArrayAttribIFormat(VAO, attrib, components, type, offset);
+                else
+                        glVertexArrayAttribFormat(VAO, attrib, components, type, normalized, offset);
+                glVertexArrayAttribBinding(VAO, attrib, 0);
+                offset += sz;
+                attrib++;
+        };
 
-        if (attributeFlags & ATTRIB_TEXCOORD0)
-        {
-                glEnableVertexArrayAttrib(VAO, attribIndex);
-                glVertexArrayAttribFormat(
-                    VAO, attribIndex, 2, GL_FLOAT, GL_FALSE, getAttributeOffset(attributeFlags, ATTRIB_TEXCOORD0));
-                glVertexArrayAttribBinding(VAO, attribIndex, 0);
-                attribIndex++;
-        }
-
-        if (attributeFlags & ATTRIB_TEXCOORD1)
-        {
-                glEnableVertexArrayAttrib(VAO, attribIndex);
-                glVertexArrayAttribFormat(
-                    VAO, attribIndex, 2, GL_FLOAT, GL_FALSE, getAttributeOffset(attributeFlags, ATTRIB_TEXCOORD1));
-                glVertexArrayAttribBinding(VAO, attribIndex, 0);
-                attribIndex++;
-        }
-
-        if (attributeFlags & ATTRIB_TEXCOORD2)
-        {
-                glEnableVertexArrayAttrib(VAO, attribIndex);
-                glVertexArrayAttribFormat(
-                    VAO, attribIndex, 2, GL_FLOAT, GL_FALSE, getAttributeOffset(attributeFlags, ATTRIB_TEXCOORD2));
-                glVertexArrayAttribBinding(VAO, attribIndex, 0);
-                attribIndex++;
-        }
-
-        if (attributeFlags & ATTRIB_COLOR)
-        {
-                glEnableVertexArrayAttrib(VAO, attribIndex);
-                glVertexArrayAttribFormat(
-                    VAO, attribIndex, 4, GL_FLOAT, GL_FALSE, getAttributeOffset(attributeFlags, ATTRIB_COLOR));
-                glVertexArrayAttribBinding(VAO, attribIndex, 0);
-                attribIndex++;
-        }
-
-        if (attributeFlags & ATTRIB_TANGENT)
-        {
-                glEnableVertexArrayAttrib(VAO, attribIndex);
-                glVertexArrayAttribFormat(
-                    VAO, attribIndex, 4, GL_FLOAT, GL_FALSE, getAttributeOffset(attributeFlags, ATTRIB_TANGENT));
-                glVertexArrayAttribBinding(VAO, attribIndex, 0);
-                attribIndex++;
-        }
-
-        if (attributeFlags & ATTRIB_JOINTS)
-        {
-                glEnableVertexArrayAttrib(VAO, attribIndex);
-                glVertexArrayAttribIFormat(
-                    VAO, attribIndex, 4, GL_UNSIGNED_INT, getAttributeOffset(attributeFlags, ATTRIB_JOINTS));
-                glVertexArrayAttribBinding(VAO, attribIndex, 0);
-                attribIndex++;
-        }
-
-        if (attributeFlags & ATTRIB_WEIGHTS)
-        {
-                glEnableVertexArrayAttrib(VAO, attribIndex);
-                glVertexArrayAttribFormat(
-                    VAO, attribIndex, 4, GL_FLOAT, GL_FALSE, getAttributeOffset(attributeFlags, ATTRIB_WEIGHTS));
-                glVertexArrayAttribBinding(VAO, attribIndex, 0);
-                attribIndex++;
-        }
+        enableAttrib(ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3));
+        enableAttrib(ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3));
+        enableAttrib(ATTRIB_TANGENT, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4));
+        enableAttrib(ATTRIB_TEXCOORD0, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2));
+        enableAttrib(ATTRIB_TEXCOORD1, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2));
+        enableAttrib(ATTRIB_TEXCOORD2, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2));
+        enableAttrib(ATTRIB_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4));
+        enableAttrib(ATTRIB_JOINTS, 4, GL_UNSIGNED_INT, GL_FALSE, sizeof(glm::uvec4));
+        enableAttrib(ATTRIB_WEIGHTS, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4));
 }
 
-size_t GLPrimitive::calculateStride(uint32_t flags)
+void GLPrimitive::destroy()
 {
-        size_t stride = 0;
-
-        if (flags & ATTRIB_POSITION)
-                stride += sizeof(glm::vec3);
-        if (flags & ATTRIB_NORMAL)
-                stride += sizeof(glm::vec3);
-        if (flags & ATTRIB_TEXCOORD0)
-                stride += sizeof(glm::vec2);
-        if (flags & ATTRIB_TEXCOORD1)
-                stride += sizeof(glm::vec2);
-        if (flags & ATTRIB_TEXCOORD2)
-                stride += sizeof(glm::vec2);
-        if (flags & ATTRIB_COLOR)
-                stride += sizeof(glm::vec4);
-        if (flags & ATTRIB_TANGENT)
-                stride += sizeof(glm::vec4);
-        if (flags & ATTRIB_JOINTS)
-                stride += sizeof(glm::uvec4);
-        if (flags & ATTRIB_WEIGHTS)
-                stride += sizeof(glm::vec4);
-
-        return stride;
-}
-
-size_t GLPrimitive::getAttributeOffset(uint32_t flags, VertexAttributeFlags attrib)
-{
-        size_t offset = 0;
-
-        // Calculate offset by summing sizes of attributes that come before
-        if (attrib == ATTRIB_POSITION)
-                return 0;
-        if (flags & ATTRIB_POSITION)
-                offset += sizeof(glm::vec3);
-
-        if (attrib == ATTRIB_NORMAL)
-                return offset;
-        if (flags & ATTRIB_NORMAL)
-                offset += sizeof(glm::vec3);
-
-        if (attrib == ATTRIB_TANGENT)
-                return offset;
-        if (flags & ATTRIB_TANGENT)
-                offset += sizeof(glm::vec4);
-
-        if (attrib == ATTRIB_TEXCOORD0)
-                return offset;
-        if (flags & ATTRIB_TEXCOORD0)
-                offset += sizeof(glm::vec2);
-
-        if (attrib == ATTRIB_TEXCOORD1)
-                return offset;
-        if (flags & ATTRIB_TEXCOORD1)
-                offset += sizeof(glm::vec2);
-
-        if (attrib == ATTRIB_COLOR)
-                return offset;
-        if (flags & ATTRIB_COLOR)
-                offset += sizeof(glm::vec4);
-
-        if (attrib == ATTRIB_JOINTS)
-                return offset;
-        if (flags & ATTRIB_JOINTS)
-                offset += sizeof(glm::uvec4);
-
-        if (attrib == ATTRIB_WEIGHTS)
-                return offset;
-
-        return offset;
+        if (VAO)
+        {
+                glDeleteVertexArrays(1, &VAO);
+                VAO = 0;
+        }
+        if (VBO)
+        {
+                glDeleteBuffers(1, &VBO);
+                VBO = 0;
+        }
+        if (EBO)
+        {
+                glDeleteBuffers(1, &EBO);
+                EBO = 0;
+        }
 }
 
 }  // namespace ic

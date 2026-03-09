@@ -1,46 +1,102 @@
 #include "renderer/opengl/opengl_renderer.h"
+#include "renderer/opengl/gl_debug.h"
+#include "core/assets/asset_manager.h"
+#include "core/application.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "renderer/opengl/gl_debug.h"
-#include "core/assets/types/asset_base.h"
-#include "core/assets/asset_manager.h"
-#include "renderer/scene.h"
+/**
+ * opengl_renderer.cpp
+ *
+ * TODO:
+ * 1. Fix the new refactored pipeline base renderer with the asset manager
+ * 2. Lighting system with proper things inplace
+ * 3. UI system both for Editor and Application
+ *
+ */
 
 namespace ic
 {
 
-// ------------------------------------------------------------
-// Resize
-// ------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Constructor / Destructor
+// ---------------------------------------------------------------------------
 
-bool OpenGLRenderer::onWindowResize(WindowResizedEvent &e)
+OpenGLRenderer::OpenGLRenderer() : m_window(nullptr), m_scene(nullptr) {}
+
+OpenGLRenderer::~OpenGLRenderer()
 {
-        unsigned int width  = e.getWidth();
-        unsigned int height = e.getHeight();
+        // cleanUp() should be called explicitly before destruction,
+        // but guard here in case it wasn't.
+        if (!m_gpuCache.empty())
+                cleanUp();
+}
 
-        if (width == 0 || height == 0)
+// ---------------------------------------------------------------------------
+// IRenderer::init
+// ---------------------------------------------------------------------------
+
+bool OpenGLRenderer::init(Window *w)
+{
+        IC_CORE_ASSERT(w, "OpenGLRenderer::init -> null window");
+        m_window = w;
+
+        glfwMakeContextCurrent(static_cast<GLFWwindow *>(m_window->getNativeWindow()));
+
+        if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
         {
-                m_IsMinimized = true;
+                IC_CORE_ERROR("OpenGLRenderer: failed to initialize GLAD");
                 return false;
         }
 
-        m_IsMinimized = false;
+        IC_CORE_INFO("GL Vendor:   {}", reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
+        IC_CORE_INFO("GL Renderer: {}", reinterpret_cast<const char *>(glGetString(GL_RENDERER)));
+        IC_CORE_INFO("GL Version:  {}", reinterpret_cast<const char *>(glGetString(GL_VERSION)));
 
-        glViewport(0, 0, width, height);
+#if defined(DEBUG) || defined(_DEBUG)
+        {
+                int flags = 0;
+                glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+                if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
+                        ic::gl::debug::setDebugOutput();
+        }
+#endif
 
-        if (m_scene)
-                m_scene->camera.updateAspectRatio((float)((float)(width) / (float)height));
+        glViewport(0, 0, static_cast<GLsizei>(m_window->getWidth()), static_cast<GLsizei>(m_window->getHeight()));
 
-        IC_CORE_TRACE("Window Resized to: {0}x{1}", width, height);
+        enableFeatures();
+        createShader();
 
-        return false;
+        // Asset loading and GPU upload require a scene to be set.
+        // If no scene is set yet these are no-ops; call setupBuffers()
+        // again after setScene() if needed.
+        loadAssets();
+        setupBuffers();
+
+        IC_CORE_INFO("OpenGLRenderer: initialized");
+        return true;
 }
 
-// ------------------------------------------------------------
-// Setup
-// ------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// IRenderer::setScene
+// ---------------------------------------------------------------------------
+
+void OpenGLRenderer::setScene(ICScene *scene)
+{
+        m_scene = scene;
+
+        // If the renderer is already initialized, load and upload the new scene.
+        if (m_window)
+        {
+                loadAssets();
+                setupBuffers();
+        }
+}
+
+// ---------------------------------------------------------------------------
+// Init helpers
+// ---------------------------------------------------------------------------
 
 void OpenGLRenderer::enableFeatures()
 {
@@ -52,41 +108,26 @@ void OpenGLRenderer::enableFeatures()
 
 void OpenGLRenderer::createShader()
 {
-        shader = std::make_unique<Shader>("shaders/opengl/modelShader.vs", "shaders/opengl/modelShader.fs");
+        m_shader = new Shader("shaders/opengl/modelShader.vs", "shaders/opengl/modelShader.fs");
 }
 
-bool OpenGLRenderer::init(Window *w)
+void OpenGLRenderer::loadAssets()
 {
-        m_window = w;
-        // TODO: Put the glfw stuff in the window class
-        glfwMakeContextCurrent((GLFWwindow *)m_window->getNativeWindow());
+        if (!m_scene)
+                return;
 
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+        for (const auto &node : m_scene->nodes)
         {
-                IC_CORE_ERROR("Failed to initialize GLAD");
-                return false;
+                if (node.modelPath.empty())
+                {
+                        IC_CORE_WARN("OpenGLRenderer::loadAssets -> node has no modelPath, skipping");
+                        continue;
+                }
+
+                Model *model = AssetManager::Get()->loadAs<Model>(node.modelID);
+                if (!model)
+                        IC_CORE_WARN("OpenGLRenderer::loadAssets -> failed to load model '{}'", node.modelPath);
         }
-
-        IC_CORE_INFO("Vendor:   {}", (const char *)glGetString(GL_VENDOR));
-        IC_CORE_INFO("Renderer: {}", (const char *)glGetString(GL_RENDERER));
-        IC_CORE_INFO("Version:  {}", (const char *)glGetString(GL_VERSION));
-
-#if defined(DEBUG) || defined(_DEBUG)
-        int flags;
-        glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-        if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
-                ic::gl::debug::setDebugOutput();
-#endif
-
-        glViewport(0, 0, m_window->getWidth(), m_window->getHeight());
-
-        loadAssets();
-        setupBuffers();
-        enableFeatures();
-        createShader();
-
-        IC_CORE_INFO("Initialized OpenGL!");
-        return true;
 }
 
 void OpenGLRenderer::setupBuffers()
@@ -97,105 +138,91 @@ void OpenGLRenderer::setupBuffers()
         for (const auto &node : m_scene->nodes)
         {
                 GUID id = node.modelID;
-                IC_CORE_TRACE("Model ID: {}", id);
 
-                if (m_gpuCache.find(id) != m_gpuCache.end())
+                // Skip if already uploaded
+                if (m_gpuCache.count(id))
                         continue;
 
-                Model *model = AssetManager::Get()->getAsset<Model>(id);
-                if (!model)
-                        continue;
-
-                GLModel *gpu_model = new GLModel();
-                gpu_model->upload(*model);
-
-                m_gpuCache[id] = gpu_model;
-
-                IC_CORE_INFO("Uploaded model {} to GPU", id);
+                uploadModel(id);
         }
 }
 
-void OpenGLRenderer::loadAssets()
+GLModel *OpenGLRenderer::uploadModel(GUID id)
 {
-        if (!m_scene)
-                return;
-
-        for (const auto &node : m_scene->nodes)
+        Model *model = AssetManager::Get()->getAsset<Model>(id);
+        if (!model)
         {
-                GUID id = node.modelID;
-
-                // Force load into AssetManager if not already loaded
-                Model *model = AssetManager::Get()->loadAs<Model>(id);
-
-                if (!model)
-                        IC_CORE_WARN("Failed to load model {}", id);
+                IC_CORE_WARN("OpenGLRenderer::uploadModel -> model {} not in AssetManager", id);
+                return nullptr;
         }
+
+        if (!model->isCPUReady())
+        {
+                IC_CORE_WARN("OpenGLRenderer::uploadModel -> model {} not CPUReady (state={})",
+                             id,
+                             static_cast<int>(model->getState()));
+                return nullptr;
+        }
+
+        auto glModel = std::make_unique<GLModel>();
+        glModel->upload(*model);
+
+        GLModel *raw = glModel.get();
+        m_gpuCache.emplace(id, std::move(glModel));
+
+        IC_CORE_INFO("OpenGLRenderer: uploaded model {} to GPU", id);
+        return raw;
 }
 
-// ------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Per-frame
-// ------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
-void OpenGLRenderer::update(float deltaTime)
+void OpenGLRenderer::renderFrame(float dt)
+{
+        update(dt);
+        draw(dt);
+}
+
+void OpenGLRenderer::update(float dt)
 {
         if (m_scene)
-                m_scene->camera.onUpdate(deltaTime);
+                m_scene->camera.onUpdate(dt);
 }
 
-void OpenGLRenderer::draw(float deltaTime)
+void OpenGLRenderer::draw(float dt)
 {
-        if (m_IsMinimized || !m_scene)
+        (void)dt;
+
+        if (m_isMinimized || !m_scene || !m_shader)
                 return;
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        update(deltaTime);
+        m_shader->use();
+        m_shader->setMat4("u_projection", m_scene->camera.projection);
+        m_shader->setMat4("u_view", m_scene->camera.matrices.view);
 
-        shader->use();
-
-        shader->setMat4("u_projection", m_scene->camera.projection);
-        shader->setMat4("u_view", m_scene->camera.matrices.view);
-
-        // Render all scene objects
-        for (auto &node : m_scene->nodes)
+        for (const auto &node : m_scene->nodes)
         {
-                GUID id      = node.modelID;
-                Model *model = AssetManager::Get()->getAsset<Model>(id);
-                if (!model)
-                {
-                        IC_CORE_WARN("Model {} not loaded", id);
-                        continue;
-                }
+                GUID id = node.modelID;
 
-                // Upload to GPU if not cached
                 auto it = m_gpuCache.find(id);
                 if (it == m_gpuCache.end())
                 {
-                        GLModel *gpu_model = new GLModel();
-                        gpu_model->upload(*model);
-                        m_gpuCache[id] = gpu_model;
-                        it             = m_gpuCache.find(id);
+                        IC_CORE_WARN("OpenGLRenderer::draw -> model {} not in GPU cache, skipping", id);
+                        continue;
                 }
 
-                shader->setMat4("u_model", node.transform);
-
-                it->second->draw(*shader);
+                m_shader->setMat4("u_model", node.transform);
+                it->second->draw(m_shader);
         }
 }
 
-void OpenGLRenderer::renderFrame(float dt)
-{
-        // START FRAME
-
-        update(dt);
-        draw(dt);
-
-        // END FRAME
-}
-// ------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Events
-// ------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 void OpenGLRenderer::onEvent(event &e)
 {
@@ -206,31 +233,48 @@ void OpenGLRenderer::onEvent(event &e)
         dispatcher.dispatch<WindowResizedEvent>(BIND_EVENT(OpenGLRenderer::onWindowResize));
 }
 
-// ------------------------------------------------------------
+bool OpenGLRenderer::onWindowResize(WindowResizedEvent &e)
+{
+        const unsigned int w = e.getWidth();
+        const unsigned int h = e.getHeight();
+
+        if (w == 0 || h == 0)
+        {
+                m_isMinimized = true;
+                return false;
+        }
+
+        m_isMinimized = false;
+        glViewport(0, 0, static_cast<GLsizei>(w), static_cast<GLsizei>(h));
+
+        IC_CORE_TRACE("OpenGLRenderer: window resized to {}x{}", w, h);
+        return false;
+}
+
+// ---------------------------------------------------------------------------
 // Cleanup
-// ------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
 void OpenGLRenderer::cleanUp()
 {
-        for (auto &[id, cache] : m_gpuCache)
-        {
-                cache->clearGPUMemory();
-                delete cache;
-        }
+        // unique_ptr calls GLModel destructor, which should call clearGPUMemory().
+        // If GLModel doesn't have a destructor doing that, add one.
+        for (auto &[id, glModel] : m_gpuCache)
+                glModel->clearGPUMemory();
+
         m_gpuCache.clear();
+        delete m_shader;
+        m_shader = nullptr;
 }
-
-// ------------------------------------------------------------
-// Constructor / Destructor
-// ------------------------------------------------------------
-
-OpenGLRenderer::OpenGLRenderer() : m_window(nullptr), m_scene(nullptr) {}
-
-OpenGLRenderer::~OpenGLRenderer() {}
 
 }  // namespace ic
 
-void ic_set_scene(Scene *scene)
+// ---------------------------------------------------------------------------
+// C-linkage scene setter -> allows script/C layers to set the scene without
+// pulling in C++ renderer headers.
+// ---------------------------------------------------------------------------
+
+extern "C" void ic_set_scene(ICScene *scene)
 {
         ic::Application::get().getRenderer()->setScene(scene);
 }

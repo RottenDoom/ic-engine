@@ -10,13 +10,13 @@ set(CORE_SRC
     input.cpp
     logger.cpp
     allocator.cpp
-    gltf_loader.cpp
     assets/types/model.cpp
     assets/types/material.cpp
     assets/asset_cache.cpp
     assets/asset_manager.cpp
     assets/asset_registry.cpp
     assets/asset_serializer.cpp
+    assets/asset_loaders/gltf_loader.cpp
 )
 
 add_library(engine-core OBJECT ${CORE_SRC})

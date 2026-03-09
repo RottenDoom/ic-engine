@@ -34,7 +34,7 @@ struct Buffer
         std::vector<uint8_t> data;
 };
 
-/** Describes a slice of a Buffer — maps to a GLTF bufferView */
+/** Describes a slice of a Buffer -> maps to a GLTF bufferView */
 struct BufferView
 {
         Index       bufferIndex = INVALID_INDEX;
@@ -82,7 +82,7 @@ struct Accessor
 };
 
 // ---------------------------------------------------------------------------
-// Per-vertex data — used only during geometry extraction in GLTFLoader
+// Per-vertex data -> used only during geometry extraction in GLTFLoader
 // ---------------------------------------------------------------------------
 
 struct Vertex
@@ -99,7 +99,7 @@ struct Vertex
 };
 
 // ---------------------------------------------------------------------------
-// Accessor index cache — one per MeshPrimitive, used during processMeshGeometry
+// Accessor index cache -> one per MeshPrimitive, used during processMeshGeometry
 // Cleared after geometry extraction is complete.
 // ---------------------------------------------------------------------------
 
@@ -213,7 +213,7 @@ struct SamplerImportData
 
 // ---------------------------------------------------------------------------
 // TextureImportData
-// Thin index pair — just links an image to a sampler.
+// Thin index pair -> just links an image to a sampler.
 // ---------------------------------------------------------------------------
 
 struct TextureImportData
@@ -282,7 +282,7 @@ struct MaterialImportData
 // ---------------------------------------------------------------------------
 // NodeImportData
 // Scene graph node. Stores both TRS components and the computed local matrix.
-// worldTransform is NOT computed here — that is ModelBuilder's job.
+// worldTransform is NOT computed here -> that is ModelBuilder's job.
 // ---------------------------------------------------------------------------
 
 struct NodeImportData
@@ -340,7 +340,7 @@ struct CameraImportData
 // ---------------------------------------------------------------------------
 // SkinImportData
 // Joint indices reference the nodes array. inverseBindMatrices are already
-// decoded from the accessor by the loader — no Accessor index stored here.
+// decoded from the accessor by the loader -> no Accessor index stored here.
 // ---------------------------------------------------------------------------
 
 struct SkinImportData
@@ -354,7 +354,7 @@ struct SkinImportData
 // ---------------------------------------------------------------------------
 // AnimationImportData
 // Keyframe data is fully decoded from accessors into plain float vectors.
-// The loader resolves all accessor indirection here — no accessor indices
+// The loader resolves all accessor indirection here -> no accessor indices
 // escape into AnimationImportData.
 // ---------------------------------------------------------------------------
 
@@ -406,12 +406,12 @@ struct SceneImportData
 };
 
 // ---------------------------------------------------------------------------
-// ModelImportData — top-level container produced by IModelLoader
+// ModelImportData -> top-level container produced by IModelLoader
 //
 // Lifecycle:
 //   1. GLTFLoader fills this entirely (including buffer intermediates)
 //   2. ModelBuilder consumes it via std::move to produce a runtime Model
-//   3. This struct is destroyed — nothing escapes into the runtime
+//   3. This struct is destroyed -> nothing escapes into the runtime
 // ---------------------------------------------------------------------------
 
 struct ModelImportData
@@ -429,9 +429,9 @@ struct ModelImportData
         std::vector<SceneImportData>     scenes;
 
         Index       defaultScene = INVALID_INDEX;
-        std::string sourceFormat;  // "gltf", "obj", "fbx" — informational only
+        std::string sourceFormat;  // "gltf", "obj", "fbx" -> informational only
 
-        // GLTF buffer intermediates — only valid during loading, cleared after
+        // GLTF buffer intermediates -> only valid during loading, cleared after
         // processMeshGeometry() completes. Do NOT access these after ModelImportData
         // is handed to ModelBuilder.
         std::vector<Buffer>     buffers;

@@ -381,11 +381,12 @@ char *fs_getParentPath(const char *path)
 //
 char *fs_getfullpath(const char *filename)
 {
-        char full[FS_MAX_PATH];
+        char *full = (char *)ic_malloc(FS_MAX_PATH);
         if (resolve(filename, full, FS_MAX_PATH))
         {
                 if (__platformFileExists(full))
                 {
+                        // TODO: local address return fix this
                         return full;
                 }
         }
@@ -407,6 +408,35 @@ char *fs_getfullpath(const char *filename)
 
         /** TODO: Better error handling. */
         return nullptr;
+}
+
+const char *fs_getExtension(const char *path)
+{
+        // filepath assumes the extension contains .ext
+        // if no extension like linux executables this returns nullptr and an error (fix for panic later)
+
+        if (!path)
+                return NULL;
+
+        const char *last_dot  = strrchr(path, '.');
+        const char *last_sep1 = strrchr(path, '/');
+        const char *last_sep2 = strrchr(path, '\\');
+
+        const char *last_sep = last_sep1 > last_sep2 ? last_sep1 : last_sep2;
+
+        /* No dot found */
+        if (!last_dot)
+                return NULL;
+
+        /* Dot occurs before a directory separator → not an extension */
+        if (last_sep && last_dot < last_sep)
+                return NULL;
+
+        /* Dot is the first character of filename (.gitignore case) */
+        if (last_dot == path || *(last_dot + 1) == '\0')
+                return NULL;
+
+        return last_dot + 1;
 }
 
 // imp
@@ -697,7 +727,7 @@ const void *fs_read_mmap(File *file, MmapHint hint)
         return file->mmap.data;
 }
 
-// map only a region — useful for streaming large assets in chunks
+// map only a region -> useful for streaming large assets in chunks
 // offset must be aligned to ic_mmap_page_size()
 const void *fs_read_mmap_range(File *file, uint64_t offset, size_t size, MmapHint hint)
 {

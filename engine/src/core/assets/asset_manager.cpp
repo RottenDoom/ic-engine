@@ -6,11 +6,6 @@
 #include "core/assets/asset_registry.h"
 #include "core/assets/asset_serializer.h"
 
-void IAsset::serializeName(ic::Serializer *serializer) const
-{
-        serializer->write<uint16_t>(m_name);
-}
-
 namespace ic
 {
 
@@ -64,10 +59,10 @@ IAsset *AssetManager::load(GUID id)
                 return nullptr;
         }
 
-        AssetType type   = registry_.getAssetType(id);
+        AssetType   type = registry_.getAssetType(id);
         const char *path = registry_.getFilePath(id);
 
-        IAsset *asset    = createAsset(type, id);
+        IAsset *asset = createAsset(type, id);
         if (!asset)
         {
                 IC_CORE_ERROR("Unsupported asset type for {}", id);
@@ -159,6 +154,11 @@ Model *ic_load_model(GUID modelID)
 {
         IC_CORE_INFO("Loading model with ID: {}", modelID);
         return ic::AssetManager::Get()->loadAs<Model>(modelID);
+}
+
+const char *ic_get_model_path(GUID modelID)
+{
+        return ic::AssetManager::Get()->getRegistry()->getFilePath(modelID);
 }
 
 bool ic_render_model(GUID modelID, float *transform4x4)

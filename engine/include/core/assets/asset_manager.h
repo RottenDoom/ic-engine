@@ -26,10 +26,16 @@ public:
         template <typename T>
         T *loadAs(GUID id)
         {
-                return dynamic_cast<T *>(load(id));
+                // THIS DYNAMIC CAST DOESNT WORK
+                return (T *)(load(id));
         }
 
-        void unload(GUID id);
+        template <typename T>
+        T *loadFromPath(const char *filepath)
+        {
+                GUID id;  // TODO: make this work somehow
+                return (T *)(load(id));
+        }
 
         template <typename T>
         T *getAsset(GUID id)
@@ -43,6 +49,8 @@ public:
 
                 return (T *)assets_[id];
         }
+
+        void unload(GUID id);
 
         using InternalIterator = std::unordered_map<GUID, IAsset *>::iterator;
         using Iterator         = MapIterator<InternalIterator, GUID, IAsset *>;
@@ -84,9 +92,10 @@ extern "C"
          * @brief Loads models from asset id. Checks in the registry if it contains the GUID else returns
          * (exception/nothing) for now.
          elID modelID from a registry file.
-
          */
         IC_API Model *ic_load_model(GUID modelId);
+
+        IC_API const char *ic_get_model_path(GUID modelID);
 
         IC_API bool ic_render_model(GUID modelID, float *transform4x4);
 

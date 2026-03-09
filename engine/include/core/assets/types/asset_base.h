@@ -90,7 +90,7 @@ public:
         virtual bool serializedSave(ic::Serializer *serializer) const = 0;
         virtual bool release() { return false; }
 
-        bool isLoaded() const { return loaded; }
+        virtual bool isLoaded() const { return loaded; }
 
         // Identifiable
         GUID        getID() { return _id; }
