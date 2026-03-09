@@ -18,36 +18,68 @@ public:
         static void          Shutdown();
         static AssetManager *Get();
 
-        bool           loadRegistry(const char *registry_file);
-        AssetRegistry *getRegistry();
+        // Non-copyable singleton
+        AssetManager(const AssetManager &)            = delete;
+        AssetManager &operator=(const AssetManager &) = delete;
 
+        ~AssetManager();
+
+        /**
+         * Load by ID. Asset must already be in the registry with a filepath.
+         * If already loaded, just increments refcount and returns cached pointer.
+         * Returns nullptr if the ID is unknown or load fails.
+         */
         IAsset *load(GUID id);
+
+        /**
+         * Load by ID + explicit filepath.
+         * Registers the asset if it isn't already in the registry.
+         * If already loaded, increments refcount and returns cached pointer.
+         * path is used for the first load only — ignored on cache hits.
+         */
+        IAsset *load(GUID id, const char *path, AssetType type = ASSET_TYPE_MODEL);
 
         template <typename T>
         T *loadAs(GUID id)
         {
-                // THIS DYNAMIC CAST DOESNT WORK
-                return (T *)(load(id));
+                IAsset *asset = load(id);
+                if (!asset)
+                        return nullptr;
+                if (asset->getAssetType() != T::getStaticType())
+                {
+                        IC_CORE_ERROR("AssetManager::loadAs — type mismatch for {}", id);
+                        unload(id);  // undo the addRef from load()
+                        return nullptr;
+                }
+                return static_cast<T *>(asset);
         }
 
         template <typename T>
-        T *loadFromPath(const char *filepath)
+        T *loadAs(GUID id, const char *path)
         {
-                GUID id;  // TODO: make this work somehow
-                return (T *)(load(id));
+                IAsset *asset = load(id, path, T::getStaticType());
+                if (!asset)
+                        return nullptr;
+                if (asset->getAssetType() != T::getStaticType())
+                {
+                        IC_CORE_ERROR("AssetManager::loadAs — type mismatch for {}", id);
+                        unload(id);
+                        return nullptr;
+                }
+                return static_cast<T *>(asset);
         }
+
+        IAsset *getAsset(GUID id);
 
         template <typename T>
         T *getAsset(GUID id)
         {
-                auto it = assets_.find(id);
-                if (it == assets_.end())
-                {
-                        IC_CORE_ERROR("Could not find the asset requested for ID: {}", id);
+                IAsset *asset = getAsset(id);
+                if (!asset)
                         return nullptr;
-                }
-
-                return (T *)assets_[id];
+                if (asset->getAssetType() != T::getStaticType())
+                        return nullptr;
+                return static_cast<T *>(asset);
         }
 
         void unload(GUID id);
@@ -55,20 +87,26 @@ public:
         using InternalIterator = std::unordered_map<GUID, IAsset *>::iterator;
         using Iterator         = MapIterator<InternalIterator, GUID, IAsset *>;
 
-        Iterator begin() { return Iterator(assets_.begin()); }
-        Iterator end() { return Iterator(assets_.end()); }
+        Iterator begin() { return Iterator(m_assets.begin()); }
+        Iterator end() { return Iterator(m_assets.end()); }
 
-        ~AssetManager();
+        bool           isLoaded(GUID id) const;
+        AssetRegistry *getRegistry() { return &m_registry; }
+        bool           loadRegistry(const char *path);
 
 private:
-        static AssetManager *s_instance;
-
         AssetManager() = default;
 
-        std::unordered_map<GUID, IAsset *> assets_;
-        AssetRegistry                      registry_;
-
+        /** Allocate and construct an asset of the given type. */
         IAsset *createAsset(AssetType type, GUID id);
+
+        /** Internal destroy — calls destructor + ic_free. */
+        void destroyAsset(IAsset *asset);
+
+        static AssetManager *s_instance;
+
+        std::unordered_map<GUID, IAsset *> m_assets;
+        AssetRegistry                      m_registry;
 };
 
 }  // namespace ic
@@ -77,8 +115,6 @@ private:
 extern "C"
 {
 #endif
-        typedef class Model Model;
-
         /** @function ic_load_registry
          * @category assets
          * @brief Loads the registy file from a file path. The registry file is (__/YAML/XML) file which contains
@@ -93,11 +129,9 @@ extern "C"
          * (exception/nothing) for now.
          elID modelID from a registry file.
          */
-        IC_API Model *ic_load_model(GUID modelId);
+        IC_API bool ic_load_model(GUID modelId);
 
         IC_API const char *ic_get_model_path(GUID modelID);
-
-        IC_API bool ic_render_model(GUID modelID, float *transform4x4);
 
         /** @function ic_unload_model
          * @category assets
@@ -105,7 +139,7 @@ extern "C"
          * well
          * @param modelID model id from the registry file.
          */
-        IC_API void ic_unload_model(GUID modelId);
+        IC_API bool ic_unload_model(GUID modelId);
 
 #ifdef __cplusplus
 }

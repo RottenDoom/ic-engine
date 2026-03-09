@@ -60,7 +60,7 @@ void AssetRegistry::parseAssetEntry(const YAML::Node &node)
                 return;
 
         std::string idStr = node["id"].as<std::string>();
-        GUID id           = 0;
+        GUID        id    = 0;
 
         if (idStr.rfind("0x", 0) == 0)
                 id = std::stoull(idStr, nullptr, 16);
@@ -72,7 +72,7 @@ void AssetRegistry::parseAssetEntry(const YAML::Node &node)
         // ---- filepath ----
         std::string relPath = node["filepath"].as<std::string>();
 
-        const char *full    = nullptr;
+        const char *full = nullptr;
         if (!fs_joinPath(relPath.c_str(), assets_folder_.c_str(), &full))
                 return;
 
@@ -96,7 +96,7 @@ void AssetRegistry::parseAssetEntry(const YAML::Node &node)
                 for (auto depNode : node["dependencies"])
                 {
                         std::string depStr = depNode.as<std::string>();
-                        GUID depId         = 0;
+                        GUID        depId  = 0;
 
                         if (depStr.rfind("0x", 0) == 0)
                                 depId = std::stoull(depStr, nullptr, 16);
@@ -199,22 +199,18 @@ const char *AssetRegistry::getCachePath(GUID id) const
         return it->second.cachePath.c_str();
 }
 
-GUID AssetRegistry::registerAsset(const char *file_path, AssetType type)
+GUID AssetRegistry::registerAsset(GUID id, const char *file_path, AssetType type)
 {
-        auto it = ids_.find(file_path);
-        if (it != ids_.end())
-                return it->second;
-
-        GUID newId = UUID++;
 
         AssetMeta meta;
-        meta.filepath   = file_path;
-        meta.type       = type;
+        meta.id       = id;
+        meta.filepath = file_path;
+        meta.type     = type;
 
-        assets_[newId]  = meta;
-        ids_[file_path] = newId;
+        assets_[id]     = meta;
+        ids_[file_path] = id;
 
-        return newId;
+        return id;
 }
 
 void AssetRegistry::registerDependency(GUID id, GUID dependency_id)

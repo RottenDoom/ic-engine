@@ -28,7 +28,7 @@ Application::Application(window_props &properties)
         fs_init();
         AssetManager::Initialize("assets/registry.yaml");
 
-        // TODO: CHANGE THE API BASED ON SOME SWITHC OR BUILD SYSTEM
+        // TODO: Not by build system but by UI systems. This makes application reloads so handle that
         m_renderer = createRenderer(RendererAPI::OpenGL);
         m_renderer->init(m_Window.get());
 

@@ -43,7 +43,7 @@ public:
         const char *getCachePath(GUID id) const;
 
         // Register filepath into the asset registy.
-        GUID registerAsset(const char *file_path, AssetType type);
+        GUID registerAsset(GUID id, const char *file_path, AssetType type);
         void registerDependency(GUID id, GUID dependency_id);
 
         const std::unordered_set<GUID> *getDependencies(GUID id) const;

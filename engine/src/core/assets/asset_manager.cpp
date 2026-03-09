@@ -9,16 +9,30 @@
 namespace ic
 {
 
+static size_t assetSize(AssetType type)
+{
+        switch (type)
+        {
+        case ASSET_TYPE_MODEL:
+                return sizeof(Model);
+        // case ASSET_TYPE_TEXTURE:  return sizeof(Texture);
+        // case ASSET_TYPE_MATERIAL: return sizeof(Material);
+        // case ASSET_TYPE_SHADER:   return sizeof(ShaderAsset);
+        default:
+                IC_CORE_ERROR("assetSize: unknown AssetType {}", static_cast<int>(type));
+                return 0;
+        }
+}
+
 AssetManager *AssetManager::s_instance = nullptr;
 
 void AssetManager::Initialize(const char *registryFile)
 {
-        if (!s_instance)
-        {
-                s_instance = new AssetManager();
-                if (!s_instance->registry_.init(registryFile))
-                        IC_CORE_ERROR("Failed to initialize registry");
-        }
+        IC_CORE_ASSERT(!s_instance, "AssetManager::Initialize called twice");
+        s_instance = new AssetManager();
+
+        if (registryFile && !s_instance->m_registry.init(registryFile))
+                IC_CORE_WARN("AssetManager: failed to load registry '{}'", registryFile);
 }
 
 void AssetManager::Shutdown()
@@ -29,145 +43,198 @@ void AssetManager::Shutdown()
 
 AssetManager *AssetManager::Get()
 {
+        IC_CORE_ASSERT(s_instance, "AssetManager not initialized — call Initialize() first");
         return s_instance;
 }
 
 AssetManager::~AssetManager()
 {
-        for (auto [k, v] : assets_)
+        // Force-destroy all remaining assets regardless of refcount.
+        // This is the shutdown path — no callers remain.
+        for (auto &[id, asset] : m_assets)
         {
-                if (v->isLoaded())
-                {
-                        unload(k);
-                }
+                IC_CORE_TRACE("AssetManager: force-destroying asset {} at shutdown", id);
+                destroyAsset(asset);
         }
+        m_assets.clear();
 }
 
 IAsset *AssetManager::load(GUID id)
 {
-        // Already loaded?
-        auto it = assets_.find(id);
-        if (it != assets_.end())
+        // --- Cache hit: already loaded, just bump refcount ---
+        auto it = m_assets.find(id);
+        if (it != m_assets.end())
         {
                 it->second->addRef();
+                IC_CORE_TRACE("AssetManager: cache hit for {} (refCount={})", id, it->second->getRefNum());
                 return it->second;
         }
 
-        if (!registry_.contains(id))
+        // --- Cache miss: must be in registry ---
+        if (!m_registry.contains(id))
         {
-                IC_CORE_WARN("Asset {} not found in registry", id);
+                IC_CORE_WARN("AssetManager::load — asset {} not in registry", id);
                 return nullptr;
         }
 
-        AssetType   type = registry_.getAssetType(id);
-        const char *path = registry_.getFilePath(id);
+        const char *path = m_registry.getFilePath(id);
+        AssetType   type = m_registry.getAssetType(id);
 
+        return load(id, path, type);
+}
+
+IAsset *AssetManager::load(GUID id, const char *path, AssetType type)
+{
+        IC_CORE_ASSERT(path, "AssetManager::load — null path");
+
+        // --- Cache hit ---
+        auto it = m_assets.find(id);
+        if (it != m_assets.end())
+        {
+                it->second->addRef();
+                IC_CORE_TRACE("AssetManager: cache hit for {} (refCount={})", id, it->second->getRefNum());
+                return it->second;
+        }
+
+        // --- Register if not already in registry ---
+        if (!m_registry.contains(id))
+        {
+                m_registry.registerAsset(id, path, type);
+        }
+
+        // --- Construct ---
         IAsset *asset = createAsset(type, id);
         if (!asset)
         {
-                IC_CORE_ERROR("Unsupported asset type for {}", id);
+                IC_CORE_ERROR("AssetManager::load — unsupported asset type {} for id {}", static_cast<int>(type), id);
                 return nullptr;
         }
 
+        // --- Load from disk ---
         if (!asset->load(path))
         {
-                IC_CORE_ERROR("Failed to load asset {} from {}", id, path);
+                IC_CORE_ERROR("AssetManager::load — failed to load '{}' (id={})", path, id);
+                destroyAsset(asset);
                 return nullptr;
         }
 
-        asset->addRef();
+        // --- Cache and addRef ---
+        asset->addRef();  // refCount = 1
+        m_assets[id] = asset;
 
-        IAsset *raw = asset;
-        assets_[id] = asset;
+        IC_CORE_INFO("AssetManager: loaded '{}' (id={}, refCount=1)", path, id);
+        return asset;
+}
 
-        if (assets_.empty())
+IAsset *AssetManager::getAsset(GUID id)
+{
+        auto it = m_assets.find(id);
+        if (it == m_assets.end())
         {
-                IC_CORE_WARN("Assets not registered event though loaded!");
+                IC_CORE_WARN("AssetManager::getAsset — {} not loaded", id);
+                return nullptr;
         }
-
-        IC_CORE_INFO("Loaded asset {}", id);
-
-        return raw;
+        return it->second;
 }
 
 void AssetManager::unload(GUID id)
 {
-        auto it = assets_.find(id);
-        if (it == assets_.end())
-                return;
-
-        if (it->second->release())
+        auto it = m_assets.find(id);
+        if (it == m_assets.end())
         {
-                IC_CORE_INFO("Destroying asset {}", id);
-                it->second->~IAsset();
-                ic_free(it->second);
-                assets_.erase(it);
+                IC_CORE_WARN("AssetManager::unload — {} not in cache", id);
+                return;
+        }
+
+        IAsset *asset = it->second;
+
+        // release() decrements and returns true when refCount hits 0
+        if (asset->release())
+        {
+                IC_CORE_INFO("AssetManager: destroying asset {} (refCount=0)", id);
+                m_assets.erase(it);
+                destroyAsset(asset);
+        }
+        else
+        {
+                IC_CORE_TRACE("AssetManager: unload {} — refCount now {}", id, asset->getRefNum());
         }
 }
 
-bool AssetManager::loadRegistry(const char *registry_file)
+bool AssetManager::isLoaded(GUID id) const
 {
-        return registry_.init(registry_file);
+        auto it = m_assets.find(id);
+        return it != m_assets.end() && it->second->isLoaded();
+}
+
+bool AssetManager::loadRegistry(const char *path)
+{
+        return m_registry.init(path);
 }
 
 IAsset *AssetManager::createAsset(AssetType type, GUID id)
 {
-        // MEM MANAGEMENT OF THIS CLASS
-        void *asset_memory = NULL;
+        void *mem = ic_malloc(assetSize(type));
+        if (!mem)
+        {
+                IC_CORE_ERROR("AssetManager::createAsset — allocation failed for type {}", static_cast<int>(type));
+                return nullptr;
+        }
+
         switch (type)
         {
-        case AssetType::ASSET_TYPE_MODEL:
-                asset_memory = ic_malloc(sizeof(Model));
-                return new (asset_memory) Model(id);
+        case ASSET_TYPE_MODEL:
+                return new (mem) Model(id);
 
-                // case AssetType::ASSET_TYPE_TEXTURE:
-                //     return new Texture(id);
-
-                // case AssetType::ASSET_TYPE_MATERIAL:
-                //     return new Material(id);
-
-                // case AssetType::ASSET_TYPE_SHADER:
-                //     return new Shader(id);
+                // Uncomment as new asset types are added:
+                // case ASSET_TYPE_TEXTURE:  return new (mem) Texture(id);
+                // case ASSET_TYPE_MATERIAL: return new (mem) Material(id);
+                // case ASSET_TYPE_SHADER:   return new (mem) Shader(id);
 
         default:
+                ic_free(mem);
                 return nullptr;
         }
 }
 
-AssetRegistry *AssetManager::getRegistry()
+void AssetManager::destroyAsset(IAsset *asset)
 {
-        return &registry_;  // Instead we can return only the vector to the registry
+        if (!asset)
+                return;
+        // Explicit destructor call required for placement-new objects.
+        asset->~IAsset();
+        ic_free(asset);
 }
 
 }  // namespace ic
 
 void ic_load_registry(const char *registry_file_path)
 {
-        if (!ic::AssetManager::Get()->getRegistry()->init(registry_file_path))
-        {
-                IC_CORE_ERROR("Could not load registry: {}", registry_file_path);
-        }
+        IC_CORE_ASSERT(registry_file_path, "ic_load_registry — null path");
+        if (!ic::AssetManager::Get()->loadRegistry(registry_file_path))
+                IC_CORE_ERROR("ic_load_registry — failed to load '{}'", registry_file_path);
 }
 
-// remove this ic here somehow
-Model *ic_load_model(GUID modelID)
+bool ic_load_model(GUID modelID)
 {
         IC_CORE_INFO("Loading model with ID: {}", modelID);
-        return ic::AssetManager::Get()->loadAs<Model>(modelID);
+        if (!ic::AssetManager::Get()->loadAs<ic::Model>(modelID))
+        {
+                return false;
+        }
+        return true;
 }
 
 const char *ic_get_model_path(GUID modelID)
 {
-        return ic::AssetManager::Get()->getRegistry()->getFilePath(modelID);
+        ic::AssetRegistry *reg = ic::AssetManager::Get()->getRegistry();
+        if (!reg->contains(modelID))
+                return nullptr;
+        return reg->getFilePath(modelID);
 }
 
-bool ic_render_model(GUID modelID, float *transform4x4)
-{
-        return false;
-}
-
-void ic_unload_model(GUID modelID)
+bool ic_unload_model(GUID modelID)
 {
         ic::AssetManager::Get()->unload(modelID);
-        IC_CORE_INFO("Unloaded model with ID {}", modelID);
+        return true;
 }

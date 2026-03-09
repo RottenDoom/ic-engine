@@ -202,20 +202,11 @@ Mount *fs_getMounts(void)
         return g_filesystem->mounts;
 }
 
-const char *fs_getDirSeperator(void)
-{
-        /** TODO: check for platform and return the dir seperator for the platfrom */
-        // const char retval[2] = {__PLATFORM_DIR_SEPERATOR__, '\0'};
-        // return retval;
-        return NULL;
-}
-
 const char *fs_getWriteDirectory(void)
 {
-        return g_filesystem->write_dir; /** TODO set and get write dir */
+        return g_filesystem->write_dir;
 }
 
-//
 void fs_setWriteDirectory(char *dir)
 {
         if (!g_filesystem)
@@ -381,12 +372,12 @@ char *fs_getParentPath(const char *path)
 //
 char *fs_getfullpath(const char *filename)
 {
+        // make sure to free this
         char *full = (char *)ic_malloc(FS_MAX_PATH);
         if (resolve(filename, full, FS_MAX_PATH))
         {
                 if (__platformFileExists(full))
                 {
-                        // TODO: local address return fix this
                         return full;
                 }
         }
@@ -395,7 +386,6 @@ char *fs_getfullpath(const char *filename)
                 // check for search paths as well (this mostly works out if you put the desired search paths here)
                 for (size_t i = 0; i < g_filesystem->search_path_count; i++)
                 {
-                        // todo: fix
                         char *full = join_path(g_filesystem->search_paths[i], filename);
                         IC_CORE_ASSERT(full, "Path could not be joined");
                         if (__platformFileExists(full))
@@ -406,7 +396,6 @@ char *fs_getfullpath(const char *filename)
                 }
         }
 
-        /** TODO: Better error handling. */
         return nullptr;
 }
 

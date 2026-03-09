@@ -35,6 +35,10 @@ namespace ic
  *  All accessor indirection is resolved inside this file.
  *  Nothing that references Buffer / BufferView / Accessor escapes to the caller.
  *  freeIntermediates() is called before load() returns.
+ *
+ * TODOS:
+ * 1. MultiThreading and Threadpools for model loading
+ * 2. Fix some of the std::move stuff that might be getting some errors introduces
  */
 
 static inline Index toIdx(size_t v)

@@ -4,7 +4,6 @@
 struct ApplicationState
 {
         ic::window_props *props;
-        /** TODO: add more properties here */
 };
 
 struct GameState

@@ -6,7 +6,8 @@
 namespace ic
 {
 class Serializer;
-}
+
+}  // namespace ic
 
 /** TODO:
  * 1. Asset Base UUID generator when writing a file to registry

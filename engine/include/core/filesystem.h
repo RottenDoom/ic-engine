@@ -134,7 +134,6 @@ size_t fs_setBuffer(File *handle, size_t bufsize);
 bool   fs_flush(File *handle);
 bool   fs_compress(File *handle);
 
-// TODO Implement these functions inside the asset system and other places.
 const void *fs_read_mmap(File *file, MmapHint hint);
 const void *fs_read_mmap_range(File *file, uint64_t offset, size_t size, MmapHint hint);
 void        fs_mmap_unload(File *file);

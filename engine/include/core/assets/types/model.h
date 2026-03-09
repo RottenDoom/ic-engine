@@ -8,7 +8,6 @@
 #include "core/assets/types/asset_base.h"
 #include "material.h"
 
-#include <string>  // [TODO] Make string class using std::vector or a custom dynamic array
 #include <vector>
 
 /**
