@@ -65,16 +65,6 @@ set(FASTGLTF_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(fastgltf)
 
-# MMAPPED
-add_library(mmapped STATIC 
-    ${CMAKE_SOURCE_DIR}/third-party/memory_map/MemoryMapped.cpp
-)
-
-target_include_directories(mmapped
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/third-party/memory_map
-)
-
 target_link_libraries(dependencies
 INTERFACE
 	glfw

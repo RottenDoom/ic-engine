@@ -32,7 +32,6 @@ PUBLIC
 	glm
 	spdlog::spdlog
 PRIVATE
-	mmapped
 	stb
 )
 
