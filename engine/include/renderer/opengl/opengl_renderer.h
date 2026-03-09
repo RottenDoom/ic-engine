@@ -63,10 +63,14 @@ public:
         // -----------------------------------------------------------------------
 
         bool init(Window *w) override;
-        void onEvent(event &e) override;
+
+        void setScene(RenderScene *scene);
+
         void renderFrame(float dt) override;
+
+        void onEvent(event &e) override;
+
         void cleanUp() override;
-        void setScene(ICScene *scene) override;
 
 private:
         // -----------------------------------------------------------------------
@@ -109,25 +113,36 @@ private:
         // Returns the cached GLModel or nullptr on failure.
         // -----------------------------------------------------------------------
         GLModel *uploadModel(GUID id);
+        GLModel *getOrUpload(GUID id);
 
         // -----------------------------------------------------------------------
         // State
         // -----------------------------------------------------------------------
+private:
+        Window      *m_window      = nullptr;
+        RenderScene *m_scene       = nullptr;  // See into this and more of this
+        bool         m_isMinimized = false;
 
-        Window  *m_window      = nullptr;
-        ICScene *m_scene       = nullptr;  // See into this and more of this
-        bool     m_isMinimized = false;
+        // GPU cache -> one GLModel per unique model GUID..
+        std::unordered_map<GUID, GLModel *> m_gpuCache;
 
-        // GPU cache -> one GLModel per unique model GUID.
-        // unique_ptr owns the GLModel; no manual new/delete.
-        std::unordered_map<GUID, std::unique_ptr<GLModel>> m_gpuCache;
-
-        Shader *m_shader;
+        Shader *m_shader = nullptr;
 
         // TODO: lighting system
         // std::vector<PointLight> m_pointLights;
 };
 
 }  // namespace ic
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+        void ic_set_scene(ic::RenderScene *scene);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // OPENGL_RENDERER_H

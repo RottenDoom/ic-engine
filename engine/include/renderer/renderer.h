@@ -33,7 +33,7 @@ public:
         virtual void renderFrame(float dt) = 0;
         virtual void cleanUp()             = 0;
 
-        virtual void setScene(ICScene *scene) = 0;
+        virtual void setScene(RenderScene *scene) = 0;
 };
 
 // Factory function to create the renderer (implemented in engine-renderer)
@@ -47,7 +47,7 @@ extern "C"
 {
 #endif
 
-        IC_API void ic_set_scene(ICScene *scene);
+        IC_API void ic_set_scene(ic::RenderScene *scene);
 
 #ifdef __cplusplus
 }

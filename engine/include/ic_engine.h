@@ -13,6 +13,9 @@
 #include "core/filesystem.h"
 #include "core/mousecodes.h"
 #include "core/keycodes.h"
+
+#include "core/ecs/entity.h"
+
 #include "core/events/event.h"
 #include "core/events/application_event.h"
 #include "core/events/key_event.h"

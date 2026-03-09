@@ -163,10 +163,10 @@ struct Node
 };
 
 // ---------------------------------------------------------------------------
-// Camera
+// ModelCamera
 // ---------------------------------------------------------------------------
 
-struct Camera
+struct ModelCamera
 {
         enum class Type : uint8_t
         {
@@ -399,15 +399,15 @@ public:
         // Accessors -> all const, no copies
         // -----------------------------------------------------------------------
 
-        const std::vector<Mesh>      &meshes() const { return m_meshes; }
-        const std::vector<Material>  &materials() const { return m_materials; }
-        const std::vector<Image>     &images() const { return m_images; }
-        const std::vector<Sampler>   &samplers() const { return m_samplers; }
-        const std::vector<Node>      &nodes() const { return m_nodes; }
-        const std::vector<Camera>    &cameras() const { return m_cameras; }
-        const std::vector<Skin>      &skins() const { return m_skins; }
-        const std::vector<Animation> &animations() const { return m_animations; }
-        const std::vector<Scene>     &scenes() const { return m_scenes; }
+        const std::vector<Mesh>        &meshes() const { return m_meshes; }
+        const std::vector<Material>    &materials() const { return m_materials; }
+        const std::vector<Image>       &images() const { return m_images; }
+        const std::vector<Sampler>     &samplers() const { return m_samplers; }
+        const std::vector<Node>        &nodes() const { return m_nodes; }
+        const std::vector<ModelCamera> &cameras() const { return m_cameras; }
+        const std::vector<Skin>        &skins() const { return m_skins; }
+        const std::vector<Animation>   &animations() const { return m_animations; }
+        const std::vector<Scene>       &scenes() const { return m_scenes; }
 
         const AABB  &getWorldBounds() const { return m_worldBounds; }
         Index        getDefaultSceneIndex() const { return m_defaultScene; }
@@ -427,15 +427,15 @@ public:
         const Sampler   *getSampler(Index i) const { return i < m_samplers.size() ? &m_samplers[i] : nullptr; }
 
 private:
-        std::vector<Mesh>      m_meshes;
-        std::vector<Material>  m_materials;
-        std::vector<Image>     m_images;
-        std::vector<Sampler>   m_samplers;
-        std::vector<Node>      m_nodes;
-        std::vector<Camera>    m_cameras;
-        std::vector<Skin>      m_skins;
-        std::vector<Animation> m_animations;
-        std::vector<Scene>     m_scenes;
+        std::vector<Mesh>        m_meshes;
+        std::vector<Material>    m_materials;
+        std::vector<Image>       m_images;
+        std::vector<Sampler>     m_samplers;
+        std::vector<Node>        m_nodes;
+        std::vector<ModelCamera> m_cameras;
+        std::vector<Skin>        m_skins;
+        std::vector<Animation>   m_animations;
+        std::vector<Scene>       m_scenes;
 
         AABB  m_worldBounds;
         Index m_defaultScene = INVALID_INDEX;

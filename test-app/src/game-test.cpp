@@ -59,10 +59,14 @@ int main(int argc, char *argv[])
         ic_load_model(id);
         g_state.models.push_back(id);
 
-        ICScene defaultScene;
+        ic::RenderScene defaultScene;
+        ic::Entity      entt = defaultScene.createEntity();
 
-        defaultScene.AddModel(id, ic_get_model_path(id), glm::mat4(1.0f));
-        defaultScene.SetupCamera();
+        defaultScene.addMesh(entt).modelID       = id;
+        defaultScene.addTransform(entt).position = {0, 0, 0};
+
+        // Camera Entity
+
         ic_set_scene(&defaultScene);
 
         ic_app_run();

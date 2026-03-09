@@ -4,35 +4,52 @@
 #include "defines.h"
 #include "camera.h"
 #include "core/assets/types/asset_base.h"
+#include "core/ecs/entity.h"
 #include "core/application.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-struct RenderNode
-{
-        GUID      modelID;
-        string    modelPath;
-        glm::mat4 transform;
-};
-
 /** Scene class that can be setup by user or anyone. */
-class IC_API ICScene
+namespace ic
+{
+class IC_API RenderScene
 {
 public:
-        Camera                  camera;
-        std::vector<RenderNode> nodes;
-
-        void AddModel(GUID id, string modelPath, glm::mat4 transform)
+        Entity createEntity()
         {
-                IC_CORE_TRACE("Added model ID = {} to the scene!", id);
-                nodes.push_back({id, modelPath, transform});
+                Entity e = ++m_next;
+                m_entities.push_back(e);
+                return e;
         }
 
-        /** TODO: IMPORTANT: Fix this and better camera setup */
-        void SetupCamera() { camera = createCamera(Camera::CameraType::firstperson, glm::vec3(1.0f)); }
+        void destroyEntity(Entity e)
+        {
+                // simplified for now
+        }
 
-        void Clear() { nodes.clear(); }
+        Camera camera;
+
+        TransformComponent &addTransform(Entity e) { return m_transforms[e]; }
+
+        MeshComponent &addMesh(Entity e) { return m_meshes[e]; }
+
+        CameraComponent &addCamera(Entity e) { return m_cameras[e]; }
+
+        std::unordered_map<Entity, TransformComponent> &transforms() { return m_transforms; }
+        std::unordered_map<Entity, MeshComponent>      &meshes() { return m_meshes; }
+        std::unordered_map<Entity, CameraComponent>    &cameras() { return m_cameras; }
+
+private:
+        Entity m_next = 0;
+
+        std::vector<Entity> m_entities;
+
+        std::unordered_map<Entity, TransformComponent> m_transforms;
+        std::unordered_map<Entity, MeshComponent>      m_meshes;
+        std::unordered_map<Entity, CameraComponent>    m_cameras;
 };
+
+}  // namespace ic
 
 #endif

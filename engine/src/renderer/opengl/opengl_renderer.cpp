@@ -44,7 +44,7 @@ bool OpenGLRenderer::init(Window *w)
 
         glfwMakeContextCurrent(static_cast<GLFWwindow *>(m_window->getNativeWindow()));
 
-        if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
                 IC_CORE_ERROR("OpenGLRenderer: failed to initialize GLAD");
                 return false;
@@ -68,9 +68,6 @@ bool OpenGLRenderer::init(Window *w)
         enableFeatures();
         createShader();
 
-        // Asset loading and GPU upload require a scene to be set.
-        // If no scene is set yet these are no-ops; call setupBuffers()
-        // again after setScene() if needed.
         loadAssets();
         setupBuffers();
 
@@ -82,9 +79,11 @@ bool OpenGLRenderer::init(Window *w)
 // IRenderer::setScene
 // ---------------------------------------------------------------------------
 
-void OpenGLRenderer::setScene(ICScene *scene)
+void OpenGLRenderer::setScene(RenderScene *scene)
 {
         m_scene = scene;
+        // TODO: Remove the camera from here and make an entity out of it
+        m_scene->camera = createCamera(Camera::CameraType::firstperson, glm::vec3(1.0f));
 
         // If the renderer is already initialized, load and upload the new scene.
         if (m_window)
@@ -103,7 +102,7 @@ void OpenGLRenderer::enableFeatures()
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-        glFrontFace(GL_CCW);
+        // glFrontFace(GL_CCW);
 }
 
 void OpenGLRenderer::createShader()
@@ -116,17 +115,14 @@ void OpenGLRenderer::loadAssets()
         if (!m_scene)
                 return;
 
-        for (const auto &node : m_scene->nodes)
+        for (auto &[entity, mesh] : m_scene->meshes())
         {
-                if (node.modelPath.empty())
-                {
-                        IC_CORE_WARN("OpenGLRenderer::loadAssets -> node has no modelPath, skipping");
-                        continue;
-                }
+                Model *model = AssetManager::Get()->loadAs<Model>(mesh.modelID);
 
-                Model *model = AssetManager::Get()->loadAs<Model>(node.modelID);
                 if (!model)
-                        IC_CORE_WARN("OpenGLRenderer::loadAssets -> failed to load model '{}'", node.modelPath);
+                {
+                        IC_CORE_WARN("Failed loading model {}", mesh.modelID);
+                }
         }
 }
 
@@ -135,15 +131,12 @@ void OpenGLRenderer::setupBuffers()
         if (!m_scene)
                 return;
 
-        for (const auto &node : m_scene->nodes)
+        for (auto &[entity, mesh] : m_scene->meshes())
         {
-                GUID id = node.modelID;
-
-                // Skip if already uploaded
-                if (m_gpuCache.count(id))
+                if (m_gpuCache.count(mesh.modelID))
                         continue;
 
-                uploadModel(id);
+                uploadModel(mesh.modelID);
         }
 }
 
@@ -164,14 +157,23 @@ GLModel *OpenGLRenderer::uploadModel(GUID id)
                 return nullptr;
         }
 
-        auto glModel = std::make_unique<GLModel>();
+        auto glModel = new GLModel();
         glModel->upload(*model);
 
-        GLModel *raw = glModel.get();
-        m_gpuCache.emplace(id, std::move(glModel));
+        m_gpuCache[id] = glModel;
 
         IC_CORE_INFO("OpenGLRenderer: uploaded model {} to GPU", id);
-        return raw;
+        return glModel;
+}
+
+GLModel *OpenGLRenderer::getOrUpload(GUID id)
+{
+        auto it = m_gpuCache.find(id);
+
+        if (it != m_gpuCache.end())
+                return it->second;
+
+        return uploadModel(id);
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +188,7 @@ void OpenGLRenderer::renderFrame(float dt)
 
 void OpenGLRenderer::update(float dt)
 {
+        // Entity Camera?
         if (m_scene)
                 m_scene->camera.onUpdate(dt);
 }
@@ -204,19 +207,26 @@ void OpenGLRenderer::draw(float dt)
         m_shader->setMat4("u_projection", m_scene->camera.projection);
         m_shader->setMat4("u_view", m_scene->camera.matrices.view);
 
-        for (const auto &node : m_scene->nodes)
+        auto &meshes     = m_scene->meshes();
+        auto &transforms = m_scene->transforms();
+
+        for (auto &[entity, mesh] : meshes)
         {
-                GUID id = node.modelID;
+                auto tIt = transforms.find(entity);
 
-                auto it = m_gpuCache.find(id);
-                if (it == m_gpuCache.end())
-                {
-                        IC_CORE_WARN("OpenGLRenderer::draw -> model {} not in GPU cache, skipping", id);
+                if (tIt == transforms.end())
                         continue;
-                }
 
-                m_shader->setMat4("u_model", node.transform);
-                it->second->draw(m_shader);
+                GLModel *glModel = getOrUpload(mesh.modelID);
+
+                if (!glModel)
+                        continue;
+
+                glm::mat4 modelMat = tIt->second.matrix();
+
+                m_shader->setMat4("u_model", modelMat);
+
+                glModel->draw(m_shader);
         }
 }
 
@@ -257,10 +267,11 @@ bool OpenGLRenderer::onWindowResize(WindowResizedEvent &e)
 
 void OpenGLRenderer::cleanUp()
 {
-        // unique_ptr calls GLModel destructor, which should call clearGPUMemory().
-        // If GLModel doesn't have a destructor doing that, add one.
-        for (auto &[id, glModel] : m_gpuCache)
-                glModel->clearGPUMemory();
+        for (auto &it : m_gpuCache)
+        {
+                it.second->clearGPUMemory();
+                delete it.second;
+        }
 
         m_gpuCache.clear();
         delete m_shader;
@@ -274,7 +285,7 @@ void OpenGLRenderer::cleanUp()
 // pulling in C++ renderer headers.
 // ---------------------------------------------------------------------------
 
-extern "C" void ic_set_scene(ICScene *scene)
+void ic_set_scene(ic::RenderScene *scene)
 {
         ic::Application::get().getRenderer()->setScene(scene);
 }

@@ -296,9 +296,9 @@ Model buildModel(ModelImportData *data, GUID id)
         model.m_cameras.reserve(data->cameras.size());
         for (const auto &cam : data->cameras)
         {
-                Camera out;
+                ModelCamera out;
                 out.name         = cam.name;
-                out.type         = static_cast<Camera::Type>(cam.type);
+                out.type         = static_cast<ModelCamera::Type>(cam.type);
                 out.perspective  = {cam.perspective.aspectRatio,
                                     cam.perspective.yfov,
                                     cam.perspective.zfar,

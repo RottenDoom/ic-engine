@@ -15,7 +15,7 @@ class IRenderer;
 class IC_API Application
 {
 public:
-        bool isRunning           = true;
+        bool         isRunning   = true;
         AppUpdateFn *user_update = nullptr;
         AppRenderFn *user_render = nullptr;
 
@@ -25,19 +25,20 @@ public:
         Application(window_props &properties);
         virtual ~Application();
 
+        void initialize();
         bool run();
         void onEvent(event &e);
 
         static Application &get();
-        Window &getWindow() { return *m_Window; }
-        IRenderer *getRenderer() { return m_renderer; }
+        Window             *getWindow() { return m_Window; }
+        IRenderer          *getRenderer() { return m_renderer; }
 
 private:
         bool onWindowClose(WindowClosedEvent &e);
 
-        std::unique_ptr<Window> m_Window;
+        Window    *m_Window;
         IRenderer *m_renderer;
-        float m_lastFrameTime = 0.0f;
+        float      m_lastFrameTime = 0.0f;
 };
 
 }  // namespace ic
