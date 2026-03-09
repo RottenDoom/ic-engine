@@ -146,6 +146,7 @@ bool GLTFLoader::load(const char *path, ModelImportData *out)
         auto gltfFile = fastgltf::MappedGltfFile::FromPath(std::filesystem::path(fullpath));
         if (!bool(gltfFile))
         {
+                ic_free((void *)fullpath);
                 IC_CORE_WARN("GLTFLoader: failed to open file: {}", fastgltf::getErrorMessage(gltfFile.error()));
                 return false;
         }
@@ -158,12 +159,15 @@ bool GLTFLoader::load(const char *path, ModelImportData *out)
                 IC_CORE_WARN("GLTFLoader: parse error: {} (dir: {})",
                              fastgltf::getErrorMessage(expectedAsset.error()),
                              parentPath);
+                ic_free((void *)fullpath);
+                ic_free((void *)parentPath);
                 return false;
         }
 
         fastgltf::Asset *asset = expectedAsset.get_if();
         if (!asset)
         {
+                ic_free((void *)fullpath);
                 IC_CORE_WARN("GLTFLoader: failed to obtain asset handle");
                 return false;
         }
@@ -174,7 +178,10 @@ bool GLTFLoader::load(const char *path, ModelImportData *out)
 
         // Always clear per-load temp state, even on failure
         m_tempPrimitiveData.clear();
+
+        // Clean temp resources
         ic_free((void *)fullpath);
+        ic_free((void *)parentPath);
 
         return ok;
 }

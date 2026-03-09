@@ -6,13 +6,13 @@
 
 namespace ic
 {
-static heap_header_t* g_heap_head = nullptr;
-static uint64_t g_alloc_id        = 0;
+static heap_header_t *g_heap_head = nullptr;
+static uint64_t       g_alloc_id  = 0;
 
-void* debug_malloc(size_t size, const char* file, uint32_t line)
+void *debug_malloc(size_t size, const char *file, uint32_t line)
 {
-        size_t total     = sizeof(heap_header_t) + size;
-        heap_header_t* h = (heap_header_t*)malloc(total);
+        size_t         total = sizeof(heap_header_t) + size;
+        heap_header_t *h     = (heap_header_t *)malloc(total);
 
         if (!h)
                 return nullptr;
@@ -20,7 +20,7 @@ void* debug_malloc(size_t size, const char* file, uint32_t line)
         h->file = file;
         h->line = line;
 
-        h->id   = ++g_alloc_id;
+        h->id = ++g_alloc_id;
 
         h->prev = nullptr;
         h->next = g_heap_head;
@@ -29,15 +29,15 @@ void* debug_malloc(size_t size, const char* file, uint32_t line)
                 g_heap_head->prev = h;
         g_heap_head = h;
 
-        return (void*)(h + 1);
+        return (void *)(h + 1);
 }
 
-void debug_free(void* ptr)
+void debug_free(void *ptr)
 {
         if (!ptr)
                 return;
 
-        heap_header_t* h = ((heap_header_t*)ptr) - 1;
+        heap_header_t *h = ((heap_header_t *)ptr) - 1;
 
         if (h->prev)
                 h->prev->next = h->next;
@@ -51,7 +51,7 @@ void debug_free(void* ptr)
 
 void heap_dump_leaks(void)
 {
-        heap_header_t* h = g_heap_head;
+        heap_header_t *h = g_heap_head;
 
         if (!h)
         {
@@ -73,36 +73,36 @@ static inline uintptr_t align_forward(uintptr_t ptr, size_t alignment)
         return (ptr + (alignment - 1)) & ~(alignment - 1);
 }
 
-void bump_allocator_init(bump_allocator_t* bump, void* memory, size_t size)
+void bump_allocator_init(bump_allocator_t *bump, void *memory, size_t size)
 {
         if (!bump || !memory || size == 0)
                 return;
 
-        bump->memory   = (uint8_t*)memory;
+        bump->memory   = (uint8_t *)memory;
         bump->capacity = size;
         bump->offset   = 0;
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
         bump->allocation_count = 0;
         bump->generations      = 0;
         bump->high_water_mark  = 0;
 #endif
 }
 
-void* bump_alloc_tagged(bump_allocator_t* bump, size_t size, size_t alignment, memory_tag tag)
+void *bump_alloc_tagged(bump_allocator_t *bump, size_t size, size_t alignment, memory_tag tag)
 {
         if (size == 0 || alignment == 0)
                 return nullptr;
 
-        uintptr_t base          = (uintptr_t)bump->memory;
-        uintptr_t current       = base + bump->offset;
+        uintptr_t base    = (uintptr_t)bump->memory;
+        uintptr_t current = base + bump->offset;
 
-        memory_header_t* header = (memory_header_t*)current;
+        memory_header_t *header = (memory_header_t *)current;
 
-        uintptr_t user_start    = current + sizeof(memory_header_t);
-        uintptr_t user_addr     = align_forward(user_start, alignment);
-        size_t padding          = (size_t)(user_addr - user_start);
-        uintptr_t end_addr      = user_addr + size;
+        uintptr_t user_start = current + sizeof(memory_header_t);
+        uintptr_t user_addr  = align_forward(user_start, alignment);
+        size_t    padding    = (size_t)(user_addr - user_start);
+        uintptr_t end_addr   = user_addr + size;
 
         if (end_addr > base + bump->capacity)
                 return nullptr;
@@ -111,14 +111,14 @@ void* bump_alloc_tagged(bump_allocator_t* bump, size_t size, size_t alignment, m
         header->tag     = tag;
         header->padding = padding;
 
-        bump->offset    = (size_t)(end_addr - base);
+        bump->offset = (size_t)(end_addr - base);
 
-        return (void*)user_addr;
+        return (void *)user_addr;
 }
 
-void bump_allocator_clear(bump_allocator_t* bump)
+void bump_allocator_clear(bump_allocator_t *bump)
 {
-#if defined(_DEBUG)
+#ifndef NDEBUG
         // set the memory to zero since we cleared the memory
         bump->generations++;
         memset(bump->memory, 0, bump->capacity);
@@ -127,21 +127,21 @@ void bump_allocator_clear(bump_allocator_t* bump)
         bump->offset = 0;
 }
 
-bump_mark_t bump_mark_push(bump_allocator_t* bump)
+bump_mark_t bump_mark_push(bump_allocator_t *bump)
 {
         bump_mark_t mark;
         mark.offset = bump->offset;
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
         mark.generations = bump->generations;
 #endif
 
         return mark;
 }
 
-void bump_mark_pop(bump_allocator_t* bump, bump_mark_t mark)
+void bump_mark_pop(bump_allocator_t *bump, bump_mark_t mark)
 {
-#if defined(_DEBUG)
+#ifndef NDEBUG
         if (mark.generations != bump->generations)
         {
                 IC_CORE_ERROR("Invalid bump mark (generation mismatch)");
@@ -160,10 +160,10 @@ void bump_mark_pop(bump_allocator_t* bump, bump_mark_t mark)
         bump->offset = mark.offset;
 }
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
 
 /** Note do not call this function after clearing the allocator */
-void dump_allocations(const bump_allocator_t* bump)
+void dump_allocations(const bump_allocator_t *bump)
 {
         size_t offset = 0;
 
@@ -177,7 +177,7 @@ void dump_allocations(const bump_allocator_t* bump)
                         return;
                 }
 
-                const memory_header_t* h = (const memory_header_t*)(bump->memory + offset);
+                const memory_header_t *h = (const memory_header_t *)(bump->memory + offset);
 
                 /** Check if memory is corrupted */
                 if (h->canary != IC_CANARY)
@@ -203,21 +203,21 @@ void dump_allocations(const bump_allocator_t* bump)
         IC_CORE_INFO("    High-water mark: {} bytes", bump->high_water_mark);
 }
 
-void* debug_bump_alloc_tagged(
-    bump_allocator_t* bump, size_t size, size_t alignment, memory_tag tag, const char* file, uint32_t line)
+void *debug_bump_alloc_tagged(
+    bump_allocator_t *bump, size_t size, size_t alignment, memory_tag tag, const char *file, uint32_t line)
 {
         if (size == 0 || alignment == 0)
                 return nullptr;
 
-        uintptr_t base          = (uintptr_t)bump->memory;
-        uintptr_t current       = base + bump->offset;
+        uintptr_t base    = (uintptr_t)bump->memory;
+        uintptr_t current = base + bump->offset;
 
-        memory_header_t* header = (memory_header_t*)current;
+        memory_header_t *header = (memory_header_t *)current;
 
-        uintptr_t user_start    = current + sizeof(memory_header_t);
-        uintptr_t user_addr     = align_forward(user_start, alignment);
-        size_t padding          = (size_t)(user_addr - user_start);
-        uintptr_t end_addr      = user_addr + size;
+        uintptr_t user_start = current + sizeof(memory_header_t);
+        uintptr_t user_addr  = align_forward(user_start, alignment);
+        size_t    padding    = (size_t)(user_addr - user_start);
+        uintptr_t end_addr   = user_addr + size;
 
         if (end_addr > base + bump->capacity)
                 return nullptr;
@@ -230,13 +230,13 @@ void* debug_bump_alloc_tagged(
         header->padding = padding;
         header->canary  = IC_CANARY;
 
-        bump->offset    = (size_t)(end_addr - base);
+        bump->offset = (size_t)(end_addr - base);
         if (bump->offset > bump->high_water_mark)
                 bump->high_water_mark = bump->offset;
 
-        memset((void*)user_addr, 0xCD, size);
+        memset((void *)user_addr, 0xCD, size);
         printf("[header: %d, data: %d, size: %zu offset: %d]\n", header, user_addr, size, bump->offset);
-        return (void*)user_addr;
+        return (void *)user_addr;
 }
 
 #endif

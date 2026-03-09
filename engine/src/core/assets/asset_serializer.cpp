@@ -36,7 +36,9 @@ bool Serializer::openForWrite(const string &fname)
         {
                 fs_mkdir(parentPath);
         }
+        ic_free((void *)parentPath);
 
+        // TODO: FIX THIS: USE MY OWN FS HERE
         m_writeFile.open(fname, std::ios::binary | std::ios::trunc);
         if (!m_writeFile.is_open())
         {

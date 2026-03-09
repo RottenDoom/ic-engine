@@ -122,7 +122,7 @@ void ic_app_destroy(void)
         ic::Application::get().~Application();
         ic_free(ic::Application::s_Instance);
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
         ic::heap_dump_leaks();
 #endif
         ic::Application::s_Instance = nullptr;

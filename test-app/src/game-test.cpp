@@ -50,8 +50,7 @@ int main(int argc, char *argv[])
         // path after post-build
         ic_mount("/assets", "assets", 1);
 
-        // load the registry (IN some functions you would have to put assets at the start in some you dont have
-        // to)
+        // load the registry
         ic_load_registry("assets/registry.yaml");
 
         // load model

@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define IC_CANARY 0xDEADC0DE
-#if defined(_DEBUG)
+#ifndef NDEBUG
 #define ic_malloc(sz) ic::debug_malloc(sz, __FILE__, __LINE__)
 #define ic_free(p) ic::debug_free(p)
 #define bump_allocate(bump, size, align, tag) ic::debug_bump_alloc_tagged(bump, size, align, tag, __FILE__, __LINE__)
@@ -66,7 +66,7 @@ extern "C"
                 uint32_t   id;
                 size_t     padding;
 
-#ifdef _DEBUG
+#ifndef NDEBUG
                 uint32_t    line;
                 const char *file;
                 uint32_t    canary;
@@ -82,7 +82,7 @@ extern "C"
                 size_t   capacity;
                 size_t   offset;
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
                 uint32_t allocation_count;
                 uint32_t generations;
                 size_t   high_water_mark;
@@ -92,7 +92,7 @@ extern "C"
         typedef struct BumpMark
         {
                 size_t offset;
-#if defined(_DEBUG)
+#ifndef NDEBUG
                 uint32_t generations;
 #endif
         } bump_mark_t;
@@ -112,7 +112,7 @@ extern "C"
         // Pop mark to unmark
         void bump_mark_pop(bump_allocator_t *bump, bump_mark_t mark);
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
 
         // Dump all the allocation metadata from the allocator
         void  dump_allocations(const bump_allocator_t *bump);

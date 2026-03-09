@@ -88,7 +88,7 @@ void fs_deinit(void)
 {
         if (!g_filesystem)
                 return;
-#if defined(_DEBUG)
+#ifndef NDEBUG
         dump_allocations(g_filesystem->allocator);
 #endif
 
@@ -372,28 +372,33 @@ char *fs_getParentPath(const char *path)
 //
 char *fs_getfullpath(const char *filename)
 {
-        // make sure to free this
         char *full = (char *)ic_malloc(FS_MAX_PATH);
+        if (!full)
+                return nullptr;
+
         if (resolve(filename, full, FS_MAX_PATH))
         {
                 if (__platformFileExists(full))
-                {
                         return full;
-                }
+
+                // resolved but file doesn't exist
+                ic_free(full);
+                return nullptr;
         }
-        else
+
+        // resolve failed, free the now-unused buffer
+        ic_free(full);
+
+        // check search paths
+        for (size_t i = 0; i < g_filesystem->search_path_count; i++)
         {
-                // check for search paths as well (this mostly works out if you put the desired search paths here)
-                for (size_t i = 0; i < g_filesystem->search_path_count; i++)
-                {
-                        char *full = join_path(g_filesystem->search_paths[i], filename);
-                        IC_CORE_ASSERT(full, "Path could not be joined");
-                        if (__platformFileExists(full))
-                        {
-                                return full;
-                        }
-                        ic_free(full);
-                }
+                char *candidate = join_path(g_filesystem->search_paths[i], filename);
+                IC_CORE_ASSERT(candidate, "Path could not be joined");
+
+                if (__platformFileExists(candidate))
+                        return candidate;
+
+                ic_free(candidate);  // free non-matching paths
         }
 
         return nullptr;
@@ -566,7 +571,11 @@ bool fs_joinPath(const char *relPath, const char *fullpath, const char **out)
 //
 uint64_t fs_getLastModificationTime(const char *filename)
 {
-        return __platformGetLastModTime(filename);
+        uint64_t timeStamp = __platformGetLastModTime(filename);
+        if (!timeStamp)
+                IC_CORE_ERROR("Could not load timestamp for the given file");
+        ic_free((void *)filename);
+        return timeStamp;
 }
 
 /** REWRITE */

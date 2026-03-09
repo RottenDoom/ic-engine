@@ -1,7 +1,7 @@
 #ifndef WINDOW_WIN32_H
 #define WINDOW_WIN32_H
 
-#include "../../../defines.h"
+#include "defines.h"
 
 #include "core/window.h"
 
@@ -33,7 +33,7 @@ public:
 
         void *getNativeWindow() const override { return static_cast<void *>(m_Window); }
 
-        bool wasWindowResized() { return framebufferResized; }
+        bool        wasWindowResized() { return framebufferResized; }
         static void framebufferResizeCallback(GLFWwindow *handle, int width, int height);
 
         bool framebufferResized = false;
@@ -48,9 +48,9 @@ private:
 
         struct window_data
         {
-                const char *title;
+                const char  *title;
                 unsigned int width, height;
-                bool VSync;
+                bool         VSync;
 
                 eventCallbackFn eventCallback;
         };

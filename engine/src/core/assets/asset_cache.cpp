@@ -55,11 +55,14 @@ uint8_t *GetCachedAssetRaw(AssetType type, const GUID id, size_t numBytes)
         ic::Serializer serializer;
         if (!serializer.openForRead(full_path))
         {
+                ic_free(full_path);
                 return nullptr;
         }
+
         numBytes         = serializer.bytesLeft();
         uint8_t *ret_val = (uint8_t *)ic_malloc(sizeof(uint8_t) * numBytes);
         serializer.read(ret_val, numBytes);
+        ic_free(full_path);
         return ret_val;
 }
 
