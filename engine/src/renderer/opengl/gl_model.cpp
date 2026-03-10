@@ -60,7 +60,9 @@ void GLModel::uploadMeshes()
                 for (size_t j = 0; j < mesh.primitives.size(); ++j)
                 {
                         m_meshes[i].primitives[j].setupBuffers(mesh.primitives[j]);
+#ifndef NDEBUG
                         IC_CORE_TRACE("  mesh[{}] prim[{}] EBO={}", i, j, m_meshes[i].primitives[j].EBO);
+#endif
                 }
         }
 }

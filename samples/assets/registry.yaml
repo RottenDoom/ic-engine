@@ -3,17 +3,17 @@ assets_folder: "/assets"
 assets:
   - id: 0x1000000000000001
     filepath: cube/shape.gltf
-    cache: cube/shape.icm
+    cache: cube/shape.icmodel
     type: model
 
   - id: 0x1000000000000004
     filepath: shibahu/scene.gltf
-    cache: shibahu/scene.icm
+    cache: shibahu/scene.icmodel
     type: model
 
   - id: 0x1000000000000002
     filepath: tree_house/scene.gltf
-    cache: tree_house/scene.icm
+    cache: tree_house/scene.icmodel
     type: model
     dependencies:
       - 0x1000000000000003

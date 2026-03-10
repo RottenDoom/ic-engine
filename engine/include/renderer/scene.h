@@ -28,6 +28,7 @@ public:
                 // simplified for now
         }
 
+        // Default camera see if this can be improved with a better entity class
         Camera camera;
 
         TransformComponent &addTransform(Entity e) { return m_transforms[e]; }

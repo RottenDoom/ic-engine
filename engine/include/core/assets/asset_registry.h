@@ -52,11 +52,11 @@ public:
 
 private:
         // common asset folder
-        string assets_folder_;
+        string m_asset_folder;
 
-        std::unordered_map<GUID, AssetMeta>                assets_;
-        std::unordered_map<string, GUID>                   ids_;
-        std::unordered_map<GUID, std::unordered_set<GUID>> dependencies_;
+        std::unordered_map<GUID, AssetMeta>                m_assets;
+        std::unordered_map<string, GUID>                   m_ids;
+        std::unordered_map<GUID, std::unordered_set<GUID>> m_dependencies;
 
         void             parseAssetEntry(const YAML::Node &node);
         static AssetType assetTypeFromString(const string &s);

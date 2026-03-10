@@ -8,11 +8,11 @@
 #define IC_CANARY 0xDEADC0DE
 #ifndef NDEBUG
 #define ic_malloc(sz) ic::debug_malloc(sz, __FILE__, __LINE__)
-#define ic_free(p) ic::debug_free(p)
+#define ic_free(p) ic::debug_free((void*)p)
 #define bump_allocate(bump, size, align, tag) ic::debug_bump_alloc_tagged(bump, size, align, tag, __FILE__, __LINE__)
 #else
 #define ic_malloc(sz) malloc(sz)
-#define ic_free(p) free(p)
+#define ic_free(p) free((void*)p)
 #define bump_allocate(bump, size, align, tag) ic::bump_alloc_tagged(bump, size, align, tag)
 #endif
 

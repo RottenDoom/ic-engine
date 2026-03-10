@@ -206,6 +206,7 @@ struct Image
         uint32_t height   = 0;
         uint32_t channels = 0;  // original channel count before RGBA8 conversion
         bool     srgb     = false;
+        string   name;
 
         std::vector<uint8_t> pixels;  // always RGBA8: width * height * 4 bytes
 
@@ -356,7 +357,7 @@ public:
          */
         bool serializedLoad(ic::Serializer *s) override;
 
-        /** Write CPUReady data to .icache binary for future warm loads. */
+        /** Write CPUReady data to .icmodel binary for future warm loads. */
         bool serializedSave(ic::Serializer *s) const override;
 
         /**

@@ -369,36 +369,42 @@ char *fs_getParentPath(const char *path)
         return buffer;
 }
 
-//
-char *fs_getfullpath(const char *filename)
+char *fs_getfullpath(const char *path)
 {
         char *full = (char *)ic_malloc(FS_MAX_PATH);
         if (!full)
                 return nullptr;
 
-        if (resolve(filename, full, FS_MAX_PATH))
+        // Terrible way of doing this but this works
+        if (is_absolute_path(path))
         {
-                if (__platformFileExists(full))
-                        return full;
+                size_t len  = strlen(path) + 1;
+                char  *copy = (char *)ic_malloc(len);
+                if (!copy)
+                        return nullptr;
 
-                // resolved but file doesn't exist
-                ic_free(full);
-                return nullptr;
+                memcpy(copy, path, len);
+                return copy;
+        }
+
+        if (resolve(path, full, FS_MAX_PATH))
+        {
+                return full;
         }
 
         // resolve failed, free the now-unused buffer
         ic_free(full);
 
-        // check search paths
+        // check search paths with validity
         for (size_t i = 0; i < g_filesystem->search_path_count; i++)
         {
-                char *candidate = join_path(g_filesystem->search_paths[i], filename);
+                char *candidate = join_path(g_filesystem->search_paths[i], path);
                 IC_CORE_ASSERT(candidate, "Path could not be joined");
 
-                if (__platformFileExists(candidate))
+                if (__platformFileExists(candidate) || __platformIsDirectory(candidate))
                         return candidate;
 
-                ic_free(candidate);  // free non-matching paths
+                ic_free(candidate);
         }
 
         return nullptr;
@@ -468,7 +474,6 @@ bool fs_delete(const char *filename)
         return __platformDeleteFile(filename);
 }
 
-//
 char **fs_enumerateFiles(const char *dir)
 {
         if (!dir)
@@ -522,15 +527,16 @@ bool fs_exists(const char *path)
         if (!g_filesystem || !path)
                 return false;
 
+        // if absolute path make check if its exists as directory or file
         if (is_absolute_path(path))
-                return __platformFileExists(path);
+                return __platformFileExists(path) || __platformIsDirectory(path);
         else
         {
                 char full_path[FS_MAX_PATH];
                 // try searching in the mounts
                 if (resolve(path, full_path, FS_MAX_PATH))
                 {
-                        return __platformFileExists(full_path);
+                        return __platformFileExists(full_path) || __platformIsDirectory(full_path);
                 }
 
                 // Try search paths
@@ -539,7 +545,7 @@ bool fs_exists(const char *path)
                         snprintf(full_path, sizeof(full_path), "%s/%s", g_filesystem->search_paths[i], path);
                         normalize(full_path);
 
-                        return __platformFileExists(full_path);
+                        return __platformFileExists(full_path) || __platformIsDirectory(full_path);
                 }
 
                 return false;
@@ -551,30 +557,31 @@ bool fs_isDirectory(const char *dir)
         return __platformIsDirectory(dir);
 }
 
-bool fs_joinPath(const char *relPath, const char *fullpath, const char **out)
+const char *fs_joinPath(const char *relPath, const char *fullpath)
 {
-        IC_CORE_ASSERT(relPath && fullpath && g_filesystem, "Filesystem error.");
-
-        *out = join_path(fullpath, relPath);
-
-        if (!fs_exists(*out))
+        if (!relPath || !fullpath || !g_filesystem)
         {
-                IC_CORE_WARN("The directory {} does not exist cant join", *out);
-                ic_free((void *)(*out));
-                out = nullptr;
-                return false;
+                IC_CORE_ERROR("Filesystem::Error Joining paths");
+                return nullptr;
         }
 
-        return true;
+        IC_CORE_INFO("Joining {} and {}", fullpath, relPath);
+        const char *out = join_path(fullpath, relPath);
+
+        return out;
 }
 
-//
 uint64_t fs_getLastModificationTime(const char *filename)
 {
-        uint64_t timeStamp = __platformGetLastModTime(filename);
+        const char *fullpath  = fs_getfullpath(filename);
+        uint64_t    timeStamp = __platformGetLastModTime(fullpath);
         if (!timeStamp)
+        {
                 IC_CORE_ERROR("Could not load timestamp for the given file");
-        ic_free((void *)filename);
+                ic_free(fullpath);
+                return 0;
+        }
+        ic_free(fullpath);
         return timeStamp;
 }
 
@@ -1170,7 +1177,9 @@ static bool resolve(const char *virtual_path, char *out_path, size_t out_size)
                 snprintf(out_path, out_size, "%s/%s", mnt->physical_path, remainder);
                 normalize(out_path);
 
-                if (mnt->type == ic::MountType::MOUNT_TYPE_DIRECTORY && ic::__platformFileExists(out_path))
+                // Check if the path type of mount is corrent
+                // dont check the validdity of the path since we do it anyway
+                if (mnt->type == ic::MountType::MOUNT_TYPE_DIRECTORY)
                         return true;
 
                 // future: if MOUNT_TYPE_ARCHIVE, ask driver if file exists in archive

@@ -1,4 +1,8 @@
 #include "core/assets/types/model.h"
+#include "core/assets/asset_serializer.h"
+#include "core/assets/asset_manager.h"
+#include "core/assets/asset_versions.h"
+#include "core/assets/asset_cache.h"
 #include "core/assets/asset_loaders/gltf_loader.h"
 #include "core/assets/asset_loaders/model_data.h"
 
@@ -457,7 +461,6 @@ bool Model::load(const char *filepath)
 {
         IC_CORE_ASSERT(filepath, "Model::load -> null filepath");
 
-        // TODO: if already loaded increase the refcount of the asset
         if (m_state == State::CPUReady || m_state == State::GPUReady)
         {
                 IC_CORE_WARN("Model::load -> already loaded, call unload() first");
@@ -466,45 +469,83 @@ bool Model::load(const char *filepath)
 
         m_state = State::Pending;
 
-        // -----------------------------------------------------------------------
-        // Pick loader by extension
-        // -----------------------------------------------------------------------
-        const char *ext = fs_getExtension(filepath);  // returns "gltf", "glb", etc.
+        const char *ext = fs_getExtension(filepath);
 
-        // Currently only GLTF is supported. When OBJ/FBX loaders exist,
-        // this becomes a registry lookup: LoaderRegistry::getFor(ext)
+        // -----------------------------------------------------------------------
+        // Try cache first
+        // -----------------------------------------------------------------------
+        const char *cachePath = AssetManager::Get()->getRegistry()->getCachePath(getID());
+        if (cachePath && fs_exists(cachePath))
+        {
+                uint64_t srcTime   = fs_getLastModificationTime(filepath);
+                uint64_t cacheTime = AssetCache::GetAssetTimeStamp(AssetType::ASSET_TYPE_MODEL, getID());
+
+                if (cacheTime >= srcTime)
+                {
+                        IC_CORE_INFO("Model::load -> Loading cached model from memory '{}'", filepath);
+                        ic::Serializer s;
+#ifndef NDEBUG
+                        auto start = std::chrono::high_resolution_clock::now();
+#endif
+                        if (s.openForRead(cachePath) && serializedLoad(&s))
+                        {
+                                s.close();
+                                IC_CORE_INFO("Model::load -> loaded from cache '{}'", filepath);
+#ifndef NDEBUG
+                                auto end = std::chrono::high_resolution_clock::now();
+                                auto us  = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+                                IC_CORE_INFO("Model::serializeLoad -> parsed '{}' in {:.2f} ms", filepath, us / 1000.0);
+#endif
+                                return true;
+                        }
+                        s.close();
+                        IC_CORE_WARN("Model::load -> cache read failed, falling back to source");
+                }
+        }
+
+        // cannot load from cache load from source file
         GLTFLoader loader;
         if (!loader.canLoad(ext))
         {
-                IC_CORE_ERROR("Model::load -> no loader registered for extension '{}'", ext ? ext : "(null)");
+                IC_CORE_ERROR("Model::load -> no loader for extension '{}'", ext ? ext : "(null)");
                 m_state = State::Failed;
                 return false;
         }
 
-        // -----------------------------------------------------------------------
-        // Load into import data (pure CPU, no shared state)
-        // -----------------------------------------------------------------------
         ModelImportData importData;
-        if (!loader.load(filepath, &importData))
+
+#ifndef NDEBUG
+        auto start = std::chrono::high_resolution_clock::now();
+#endif
+
+        bool ok = loader.load(filepath, &importData);
+        if (!ok)
         {
                 IC_CORE_ERROR("Model::load -> loader failed for '{}'", filepath);
                 m_state = State::Failed;
                 return false;
         }
 
-        // -----------------------------------------------------------------------
-        // Build runtime model from import data
-        // buildModel() is the only function that writes into Model's private data.
-        // -----------------------------------------------------------------------
+#ifndef NDEBUG
+        auto end = std::chrono::high_resolution_clock::now();
+        auto us  = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        IC_CORE_INFO("Model::load -> parsed '{}' in {:.2f} ms", filepath, us / 1000.0);
+#endif
+
         *this   = buildModel(&importData, getID());
         m_state = State::CPUReady;
+
+        // -----------------------------------------------------------------------
+        // Write cache for next time
+        // -----------------------------------------------------------------------
+        if (!AssetCache::CacheAsset(AssetType::ASSET_TYPE_MODEL, getID(), this))
+                IC_CORE_WARN("Model::load -> failed to write cache for '{}'", filepath);
 
         IC_CORE_INFO("Model::load -> '{}' ready ({} meshes, {} materials, {} nodes)",
                      filepath,
                      m_meshes.size(),
                      m_materials.size(),
                      m_nodes.size());
-
         return true;
 }
 
@@ -572,27 +613,720 @@ void Model::freeCPU()
         // State stays GPUReady -> the data is on the GPU, not gone.
 }
 
-bool Model::serializedLoad(ic::Serializer * /*s*/)
+bool Model::serializedSave(ic::Serializer *s) const
 {
-        // TODO: implement fast .icache binary deserialization
-        // Sequence:
-        //   1. Read + validate header (magic number, version, asset type)
-        //   2. Deserialize meshes: for each primitive, read vertexCount,
-        //      vertexStride, attributeFlags, then memcpy vertexData and indices
-        //   3. Deserialize images: read width/height/channels/srgb, then pixels blob
-        //   4. Deserialize materials, samplers, nodes, cameras, skins, animations, scenes
-        //   5. Read worldBounds and defaultScene
-        //   6. Set m_state = State::CPUReady
-        IC_CORE_WARN("Model::serializedLoad -> not yet implemented");
-        return false;
+        IC_CORE_ASSERT(s && s->isWriting(), "serializedSave: serializer not open for write");
+
+#ifndef NDEBUG
+        IC_CORE_TRACE("serializedSave BEGIN '{}'", s->getFilename().c_str());
+#endif
+
+        // -----------------------------------------------------------------------
+        // Header
+        // -----------------------------------------------------------------------
+        const uint32_t VERSION = static_cast<uint32_t>(assetCurrentVersion(ASSET_TYPE_MODEL));
+
+        s->writePOD(IC_ASSET_MAGIC);
+        s->writePOD(VERSION);
+
+#ifndef NDEBUG
+        IC_CORE_TRACE("  [header]  magic=0x{:08X} version={} @ {}", IC_ASSET_MAGIC, VERSION, s->tell());
+#endif
+
+        // -----------------------------------------------------------------------
+        // Images
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [images]  start @ {}", s->tell());
+#endif
+                uint32_t count = static_cast<uint32_t>(m_images.size());
+                s->writePOD(count);
+
+                for (const auto &img : m_images)
+                {
+                        s->writePOD(img.width);
+                        s->writePOD(img.height);
+                        s->writePOD(img.channels);
+                        s->writePOD(img.srgb);
+#if defined(IC_ASSET_NAMES)
+                        s->writeString(img.name);
+#else
+                        s->writeString("");  // placeholder — must always be written and read
+#endif
+                        uint64_t pixelBytes = static_cast<uint64_t>(img.pixels.size());
+                        s->writePOD(pixelBytes);
+                        if (pixelBytes > 0)
+                                s->write(img.pixels.data(), static_cast<size_t>(pixelBytes));
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [images]  end   @ {} ({} images)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Samplers
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [samplers] start @ {}", s->tell());
+#endif
+                uint32_t count = static_cast<uint32_t>(m_samplers.size());
+                s->writePOD(count);
+
+                for (const auto &samp : m_samplers)
+                {
+                        s->writePOD(samp.magFilter);
+                        s->writePOD(samp.minFilter);
+                        s->writePOD(samp.wrapS);
+                        s->writePOD(samp.wrapT);
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [samplers] end   @ {} ({} samplers)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Materials
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [materials] start @ {}", s->tell());
+#endif
+                auto writeTextureRef = [&](const TextureRef &ref)
+                {
+                        s->writePOD(ref.image);
+                        s->writePOD(ref.sampler);
+                        s->writePOD(ref.texCoord);
+                };
+
+                uint32_t count = static_cast<uint32_t>(m_materials.size());
+                s->writePOD(count);
+
+                for (const auto &mat : m_materials)
+                {
+                        s->writeString(mat.name);
+                        s->writePOD(mat.pbr.baseColorFactor);
+                        s->writePOD(mat.pbr.metallicFactor);
+                        s->writePOD(mat.pbr.roughnessFactor);
+                        writeTextureRef(mat.pbr.baseColorTexture);
+                        writeTextureRef(mat.pbr.metallicRoughnessTexture);
+                        writeTextureRef(mat.normalTexture.ref);
+                        s->writePOD(mat.normalTexture.scale);
+                        writeTextureRef(mat.occlusionTexture.ref);
+                        s->writePOD(mat.occlusionTexture.strength);
+                        writeTextureRef(mat.emissiveTexture);
+                        s->writePOD(mat.emissiveFactor);
+                        s->writePOD(mat.emissiveStrength);
+                        s->writePOD(mat.alphaMode);
+                        s->writePOD(mat.alphaCutoff);
+                        s->writePOD(mat.doubleSided);
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [materials] end   @ {} ({} materials)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Cameras
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [cameras] start @ {}", s->tell());
+#endif
+                uint32_t count = static_cast<uint32_t>(m_cameras.size());
+                s->writePOD(count);
+
+                for (const auto &cam : m_cameras)
+                {
+                        s->writeString(cam.name);
+                        s->writePOD(cam.type);
+                        s->writePOD(cam.perspective);
+                        s->writePOD(cam.orthographic);
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [cameras] end   @ {} ({} cameras)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Skins
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [skins] start @ {}", s->tell());
+#endif
+                uint32_t count = static_cast<uint32_t>(m_skins.size());
+                s->writePOD(count);
+
+                for (const auto &skin : m_skins)
+                {
+                        s->writeString(skin.name);
+                        s->writePOD(skin.skeletonRootIndex);
+
+                        uint32_t jointCount = static_cast<uint32_t>(skin.jointIndices.size());
+                        s->writePOD(jointCount);
+                        if (jointCount > 0)
+                                s->write(skin.jointIndices.data(), jointCount * sizeof(Index));
+
+                        uint32_t ibmCount = static_cast<uint32_t>(skin.inverseBindMatrices.size());
+                        s->writePOD(ibmCount);
+                        if (ibmCount > 0)
+                                s->write(skin.inverseBindMatrices.data(), ibmCount * sizeof(glm::mat4));
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [skins] end   @ {} ({} skins)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Animations
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [animations] start @ {}", s->tell());
+#endif
+                uint32_t count = static_cast<uint32_t>(m_animations.size());
+                s->writePOD(count);
+
+                for (const auto &anim : m_animations)
+                {
+                        s->writeString(anim.name);
+                        s->writePOD(anim.duration);
+
+                        uint32_t samplerCount = static_cast<uint32_t>(anim.samplers.size());
+                        s->writePOD(samplerCount);
+                        for (const auto &samp : anim.samplers)
+                        {
+                                s->writePOD(samp.interpolation);
+
+                                uint32_t timeCount = static_cast<uint32_t>(samp.inputTimes.size());
+                                s->writePOD(timeCount);
+                                if (timeCount > 0)
+                                        s->write(samp.inputTimes.data(), timeCount * sizeof(float));
+
+                                uint32_t valCount = static_cast<uint32_t>(samp.outputValues.size());
+                                s->writePOD(valCount);
+                                if (valCount > 0)
+                                        s->write(samp.outputValues.data(), valCount * sizeof(glm::vec4));
+                        }
+
+                        uint32_t chanCount = static_cast<uint32_t>(anim.channels.size());
+                        s->writePOD(chanCount);
+                        for (const auto &ch : anim.channels)
+                        {
+                                s->writePOD(ch.targetPath);
+                                s->writePOD(ch.samplerIndex);
+                                s->writePOD(ch.targetNodeIndex);
+                        }
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [animations] end   @ {} ({} animations)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Nodes
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [nodes] start @ {}", s->tell());
+#endif
+                uint32_t count = static_cast<uint32_t>(m_nodes.size());
+                s->writePOD(count);
+
+                for (const auto &node : m_nodes)
+                {
+                        s->writeString(node.name);
+                        s->writePOD(node.translation);
+                        s->writePOD(node.rotation);
+                        s->writePOD(node.scale);
+                        s->writePOD(node.localTransform);
+                        s->writePOD(node.worldTransform);
+                        s->writePOD(node.meshIndex);
+                        s->writePOD(node.skinIndex);
+                        s->writePOD(node.cameraIndex);
+                        s->writePOD(node.lightIndex);
+                        s->writePOD(node.parent);
+
+                        uint32_t childCount = static_cast<uint32_t>(node.children.size());
+                        s->writePOD(childCount);
+                        if (childCount > 0)
+                                s->write(node.children.data(), childCount * sizeof(Index));
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [nodes] end   @ {} ({} nodes)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Scenes
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [scenes] start @ {}", s->tell());
+#endif
+                uint32_t count = static_cast<uint32_t>(m_scenes.size());
+                s->writePOD(count);
+
+                for (const auto &scene : m_scenes)
+                {
+                        s->writeString(scene.name);
+                        uint32_t rootCount = static_cast<uint32_t>(scene.rootNodes.size());
+                        s->writePOD(rootCount);
+                        if (rootCount > 0)
+                                s->write(scene.rootNodes.data(), rootCount * sizeof(Index));
+                }
+
+                s->writePOD(m_defaultScene);
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [scenes] end   @ {} ({} scenes, defaultScene={})", s->tell(), count, m_defaultScene);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Meshes
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [meshes] start @ {}", s->tell());
+#endif
+                uint32_t meshCount = static_cast<uint32_t>(m_meshes.size());
+                s->writePOD(meshCount);
+
+                for (const auto &mesh : m_meshes)
+                {
+                        s->writeString(mesh.name);
+                        s->writePOD(mesh.bounds.min);
+                        s->writePOD(mesh.bounds.max);
+
+                        uint32_t primCount = static_cast<uint32_t>(mesh.primitives.size());
+                        s->writePOD(primCount);
+
+                        for (const auto &prim : mesh.primitives)
+                        {
+                                s->writePOD(prim.mode);
+                                s->writePOD(prim.materialIndex);
+                                s->writePOD(prim.attributeFlags);
+                                s->writePOD(prim.vertexStride);
+                                s->writePOD(prim.vertexCount);
+                                s->writePOD(prim.bounds.min);
+                                s->writePOD(prim.bounds.max);
+
+                                uint32_t morphCount = static_cast<uint32_t>(prim.morphWeights.size());
+                                s->writePOD(morphCount);
+                                if (morphCount > 0)
+                                        s->write(prim.morphWeights.data(), morphCount * sizeof(float));
+
+                                uint64_t vbBytes = static_cast<uint64_t>(prim.vertexData.size());
+                                s->writePOD(vbBytes);
+                                if (vbBytes > 0)
+                                        s->write(prim.vertexData.data(), static_cast<size_t>(vbBytes));
+
+                                uint32_t idxCount = static_cast<uint32_t>(prim.indices.size());
+                                s->writePOD(idxCount);
+                                if (idxCount > 0)
+                                        s->write(prim.indices.data(), idxCount * sizeof(uint32_t));
+                        }
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [meshes] end   @ {} ({} meshes)", s->tell(), meshCount);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // World bounds
+        // -----------------------------------------------------------------------
+        s->writePOD(m_worldBounds.min);
+        s->writePOD(m_worldBounds.max);
+
+#ifndef NDEBUG
+        IC_CORE_TRACE("serializedSave END @ {} bytes", s->tell());
+#endif
+
+        return true;
 }
 
-bool Model::serializedSave(ic::Serializer * /*s*/) const
+// =============================================================================
+
+bool Model::serializedLoad(ic::Serializer *s)
 {
-        // TODO: implement fast .icache binary serialization
-        // Mirror of serializedLoad. Write only CPUReady data -> no GLTF intermediates.
-        IC_CORE_WARN("Model::serializedSave -> not yet implemented");
-        return false;
+        IC_CORE_ASSERT(s && s->isReading(), "serializedLoad: serializer not open for read");
+
+#ifndef NDEBUG
+        IC_CORE_TRACE("serializedLoad BEGIN '{}'", s->getFilename().c_str());
+#endif
+
+        // -----------------------------------------------------------------------
+        // Header
+        // -----------------------------------------------------------------------
+        constexpr uint32_t EXPECTED_MAGIC   = 0x49434D44;
+        const uint32_t     EXPECTED_VERSION = static_cast<uint32_t>(assetCurrentVersion(ASSET_TYPE_MODEL));
+
+        uint32_t magic = 0, version = 0;
+        s->readPOD(magic);
+        s->readPOD(version);
+
+        if (magic != EXPECTED_MAGIC)
+        {
+                IC_CORE_ERROR("serializedLoad: bad magic 0x{:08X} (expected 0x{:08X}) in '{}'",
+                              magic,
+                              EXPECTED_MAGIC,
+                              s->getFilename().c_str());
+                return false;
+        }
+        if (version != EXPECTED_VERSION)
+        {
+                IC_CORE_WARN("serializedLoad: version mismatch — cache={} current={} in '{}', needs rebuild",
+                             version,
+                             EXPECTED_VERSION,
+                             s->getFilename().c_str());
+                return false;
+        }
+
+#ifndef NDEBUG
+        IC_CORE_TRACE("  [header]  magic=0x{:08X} version={} @ {}", magic, version, s->tell());
+#endif
+
+        // -----------------------------------------------------------------------
+        // Images
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [images]  start @ {}", s->tell());
+#endif
+                uint32_t count = 0;
+                s->readPOD(count);
+                m_images.resize(count);
+
+                for (auto &img : m_images)
+                {
+                        s->readPOD(img.width);
+                        s->readPOD(img.height);
+                        s->readPOD(img.channels);
+                        s->readPOD(img.srgb);
+                        s->readString(img.name);  // ALWAYS read — save always writes it
+
+                        uint64_t pixelBytes = 0;
+                        s->readPOD(pixelBytes);
+                        img.pixels.resize(static_cast<size_t>(pixelBytes));
+                        if (pixelBytes > 0)
+                                s->read(img.pixels.data(), static_cast<size_t>(pixelBytes));
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [images]  end   @ {} ({} images)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Samplers
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [samplers] start @ {}", s->tell());
+#endif
+                uint32_t count = 0;
+                s->readPOD(count);
+                m_samplers.resize(count);
+
+                for (auto &samp : m_samplers)
+                {
+                        s->readPOD(samp.magFilter);
+                        s->readPOD(samp.minFilter);
+                        s->readPOD(samp.wrapS);
+                        s->readPOD(samp.wrapT);
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [samplers] end   @ {} ({} samplers)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Materials
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [materials] start @ {}", s->tell());
+#endif
+                auto readTextureRef = [&](TextureRef &ref)
+                {
+                        s->readPOD(ref.image);
+                        s->readPOD(ref.sampler);
+                        s->readPOD(ref.texCoord);
+                };
+
+                uint32_t count = 0;
+                s->readPOD(count);
+                m_materials.resize(count);
+
+                for (auto &mat : m_materials)
+                {
+                        s->readString(mat.name);
+                        s->readPOD(mat.pbr.baseColorFactor);
+                        s->readPOD(mat.pbr.metallicFactor);
+                        s->readPOD(mat.pbr.roughnessFactor);
+                        readTextureRef(mat.pbr.baseColorTexture);
+                        readTextureRef(mat.pbr.metallicRoughnessTexture);
+                        readTextureRef(mat.normalTexture.ref);
+                        s->readPOD(mat.normalTexture.scale);
+                        readTextureRef(mat.occlusionTexture.ref);
+                        s->readPOD(mat.occlusionTexture.strength);
+                        readTextureRef(mat.emissiveTexture);
+                        s->readPOD(mat.emissiveFactor);
+                        s->readPOD(mat.emissiveStrength);
+                        s->readPOD(mat.alphaMode);
+                        s->readPOD(mat.alphaCutoff);
+                        s->readPOD(mat.doubleSided);
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [materials] end   @ {} ({} materials)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Cameras
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [cameras] start @ {}", s->tell());
+#endif
+                uint32_t count = 0;
+                s->readPOD(count);
+                m_cameras.resize(count);
+
+                for (auto &cam : m_cameras)
+                {
+                        s->readString(cam.name);
+                        s->readPOD(cam.type);
+                        s->readPOD(cam.perspective);
+                        s->readPOD(cam.orthographic);
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [cameras] end   @ {} ({} cameras)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Skins
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [skins] start @ {}", s->tell());
+#endif
+                uint32_t count = 0;
+                s->readPOD(count);
+                m_skins.resize(count);
+
+                for (auto &skin : m_skins)
+                {
+                        s->readString(skin.name);
+                        s->readPOD(skin.skeletonRootIndex);
+
+                        uint32_t jointCount = 0;
+                        s->readPOD(jointCount);
+                        skin.jointIndices.resize(jointCount);
+                        if (jointCount > 0)
+                                s->read(skin.jointIndices.data(), jointCount * sizeof(Index));
+
+                        uint32_t ibmCount = 0;
+                        s->readPOD(ibmCount);
+                        skin.inverseBindMatrices.resize(ibmCount);
+                        if (ibmCount > 0)
+                                s->read(skin.inverseBindMatrices.data(), ibmCount * sizeof(glm::mat4));
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [skins] end   @ {} ({} skins)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Animations
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [animations] start @ {}", s->tell());
+#endif
+                uint32_t count = 0;
+                s->readPOD(count);
+                m_animations.resize(count);
+
+                for (auto &anim : m_animations)
+                {
+                        s->readString(anim.name);
+                        s->readPOD(anim.duration);
+
+                        uint32_t samplerCount = 0;
+                        s->readPOD(samplerCount);
+                        anim.samplers.resize(samplerCount);
+
+                        for (auto &samp : anim.samplers)
+                        {
+                                s->readPOD(samp.interpolation);
+
+                                uint32_t timeCount = 0;
+                                s->readPOD(timeCount);
+                                samp.inputTimes.resize(timeCount);
+                                if (timeCount > 0)
+                                        s->read(samp.inputTimes.data(), timeCount * sizeof(float));
+
+                                uint32_t valCount = 0;
+                                s->readPOD(valCount);
+                                samp.outputValues.resize(valCount);
+                                if (valCount > 0)
+                                        s->read(samp.outputValues.data(), valCount * sizeof(glm::vec4));
+                        }
+
+                        uint32_t chanCount = 0;
+                        s->readPOD(chanCount);
+                        anim.channels.resize(chanCount);
+
+                        for (auto &ch : anim.channels)
+                        {
+                                s->readPOD(ch.targetPath);
+                                s->readPOD(ch.samplerIndex);
+                                s->readPOD(ch.targetNodeIndex);
+                        }
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [animations] end   @ {} ({} animations)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Nodes
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [nodes] start @ {}", s->tell());
+#endif
+                uint32_t count = 0;
+                s->readPOD(count);
+                m_nodes.resize(count);
+
+                for (auto &node : m_nodes)
+                {
+                        s->readString(node.name);
+                        s->readPOD(node.translation);
+                        s->readPOD(node.rotation);
+                        s->readPOD(node.scale);
+                        s->readPOD(node.localTransform);
+                        s->readPOD(node.worldTransform);
+                        s->readPOD(node.meshIndex);
+                        s->readPOD(node.skinIndex);
+                        s->readPOD(node.cameraIndex);
+                        s->readPOD(node.lightIndex);
+                        s->readPOD(node.parent);
+
+                        uint32_t childCount = 0;
+                        s->readPOD(childCount);
+                        node.children.resize(childCount);
+                        if (childCount > 0)
+                                s->read(node.children.data(), childCount * sizeof(Index));
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [nodes] end   @ {} ({} nodes)", s->tell(), count);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Scenes
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [scenes] start @ {}", s->tell());
+#endif
+                uint32_t count = 0;
+                s->readPOD(count);
+                m_scenes.resize(count);
+
+                for (auto &scene : m_scenes)
+                {
+                        s->readString(scene.name);
+                        uint32_t rootCount = 0;
+                        s->readPOD(rootCount);
+                        scene.rootNodes.resize(rootCount);
+                        if (rootCount > 0)
+                                s->read(scene.rootNodes.data(), rootCount * sizeof(Index));
+                }
+
+                s->readPOD(m_defaultScene);
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [scenes] end   @ {} ({} scenes, defaultScene={})", s->tell(), count, m_defaultScene);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // Meshes
+        // -----------------------------------------------------------------------
+        {
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [meshes] start @ {}", s->tell());
+#endif
+                uint32_t meshCount = 0;
+                s->readPOD(meshCount);
+                m_meshes.resize(meshCount);
+
+                for (auto &mesh : m_meshes)
+                {
+                        s->readString(mesh.name);
+                        s->readPOD(mesh.bounds.min);
+                        s->readPOD(mesh.bounds.max);
+
+                        uint32_t primCount = 0;
+                        s->readPOD(primCount);
+                        mesh.primitives.resize(primCount);
+
+                        for (auto &prim : mesh.primitives)
+                        {
+                                s->readPOD(prim.mode);
+                                s->readPOD(prim.materialIndex);
+                                s->readPOD(prim.attributeFlags);
+                                s->readPOD(prim.vertexStride);
+                                s->readPOD(prim.vertexCount);
+                                s->readPOD(prim.bounds.min);
+                                s->readPOD(prim.bounds.max);
+
+                                uint32_t morphCount = 0;
+                                s->readPOD(morphCount);
+                                prim.morphWeights.resize(morphCount);
+                                if (morphCount > 0)
+                                        s->read(prim.morphWeights.data(), morphCount * sizeof(float));
+
+                                uint64_t vbBytes = 0;
+                                s->readPOD(vbBytes);
+                                prim.vertexData.resize(static_cast<size_t>(vbBytes));
+                                if (vbBytes > 0)
+                                        s->read(prim.vertexData.data(), static_cast<size_t>(vbBytes));
+
+                                uint32_t idxCount = 0;
+                                s->readPOD(idxCount);
+                                prim.indices.resize(idxCount);
+                                if (idxCount > 0)
+                                        s->read(prim.indices.data(), idxCount * sizeof(uint32_t));
+                        }
+                }
+#ifndef NDEBUG
+                IC_CORE_TRACE("  [meshes] end   @ {} ({} meshes)", s->tell(), meshCount);
+#endif
+        }
+
+        // -----------------------------------------------------------------------
+        // World bounds
+        // -----------------------------------------------------------------------
+        s->readPOD(m_worldBounds.min);
+        s->readPOD(m_worldBounds.max);
+
+        m_state = State::CPUReady;
+
+#ifndef NDEBUG
+        IC_CORE_TRACE("serializedLoad END @ {} bytes — {} meshes {} images {} materials",
+                      s->tell(),
+                      m_meshes.size(),
+                      m_images.size(),
+                      m_materials.size());
+#endif
+
+        return true;
 }
 
 }  // namespace ic

@@ -307,8 +307,8 @@ void GLTFLoader::loadBuffer(fastgltf::Asset * /*asset*/,
                                      },
                                      [&](const fastgltf::sources::URI &uri)
                                      {
-                                             const char *bufPath = nullptr;
-                                             fs_joinPath(uri.uri.path().data(), basePath, &bufPath);
+                                             const char *bufPath = fs_joinPath(uri.uri.path().data(), basePath);
+                                             IC_CORE_ASSERT(bufPath, "Could not join buffer Path");
 
                                              std::ifstream file(bufPath, std::ios::binary | std::ios::ate);
                                              if (!file)
