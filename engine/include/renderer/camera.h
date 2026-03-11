@@ -2,6 +2,7 @@
 #define CAMERA_H
 #include "defines.h"
 
+#include "renderer/camera.h"
 #include "core/events/event.h"
 #include "core/events/key_event.h"
 #include "core/events/mouse_event.h"
@@ -33,7 +34,7 @@ public:
         // camera attributes
         glm::quat orientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
         glm::vec3 position    = glm::vec3(0.0f);
-        bool flipY            = false;
+        bool      flipY       = false;
 
         // the projection matrix used for projecting onto the screen into the clip space.
         glm::mat4 projection = glm::mat4(1.0f);
@@ -45,11 +46,11 @@ public:
         } matrices;
 
         float zoomSpeed        = 0.5f;
-        float mouseSensitivity = 0.1f;
-        float movementSpeed    = 1.0f;
+        float mouseSensitivity = 0.5f;
+        float movementSpeed    = 10.0f;  // bumped up the speed as debug camera is too slow
 
-        bool updated           = true;
-        bool fovChanged        = false;
+        bool updated    = true;
+        bool fovChanged = false;
 
         struct
         {

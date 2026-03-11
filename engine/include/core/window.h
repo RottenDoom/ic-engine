@@ -7,7 +7,7 @@ namespace ic
 
 struct IC_API window_props
 {
-        const char *title;
+        const char  *title;
         unsigned int width;
         unsigned int height;
 
@@ -21,11 +21,11 @@ struct IC_API window_props
 class Window
 {
 public:
-        using eventCallbackFn                  = std::function<void(event &)>;
+        using eventCallbackFn = std::function<void(event &)>;
 
-        virtual ~Window()                      = default;
+        virtual ~Window() = default;
 
-        virtual void onUpdate()                = 0;
+        virtual void onUpdate() = 0;
 
         virtual unsigned int getWidth() const  = 0;
         virtual unsigned int getHeight() const = 0;
@@ -35,9 +35,9 @@ public:
         virtual void setVSync(bool enabled)                            = 0;
         virtual bool isVSync() const                                   = 0;
 
-        virtual void *getNativeWindow() const                          = 0;
+        virtual void *getNativeWindow() const = 0;
 
-        static std::unique_ptr<Window> create(const window_props &props = window_props());
+        static Window *create(const window_props &props = window_props());
 };
 
 }  // namespace ic

@@ -4,7 +4,6 @@
 struct ApplicationState
 {
         ic::window_props *props;
-        /** TODO: add more properties here */
 };
 
 struct GameState
@@ -51,19 +50,23 @@ int main(int argc, char *argv[])
         // path after post-build
         ic_mount("/assets", "assets", 1);
 
-        // load the registry (IN some functions you would have to put assets at the start in some you dont have
-        // to)
-        ic_load_registry("registry.yaml");
+        // load the registry
+        ic_load_registry("assets/registry.yaml");
 
         // load model
         GUID id = 0x1000000000000004;
         ic_load_model(id);
         g_state.models.push_back(id);
 
-        Scene defaultScene;
+        ic::RenderScene defaultScene;
+        ic::Entity      entt = defaultScene.createEntity();
 
-        defaultScene.AddModel(id, glm::mat4(1.0f));
-        defaultScene.SetupCamera();
+        defaultScene.addMesh(entt).modelID       = id;
+        defaultScene.addTransform(entt).position = {0, 0, 0};
+        defaultScene.addTransform(entt).scale    = glm::vec3(0.1f);
+
+        // Camera Entity
+
         ic_set_scene(&defaultScene);
 
         ic_app_run();

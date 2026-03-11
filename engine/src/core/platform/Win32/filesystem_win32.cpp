@@ -9,14 +9,14 @@ namespace ic
 
 struct PlatformDirIterator
 {
-        HANDLE handle;
+        HANDLE           handle;
         WIN32_FIND_DATAA find_data;
-        bool first;
+        bool             first;
 };
 
-char* __platformCalcBaseDir()
+char *__platformCalcBaseDir()
 {
-        char* buffer = (char*)ic_malloc(FS_MAX_PATH);
+        char *buffer = (char *)ic_malloc(FS_MAX_PATH);
         if (!buffer)
                 return NULL;
 
@@ -29,7 +29,7 @@ char* __platformCalcBaseDir()
                 return NULL;
         }
 
-        char* lastSlash = strrchr(buffer, '\\');
+        char *lastSlash = strrchr(buffer, '\\');
         if (lastSlash)
                 *(lastSlash + 1) = '\0';
         else
@@ -38,10 +38,10 @@ char* __platformCalcBaseDir()
         return buffer;
 }
 
-char* __platformCalcUserDir()
+char *__platformCalcUserDir()
 {
-        PWSTR widePath = NULL;
-        HRESULT hr     = SHGetKnownFolderPath(FOLDERID_Profile, 0, NULL, &widePath);
+        PWSTR   widePath = NULL;
+        HRESULT hr       = SHGetKnownFolderPath(FOLDERID_Profile, 0, NULL, &widePath);
 
         if (SUCCEEDED(hr))
         {
@@ -49,7 +49,7 @@ char* __platformCalcUserDir()
                 int required = WideCharToMultiByte(CP_ACP, 0, widePath, -1, NULL, 0, NULL, NULL);
                 if (required > 0)
                 {
-                        char* path = (char*)ic_malloc(required + 1); /* +1 for extra '\' */
+                        char *path = (char *)ic_malloc(required + 1); /* +1 for extra '\' */
                         if (path)
                         {
                                 WideCharToMultiByte(CP_ACP, 0, widePath, -1, path, required, NULL, NULL);
@@ -66,11 +66,11 @@ char* __platformCalcUserDir()
         }
 
         /* Fallback: use USERPROFILE environment variable */
-        const char* env = getenv("USERPROFILE");
+        const char *env = getenv("USERPROFILE");
         if (env)
         {
-                size_t len = strlen(env);
-                char* path = (char*)ic_malloc(len + 2);
+                size_t len  = strlen(env);
+                char  *path = (char *)ic_malloc(len + 2);
                 if (path)
                 {
                         strcpy(path, env);
@@ -85,9 +85,9 @@ char* __platformCalcUserDir()
         return NULL;
 }
 
-char* __platformCalcWriteDir()
+char *__platformCalcWriteDir()
 {
-        char* writePath = (char*)ic_malloc(FS_MAX_PATH);
+        char *writePath = (char *)ic_malloc(FS_MAX_PATH);
         // usually settings and bindings go into local dir and save files go into roaming
         // might also need to add some kind of fallback path resolution.
         if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, writePath)))
@@ -98,12 +98,12 @@ char* __platformCalcWriteDir()
         return NULL;
 }
 
-bool __platformMkDir(const char* path)
+bool __platformMkDir(const char *path)
 {
         if (!path || !path[0])
                 return false;
 
-        char temp[FS_MAX_PATH];
+        char   temp[FS_MAX_PATH];
         size_t len = strlen(path);
 
         if (len >= sizeof(temp))
@@ -111,7 +111,7 @@ bool __platformMkDir(const char* path)
 
         // Copy + normalize slashes
         strcpy(temp, path);
-        for (char* c = temp; *c; ++c)
+        for (char *c = temp; *c; ++c)
         {
                 if (*c == '/')
                         *c = '\\';
@@ -121,13 +121,13 @@ bool __platformMkDir(const char* path)
         if (!(isalpha((unsigned char)temp[0]) && temp[1] == ':' && temp[2] == '\\'))
                 return false;
 
-        char* p = temp + 3;  // skip "C:\"
+        char *p = temp + 3;  // skip "C:\"
 
         for (; *p; ++p)
         {
                 if (*p == '\\')
                 {
-                        *p          = '\0';
+                        *p = '\0';
 
                         DWORD attrs = GetFileAttributesA(temp);
                         if (attrs == INVALID_FILE_ATTRIBUTES)
@@ -175,30 +175,30 @@ bool __platformMkDir(const char* path)
         return true;
 }
 
-bool __platformRmDir(const char* dirName)
+bool __platformRmDir(const char *dirName)
 {
         return RemoveDirectoryA(dirName) != 0;
 }
 
-bool __platformFileExists(const char* fullpath)
+bool __platformFileExists(const char *fullpath)
 {
-        DWORD dwAttrib = GetFileAttributes((LPCSTR)fullpath);
+        DWORD dwAttrib = GetFileAttributesA(fullpath);
         // check if a valid path and check if its not a directory
         return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-bool __platformIsDirectory(const char* path)
+bool __platformIsDirectory(const char *path)
 {
         DWORD attrs = GetFileAttributesA(path);
         return (attrs != INVALID_FILE_ATTRIBUTES) && (attrs & FILE_ATTRIBUTE_DIRECTORY);
 }
 
-bool __platformDeleteFile(const char* filename)
+bool __platformDeleteFile(const char *filename)
 {
         return DeleteFileA(filename) != 0;
 }
 
-uint64_t __platformGetLastModTime(const char* filename)
+uint64_t __platformGetLastModTime(const char *filename)
 {
         WIN32_FILE_ATTRIBUTE_DATA attrib;
         if (GetFileAttributesExA(filename, GetFileExInfoStandard, &attrib))
@@ -211,19 +211,19 @@ uint64_t __platformGetLastModTime(const char* filename)
         return 0;
 }
 
-bool __platformCopyFile(const char* src, const char* dst)
+bool __platformCopyFile(const char *src, const char *dst)
 {
         return CopyFile(src, dst, FALSE) != 0;
 }
 
-bool __platformMoveFile(const char* src, const char* dst)
+bool __platformMoveFile(const char *src, const char *dst)
 {
         return MoveFile(src, dst) != 0;
 }
 
-PlatformDirIterator* __platformOpenDir(const char* path)
+PlatformDirIterator *__platformOpenDir(const char *path)
 {
-        PlatformDirIterator* iter = new PlatformDirIterator();
+        PlatformDirIterator *iter = new PlatformDirIterator();
 
         char search_path[FS_MAX_PATH];
         snprintf(search_path, FS_MAX_PATH, "%s\\*", path);
@@ -240,7 +240,7 @@ PlatformDirIterator* __platformOpenDir(const char* path)
         return iter;
 }
 
-bool __platformReadDir(PlatformDirIterator* iter, char* out_name, size_t name_size, bool* out_is_dir)
+bool __platformReadDir(PlatformDirIterator *iter, char *out_name, size_t name_size, bool *out_is_dir)
 {
         if (!iter || iter->handle == INVALID_HANDLE_VALUE)
                 return false;
@@ -281,7 +281,7 @@ bool __platformReadDir(PlatformDirIterator* iter, char* out_name, size_t name_si
         return true;
 }
 
-void __platformCloseDir(PlatformDirIterator* iter)
+void __platformCloseDir(PlatformDirIterator *iter)
 {
         if (iter)
         {
@@ -291,21 +291,21 @@ void __platformCloseDir(PlatformDirIterator* iter)
         }
 }
 
-const char* __platformGetBaseDir(void)
+const char *__platformGetBaseDir(void)
 {
         return __platformCalcBaseDir();
 }
-const char* __platformGetUserDir(void)
+const char *__platformGetUserDir(void)
 {
         return __platformCalcUserDir();
 }
-const char* __platformGetCurrentDir(void)
+const char *__platformGetCurrentDir(void)
 {
         DWORD len = GetCurrentDirectoryA(0, NULL);
         if (len == 0)
                 return NULL;
 
-        char* buffer = (char*)malloc(len + 1);
+        char *buffer = (char *)malloc(len + 1);
         if (!buffer)
                 return NULL;
 

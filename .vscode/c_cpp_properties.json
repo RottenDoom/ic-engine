@@ -7,7 +7,7 @@
 				"${VULKAN_SDK}/include"
 			],
 			"defines": [
-				"_DEBUG",
+				"NDEBUG",
 				"UNICODE",
 				"_UNICODE",
 				"IC_EXPORT"

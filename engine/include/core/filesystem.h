@@ -85,7 +85,6 @@ void fs_deinit(void);
 bool fs_mount(const char *virtual_path, const char *physical_path, MountType type, uint16_t priority);
 
 /** Returns the directory seporator for a filesystem */
-const char *fs_getDirSeperator(void);
 const char *fs_getWriteDirectory(void);
 void        fs_setWriteDirectory(char *dir);
 
@@ -100,23 +99,28 @@ char **fs_getSearchPath(void);
 bool fs_mkdir(const char *dirName);
 bool fs_rmdir(const char *dirName);
 
-/** Returns joined path using a relative path and a full path, checks if that path exists. If yes returns true.
- * Equivalent to cd command */
-bool fs_joinPath(const char *relPath, const char *fullpath, const char **out);
-bool fs_delete(const char *filename);
+/** Joins two paths. Note that this does not check if the path exists. You have to decide what you want to do with that
+ * path */
+const char *fs_joinPath(const char *relPath, const char *fullpath);
+bool        fs_delete(const char *filename);
 
 /** Enumerate files in a directory. dir should be a full path */
 char **fs_enumerateFiles(const char *dir);
 
-/** Returns full path of a file from the search paths */
+/** Returns full path of a file from the mounts and search path. Existence check depends on the user. */
 char *fs_getfullpath(const char *filename);
 
 /** Get parent path from a file path or directory */
 char *fs_getParentPath(const char *path);
 
+/** Get extension/file format of any path given */
+const char *fs_getExtension(const char *path);
+
 /** File and directory checks */
-bool     fs_exists(const char *relative_path);
-bool     fs_isDirectory(const char *dir);
+bool fs_exists(const char *relative_path);
+bool fs_isDirectory(const char *dir);
+
+/** Get last modification time. Make sure filename is not full path (This needs fix) */
 uint64_t fs_getLastModificationTime(const char *filename);
 
 File  *fs_open(const char *filename, int flags);
@@ -131,7 +135,6 @@ size_t fs_setBuffer(File *handle, size_t bufsize);
 bool   fs_flush(File *handle);
 bool   fs_compress(File *handle);
 
-// TODO Implement these functions inside the asset system and other places.
 const void *fs_read_mmap(File *file, MmapHint hint);
 const void *fs_read_mmap_range(File *file, uint64_t offset, size_t size, MmapHint hint);
 void        fs_mmap_unload(File *file);

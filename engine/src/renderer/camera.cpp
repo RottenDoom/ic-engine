@@ -45,8 +45,8 @@ void Camera::setPerspectiveProjection(float fov, float aspect, float znear, floa
 
 void Camera::setOrthographicProjection(float left, float right, float top, float bottom, float near, float far)
 {
-        this->zfar       = far;
-        this->znear      = near;
+        this->zfar  = far;
+        this->znear = near;
 
         projection       = glm::mat4(1.0f);
         projection[0][0] = 2.0f / (right - left);
@@ -120,7 +120,7 @@ void Camera::handleInput(float deltaTime)
 {
         if (type == firstperson)
         {
-                float velocity    = movementSpeed * deltaTime;
+                float velocity = movementSpeed * deltaTime;
 
                 glm::vec3 forward = orientation * glm::vec3(0.0f, 0.0f, 1.0f);
                 glm::vec3 right   = orientation * glm::vec3(1.0f, 0.0f, 0.0f);
@@ -168,6 +168,7 @@ bool Camera::onKeyPressed(ic::KeyPressedEvent &e)
         }
         if (ic::input::isKeyPressed(ic::Key::C))
         {
+                // This doesnt exactly work corret for some reason
                 switch (type)
                 {
                 case lookat:
@@ -182,12 +183,12 @@ bool Camera::onKeyPressed(ic::KeyPressedEvent &e)
 
 bool Camera::onMouseMoved(ic::MouseMovedEvent &e)
 {
-        static bool firstMouse = true;
-        static float lastX     = 0.0f;
-        static float lastY     = 0.0f;
+        static bool  firstMouse = true;
+        static float lastX      = 0.0f;
+        static float lastY      = 0.0f;
 
-        float xpos             = e.getX();
-        float ypos             = e.getY();
+        float xpos = e.getX();
+        float ypos = e.getY();
 
         if (firstMouse)
         {
@@ -200,8 +201,8 @@ bool Camera::onMouseMoved(ic::MouseMovedEvent &e)
         float xoffset = -(xpos - lastX);
         float yoffset = lastY - ypos;  // reversed: moving up should look up
 
-        lastX         = xpos;
-        lastY         = ypos;
+        lastX = xpos;
+        lastY = ypos;
 
         // Apply sensitivity
         xoffset *= mouseSensitivity;
@@ -230,11 +231,13 @@ Camera createCamera(Camera::CameraType type, glm::vec3 position)
 {
         Camera camera;
 
-        camera.type = Camera::CameraType::firstperson;
-        camera.setViewDirection(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        camera.type = type;
+        camera.setViewDirection(position, glm::vec3(0.0f, 0.0f, -1.0f));
+        /** TODO: Make better camera component so that it doesnt have a dependency on windows all the time. Maybe have a
+         * global application state all the time after each update  */
         camera.setPerspectiveProjection(45.0f,
-                                        (float)ic::Application::get().getWindow().getWidth() /
-                                            (float)ic::Application::get().getWindow().getHeight(),
+                                        (float)ic::Application::get().getWindow()->getWidth() /
+                                            (float)ic::Application::get().getWindow()->getHeight(),
                                         0.1f,
                                         256.0f);
         return camera;

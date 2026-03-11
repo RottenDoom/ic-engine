@@ -1,103 +1,158 @@
 #include "core/assets/asset_serializer.h"
 #include "core/filesystem.h"
 
-/** TODO: Use my implementation here. */
-
 namespace ic
 {
 
-Serializer::~Serializer()
-{
-        close();
-}
+// ---------------------------------------------------------------------------
+// Open / close
+// ---------------------------------------------------------------------------
 
 bool Serializer::openForRead(const string &fname)
 {
-        IC_CORE_ASSERT(!isOpen(), "Dont forget to close last file used");
-        filename = fname;
-        if (!memMappedFile.open(fname, MemoryMapped::WholeFile, MemoryMapped::SequentialScan))
+        IC_CORE_ASSERT(!isOpen(), "Serializer: close the current file before opening another");
+
+        m_filename           = fname;
+        const char *fullpath = fs_getfullpath(fname.c_str());
+
+        if (!mmap_open(&m_mmap, fullpath, MMAP_SEQUENTIAL))
         {
+                IC_CORE_ERROR("Serializer: failed to memory-map '{}' (errno={})", fname.c_str(), errno);
+                ic_free((void *)fullpath);
                 return false;
         }
-        currentReadPos = memMappedFile.getData();
 
+        m_readPos = static_cast<const uint8_t *>(m_mmap.data);
+        ic_free((void *)fullpath);
         return true;
 }
 
 bool Serializer::openForWrite(const string &fname)
 {
-        IC_CORE_ASSERT(!isOpen(), "Dont forget to close last file used");
-        filename         = fname;
-        char *parentPath = fs_getParentPath(fname.c_str());  // TODO
-        if (!parentPath && !fs_exists(parentPath))
-        {
+        IC_CORE_ASSERT(!isOpen(), "Serializer: close the current file before opening another");
+        IC_CORE_ASSERT(fname.c_str(), "Serializer: empty filename");
+
+        m_filename = fname;
+
+        char *parentPath = fs_getParentPath(fname.c_str());
+        if (parentPath && !fs_exists(parentPath))
                 fs_mkdir(parentPath);
-        }
-        writeFile.open(fname, std::ios::binary);
-        if (!writeFile || !writeFile.is_open())
+        ic_free(parentPath);
+
+        // TODO: replace with fs_open
+        m_writeFile.open(fname, std::ios::binary | std::ios::trunc);
+        if (!m_writeFile.is_open())
         {
-                IC_CORE_ERROR("Could not open file '%s'", fname.c_str());
+                IC_CORE_ERROR("Serializer: failed to open '{}' for writing", fname.c_str());
                 return false;
         }
-
         return true;
 }
 
 void Serializer::close()
 {
-        if (memMappedFile.isValid())
+        if (mmap_valid(&m_mmap))
         {
-                memMappedFile.close();
-                currentReadPos = nullptr;
+                mmap_close(&m_mmap);
+                m_readPos = nullptr;
+                // mmap_close zeros the struct - mmap_valid() will return false
         }
-        else if (writeFile.is_open())
+
+        if (m_writeFile.is_open())
         {
-                writeFile.close();
+                m_writeFile.flush();
+                m_writeFile.close();
         }
 }
 
 bool Serializer::isOpen() const
 {
-        return writeFile.is_open() || memMappedFile.isValid();
+        return mmap_valid(&m_mmap) || m_writeFile.is_open();
 }
 
 size_t Serializer::bytesLeft() const
 {
-        if (memMappedFile.isValid())
-        {
-                size_t bytesRead = currentReadPos - memMappedFile.getData();
-                return memMappedFile.size() - bytesRead;
-        }
+        if (!mmap_valid(&m_mmap) || !m_readPos)
+                return 0;
 
-        return 0;
+        size_t consumed = static_cast<size_t>(m_readPos - static_cast<const uint8_t *>(m_mmap.data));
+
+        return static_cast<size_t>(m_mmap.file_size) - consumed;
 }
 
 const uint8_t *Serializer::getData() const
 {
-        IC_CORE_ASSERT(memMappedFile.isValid(), "Serialized file was not valid!");
-        return currentReadPos;
-}
-
-void Serializer::write(const void *buffer, size_t bytes)
-{
-        IC_CORE_ASSERT(writeFile.good() && (buffer || (!buffer && !bytes)), "File written was not proper!");
-        writeFile.write(reinterpret_cast<const char *>(buffer), bytes);
+        IC_CORE_ASSERT(mmap_valid(&m_mmap), "Serializer::getData - not open for reading");
+        return m_readPos;
 }
 
 void Serializer::read(void *buffer, size_t bytes)
 {
-        IC_CORE_ASSERT(!bytes || (buffer && currentReadPos), "Bytes or current Position was NULL");
-        IC_CORE_ASSERT(!bytes || (currentReadPos - memMappedFile.getData() + bytes <= memMappedFile.size()),
-                       "Reading off the end of the file");
-        memcpy(buffer, currentReadPos, bytes);
-        currentReadPos += bytes;
+        if (bytes == 0)
+                return;
+
+        IC_CORE_ASSERT(buffer, "Serializer::read - null buffer");
+        IC_CORE_ASSERT(m_readPos, "Serializer::read - not open for reading");
+        IC_CORE_ASSERT((m_readPos - static_cast<const uint8_t *>(m_mmap.data)) + bytes <= m_mmap.file_size,
+                       "Serializer::read - {} bytes requested at offset {} would exceed file size {} ('{}')",
+                       bytes,
+                       tell(),
+                       m_mmap.file_size,
+                       m_filename.c_str());
+
+        memcpy(buffer, m_readPos, bytes);
+        m_readPos += bytes;
+}
+
+void Serializer::write(const void *buffer, size_t bytes)
+{
+        if (bytes == 0)
+                return;
+
+        IC_CORE_ASSERT(m_writeFile.is_open(), "Serializer::write - not open for writing");
+        IC_CORE_ASSERT(buffer, "Serializer::write - null buffer");
+        IC_CORE_ASSERT(m_writeFile.good(), "Serializer::write - stream in bad state");
+
+        m_writeFile.write(reinterpret_cast<const char *>(buffer), static_cast<std::streamsize>(bytes));
 }
 
 void Serializer::skip(size_t bytes)
 {
-        IC_CORE_ASSERT(!bytes || (currentReadPos - memMappedFile.getData() + bytes <= memMappedFile.size()),
-                       "Skipping off the end of the file");
-        currentReadPos += bytes;
+        if (bytes == 0)
+                return;
+
+        IC_CORE_ASSERT(m_readPos, "Serializer::skip - not open for reading");
+        IC_CORE_ASSERT((m_readPos - static_cast<const uint8_t *>(m_mmap.data)) + bytes <= m_mmap.file_size,
+                       "Serializer::skip - {} bytes would exceed file size",
+                       bytes);
+
+        m_readPos += bytes;
+}
+
+void Serializer::writeString(const string &s)
+{
+        uint32_t len = static_cast<uint32_t>(s.size());
+        write(&len, sizeof(len));
+        if (len > 0)
+                write(s.data(), len);
+}
+
+void Serializer::readString(string &out)
+{
+        uint32_t len = 0;
+        read(&len, sizeof(len));
+
+        // Same guard as readVector - a corrupt offset produces a garbage length
+        IC_CORE_ASSERT(len <= 65536,
+                       "Serializer::readString - length {} is impossibly large "
+                       "(offset={} file='{}'). Field order mismatch?",
+                       len,
+                       tell(),
+                       m_filename.c_str());
+
+        out.resize(len);
+        if (len > 0)
+                read(out.data(), len);
 }
 
 }  // namespace ic

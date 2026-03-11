@@ -16,50 +16,62 @@ void Init()
 uint64_t GetAssetTimeStamp(AssetType type, const GUID id)
 {
         const char *filename = AssetManager::Get()->getRegistry()->getCachePath(id);
-        char *full_path      = fs_getfullpath(filename);
-        return fs_getLastModificationTime(full_path);
+
+        if (!fs_exists(filename))
+        {
+                IC_CORE_ERROR("File path does not exist");
+                ic_free(filename);
+                return 0;
+        }
+
+        uint64_t timestamp = fs_getLastModificationTime(filename);
+        ic_free(filename);
+        return timestamp;
 }
 
 bool CacheAsset(AssetType type, const GUID id, IAsset *asset)
 {
-        const char *filename = AssetManager::Get()->getRegistry()->getCachePath(id);
-        char *full_path      = fs_getfullpath(filename);
-        try
+        const char *filename  = AssetManager::Get()->getRegistry()->getCachePath(id);
+        const char *full_path = fs_getfullpath(filename);  /// fix this buillshit
+
+        ic_free(filename);
+        ic::Serializer serializer;
+        if (!serializer.openForWrite(full_path))
         {
-                ic::Serializer serializer;
-                if (!serializer.openForWrite(full_path))
-                {
-                        return false;
-                }
-                if (!asset->cachedSave(&serializer))
-                {
-                        serializer.close();
-                        fs_delete(full_path);
-                        return false;
-                }
+                IC_CORE_ERROR("Could not open file path {}.", full_path);
+                ic_free(full_path);
+                return false;
+        }
+        if (!asset->serializedSave(&serializer))
+        {
+                IC_CORE_ERROR("Could not save file {}", full_path);
                 serializer.close();
+                ic_free(full_path);
+                return false;
         }
-        catch (std::exception &e)
-        {
-                fs_delete(full_path);
-                throw e;
-        }
+        ic_free(full_path);
+        serializer.close();
         return true;
 }
 
 uint8_t *GetCachedAssetRaw(AssetType type, const GUID id, size_t numBytes)
 {
-        numBytes             = 0;
-        const char *filename = AssetManager::Get()->getRegistry()->getCachePath(id);
-        char *full_path      = fs_getfullpath(filename);
+        numBytes              = 0;
+        const char *filename  = AssetManager::Get()->getRegistry()->getCachePath(id);
+        char       *full_path = fs_getfullpath(filename);
+        ic_free(filename);
+
         ic::Serializer serializer;
         if (!serializer.openForRead(full_path))
         {
+                ic_free(full_path);
                 return nullptr;
         }
+
         numBytes         = serializer.bytesLeft();
         uint8_t *ret_val = (uint8_t *)ic_malloc(sizeof(uint8_t) * numBytes);
         serializer.read(ret_val, numBytes);
+        ic_free(full_path);
         return ret_val;
 }
 

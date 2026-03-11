@@ -24,13 +24,16 @@ Application::Application(window_props &properties)
 
         m_Window = Window::create(properties);
         m_Window->setEventCallback(BIND_EVENT(onEvent));
+}
 
+void Application::initialize()
+{
         fs_init();
         AssetManager::Initialize("assets/registry.yaml");
 
-        // TODO: CHANGE THE API BASED ON SOME SWITHC OR BUILD SYSTEM
+        // TODO: Not by build system but by UI systems. This makes application reloads so handle that
         m_renderer = createRenderer(RendererAPI::OpenGL);
-        m_renderer->init(m_Window.get());
+        m_renderer->init(m_Window);
 
         IC_CORE_INFO("Application Initialized!");
 }
@@ -41,6 +44,7 @@ Application::~Application()
         fs_deinit();
         m_renderer->cleanUp();
         destroyRenderer(m_renderer);
+        delete m_Window;
 }
 
 bool Application::run()
@@ -94,6 +98,7 @@ void ic_create_application(ic::window_props *windowProperties)
                 return;
         void *application_memory    = ic_malloc(sizeof(ic::Application));
         ic::Application::s_Instance = new (application_memory) ic::Application(*windowProperties);
+        ic::Application::s_Instance->initialize();
 }
 
 bool ic_app_is_running(void)
@@ -117,7 +122,7 @@ void ic_app_destroy(void)
         ic::Application::get().~Application();
         ic_free(ic::Application::s_Instance);
 
-#if defined(_DEBUG)
+#ifndef NDEBUG
         ic::heap_dump_leaks();
 #endif
         ic::Application::s_Instance = nullptr;
