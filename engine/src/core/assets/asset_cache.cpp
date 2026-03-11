@@ -20,10 +20,12 @@ uint64_t GetAssetTimeStamp(AssetType type, const GUID id)
         if (!fs_exists(filename))
         {
                 IC_CORE_ERROR("File path does not exist");
+                ic_free(filename);
                 return 0;
         }
 
         uint64_t timestamp = fs_getLastModificationTime(filename);
+        ic_free(filename);
         return timestamp;
 }
 
@@ -47,15 +49,18 @@ bool CacheAsset(AssetType type, const GUID id, IAsset *asset)
                 ic_free(full_path);
                 return false;
         }
+        ic_free(full_path);
         serializer.close();
         return true;
 }
 
 uint8_t *GetCachedAssetRaw(AssetType type, const GUID id, size_t numBytes)
 {
-        numBytes                 = 0;
-        const char    *filename  = AssetManager::Get()->getRegistry()->getCachePath(id);
-        char          *full_path = fs_getfullpath(filename);
+        numBytes              = 0;
+        const char *filename  = AssetManager::Get()->getRegistry()->getCachePath(id);
+        char       *full_path = fs_getfullpath(filename);
+        ic_free(filename);
+
         ic::Serializer serializer;
         if (!serializer.openForRead(full_path))
         {

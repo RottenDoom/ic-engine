@@ -46,8 +46,8 @@ public:
         } matrices;
 
         float zoomSpeed        = 0.5f;
-        float mouseSensitivity = 0.1f;
-        float movementSpeed    = 1.0f;
+        float mouseSensitivity = 0.5f;
+        float movementSpeed    = 10.0f;  // bumped up the speed as debug camera is too slow
 
         bool updated    = true;
         bool fovChanged = false;

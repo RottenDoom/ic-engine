@@ -76,7 +76,7 @@ void AssetRegistry::parseAssetEntry(const YAML::Node &node)
         IC_CORE_ASSERT(full, "Could not join paths");
 
         meta.filepath = full;
-        ic_free((void *)full);
+        ic_free(full);
 
         // ---- cache ----
         if (node["cache"])
@@ -206,6 +206,7 @@ const char *AssetRegistry::getCachePath(GUID id) const
         {
                 fs_mkdir(parent);
         }
+        ic_free(parent);
 
         return cachePath;
 }

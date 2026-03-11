@@ -22,15 +22,53 @@ inline const char *const g_assetNames[] = {
 //
 // HOW TO BUMP:
 //   1. Add a new line at the bottom of the relevant block.
-//   2. Write what changed in the comment — future you will thank you.
+//   2. Write what changed in the comment - future you will thank you.
 //   3. That's it. IC_ASSET_VERSION updates automatically.
 //
 // RULES:
 //   - Never delete or reorder lines. Only append.
 //   - One line = one breaking change to the serialized format.
 //   - Non-breaking changes (adding optional data, no layout change) do NOT
-//     need a bump — only bump when old readers would misread the new format.
+//     need a bump - only bump when old readers would misread the new format.
 // =============================================================================
+
+/**
+ * TODO(serialization): LZ4 pixel compression
+  - Add LZ4_compress_default in serializedSave image loop
+    - Write: [uint64_t originalBytes][uint32_t compressedBytes][compressed data]
+    - Replace current: [uint64_t pixelBytes][raw pixels]
+  - Add LZ4_decompress_safe in serializedLoad image loop
+  - Bump Model_CURRENT in asset_types.hpp (Model_LZ4PixelCompression)
+  - Stale caches auto-rejected by version check - just delete old .icmodel files
+  - Expected result: ~2-3x size reduction on pixel data
+ *
+TODO(textures): BC7/KTX2 GPU compression pipeline
+  OFFLINE (cache-build time, runs once per source asset):
+    - After stb_image load in GLTFLoader, transcode raw RGBA8 → BC7
+      using bc7enc or libktx's ktxTexture2_CompressBasisEx
+    - Store KTX2 blob in Image::gpuData (new field, separate from Image::pixels)
+    - Image::pixels stays as RGBA8 for CPU-side use (AABB, picking, etc.)
+    - serializedSave: write KTX2 blob instead of raw pixels
+      - Write: [uint32_t format (BC7=1)][uint64_t blobBytes][ktx2 blob]
+    - Bump Model_CURRENT (Model_KTX2Compression)
+
+  RUNTIME (GLTexture::upload):
+    - Check Image::gpuFormat field
+    - If BC7: use glCompressedTextureSubImage2D with GL_COMPRESSED_RGBA_BPTC_UNORM
+    - If raw: existing glTextureSubImage2D path (fallback)
+    - Mip levels already in KTX2 blob - no glGenerateTextureMipmap needed
+
+  SRGB handling:
+    - Base color / emissive → GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
+    - Normal / metalRough / occlusion → GL_COMPRESSED_RGBA_BPTC_UNORM
+    - Image::srgb flag already exists - drives format selection
+
+  Expected result:
+    - 4096x4096 RGBA8 = 64 MB → BC7 = 16 MB on GPU (and in cache)
+    - Zero decompression cost at runtime - GPU reads BC7 natively
+    - Cache file size back to same order of magnitude as source gltf
+
+ */
 
 #define IC_GLOBAL_ASSET_VERSION 0x4943 // 18755 / IC
 constexpr uint32_t IC_ASSET_MAGIC = 0x49434D44;  // 'ICMD'
@@ -51,7 +89,7 @@ enum GfxImage : int32_t
         // GfxImage_StreamingLOD      = 7,   // streaming mip offset
         // GfxImage_EmbeddedSampler   = 8,   // sampler baked into image
         // GfxImage_NameSerialization = 9,
-        // GfxImage_TexturesetBump    = 10,  // textureset layout changed — bump here not textureset
+        // GfxImage_TexturesetBump    = 10,  // textureset layout changed - bump here not textureset
 
         GfxImage_CURRENT = GfxImage_Initial,
 };
@@ -162,11 +200,11 @@ enum Font : int32_t
 
 }  // namespace AssetVersion
 
-// Cache version — derived automatically, never set by hand.
+// Cache version - derived automatically, never set by hand.
 //
 // Computed as: base + sum of all current per-asset versions.
 // Any bump to any asset type increments this, invalidating all caches.
-// That's intentional — it's the simplest correct behavior.
+// That's intentional - it's the simplest correct behavior.
 //
 // TODO: store these versions in the cache for fast file loads
 
@@ -180,7 +218,7 @@ constexpr int32_t g_assetVersions[] = {
     AssetVersion::Shader_CURRENT,    // ASSET_TYPE_SHADER
     AssetVersion::Pipeline_CURRENT,  // ASSET_TYPE_PIPELINE
     AssetVersion::Font_CURRENT,      // ASSET_TYPE_FONT
-    0,                               // ASSET_TYPE_TEXTURESET — no .ffi, no version
+    0,                               // ASSET_TYPE_TEXTURESET - no .ffi, no version
 };
 
 constexpr int32_t sumVersions()

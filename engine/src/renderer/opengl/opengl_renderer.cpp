@@ -83,7 +83,7 @@ void OpenGLRenderer::setScene(RenderScene *scene)
 {
         m_scene = scene;
         // TODO: Remove the camera from here and make an entity out of it
-        m_scene->camera = createCamera(Camera::CameraType::firstperson, glm::vec3(1.0f));
+        m_scene->camera = createCamera(Camera::CameraType::firstperson, glm::vec3(0.0f, 0.0f, 0.0f));
 
         // If the renderer is already initialized, load and upload the new scene.
         if (m_window)

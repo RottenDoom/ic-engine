@@ -24,22 +24,20 @@ The executable can be found inside `build/build-gcc/bin/Debug/`. You can also us
 ### TODO
 - TODO: Make builds for both shared and static libraries since I am going to test out both thus going to use both.
 - TODO: Use ifdefs and defines better.
-- TODO: MultiThreading support and Threadpools module
-- TODO: Memory mapped for file loading.
-- TODO: Fast file loads
+- TODO: MultiThreading support and Threadpools module {CURR}
+- TODO: Fix camera and new ECS system {CURR}
 - Export API after creating model loading for users to use in the library
-- DLL imports and exports and live reloads {CURR}
-- Start rendering meshes {CURR}
+- Live reloads
 - Vector Template for printing in defines.
 - Create an actual game
 - Workflows and Tests
 - Make a release.
-- Create a custom allocator that also makes a report on how much memory each object is using and if there is a memory leak.
 - Write my own move functions and my own copy functions.
-- Custom file system
 
 #### Issues
 
+- On making a directory that already exists the functions recursively keeps calling itself. Fix this issue.
+- I mostly used normal malloc calls everywhere. Use maybe a better allocator so we can use it in lesser memory.
 - Modularity
 
 The project is largely based on the game engine by the cherno.<p>

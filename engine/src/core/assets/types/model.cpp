@@ -496,12 +496,14 @@ bool Model::load(const char *filepath)
                                 auto us  = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
                                 IC_CORE_INFO("Model::serializeLoad -> parsed '{}' in {:.2f} ms", filepath, us / 1000.0);
 #endif
+                                ic_free(cachePath);
                                 return true;
                         }
                         s.close();
                         IC_CORE_WARN("Model::load -> cache read failed, falling back to source");
                 }
         }
+        ic_free(cachePath);
 
         // cannot load from cache load from source file
         GLTFLoader loader;
@@ -652,7 +654,7 @@ bool Model::serializedSave(ic::Serializer *s) const
 #if defined(IC_ASSET_NAMES)
                         s->writeString(img.name);
 #else
-                        s->writeString("");  // placeholder — must always be written and read
+                        s->writeString("");  // placeholder - must always be written and read
 #endif
                         uint64_t pixelBytes = static_cast<uint64_t>(img.pixels.size());
                         s->writePOD(pixelBytes);
@@ -977,7 +979,7 @@ bool Model::serializedLoad(ic::Serializer *s)
         }
         if (version != EXPECTED_VERSION)
         {
-                IC_CORE_WARN("serializedLoad: version mismatch — cache={} current={} in '{}', needs rebuild",
+                IC_CORE_WARN("serializedLoad: version mismatch -> cache={} current={} in '{}', needs rebuild",
                              version,
                              EXPECTED_VERSION,
                              s->getFilename().c_str());
@@ -1005,7 +1007,7 @@ bool Model::serializedLoad(ic::Serializer *s)
                         s->readPOD(img.height);
                         s->readPOD(img.channels);
                         s->readPOD(img.srgb);
-                        s->readString(img.name);  // ALWAYS read — save always writes it
+                        s->readString(img.name);  // ALWAYS read - save always writes it
 
                         uint64_t pixelBytes = 0;
                         s->readPOD(pixelBytes);
@@ -1319,7 +1321,7 @@ bool Model::serializedLoad(ic::Serializer *s)
         m_state = State::CPUReady;
 
 #ifndef NDEBUG
-        IC_CORE_TRACE("serializedLoad END @ {} bytes — {} meshes {} images {} materials",
+        IC_CORE_TRACE("serializedLoad END @ {} bytes - {} meshes {} images {} materials",
                       s->tell(),
                       m_meshes.size(),
                       m_images.size(),

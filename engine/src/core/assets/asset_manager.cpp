@@ -43,14 +43,14 @@ void AssetManager::Shutdown()
 
 AssetManager *AssetManager::Get()
 {
-        IC_CORE_ASSERT(s_instance, "AssetManager not initialized — call Initialize() first");
+        IC_CORE_ASSERT(s_instance, "AssetManager not initialized - call Initialize() first");
         return s_instance;
 }
 
 AssetManager::~AssetManager()
 {
         // Force-destroy all remaining assets regardless of refcount.
-        // This is the shutdown path — no callers remain.
+        // This is the shutdown path - no callers remain.
         for (auto &[id, asset] : m_assets)
         {
                 IC_CORE_TRACE("AssetManager: force-destroying asset {} at shutdown", id);
@@ -73,7 +73,7 @@ IAsset *AssetManager::load(GUID id)
         // --- Cache miss: must be in registry ---
         if (!m_registry.contains(id))
         {
-                IC_CORE_WARN("AssetManager::load — asset {} not in registry", id);
+                IC_CORE_WARN("AssetManager::load - asset {} not in registry", id);
                 return nullptr;
         }
 
@@ -85,7 +85,7 @@ IAsset *AssetManager::load(GUID id)
 
 IAsset *AssetManager::load(GUID id, const char *path, AssetType type)
 {
-        IC_CORE_ASSERT(path, "AssetManager::load — null path");
+        IC_CORE_ASSERT(path, "AssetManager::load - null path");
 
         // --- Cache hit ---
         auto it = m_assets.find(id);
@@ -106,14 +106,14 @@ IAsset *AssetManager::load(GUID id, const char *path, AssetType type)
         IAsset *asset = createAsset(type, id);
         if (!asset)
         {
-                IC_CORE_ERROR("AssetManager::load — unsupported asset type {} for id {}", static_cast<int>(type), id);
+                IC_CORE_ERROR("AssetManager::load - unsupported asset type {} for id {}", static_cast<int>(type), id);
                 return nullptr;
         }
 
         // --- Load from disk ---
         if (!asset->load(path))
         {
-                IC_CORE_ERROR("AssetManager::load — failed to load '{}' (id={})", path, id);
+                IC_CORE_ERROR("AssetManager::load - failed to load '{}' (id={})", path, id);
                 destroyAsset(asset);
                 return nullptr;
         }
@@ -131,7 +131,7 @@ IAsset *AssetManager::getAsset(GUID id)
         auto it = m_assets.find(id);
         if (it == m_assets.end())
         {
-                IC_CORE_WARN("AssetManager::getAsset — {} not loaded", id);
+                IC_CORE_WARN("AssetManager::getAsset - {} not loaded", id);
                 return nullptr;
         }
         return it->second;
@@ -142,7 +142,7 @@ void AssetManager::unload(GUID id)
         auto it = m_assets.find(id);
         if (it == m_assets.end())
         {
-                IC_CORE_WARN("AssetManager::unload — {} not in cache", id);
+                IC_CORE_WARN("AssetManager::unload - {} not in cache", id);
                 return;
         }
 
@@ -157,7 +157,7 @@ void AssetManager::unload(GUID id)
         }
         else
         {
-                IC_CORE_TRACE("AssetManager: unload {} — refCount now {}", id, asset->getRefNum());
+                IC_CORE_TRACE("AssetManager: unload {} - refCount now {}", id, asset->getRefNum());
         }
 }
 
@@ -177,7 +177,7 @@ IAsset *AssetManager::createAsset(AssetType type, GUID id)
         void *mem = ic_malloc(assetSize(type));
         if (!mem)
         {
-                IC_CORE_ERROR("AssetManager::createAsset — allocation failed for type {}", static_cast<int>(type));
+                IC_CORE_ERROR("AssetManager::createAsset - allocation failed for type {}", static_cast<int>(type));
                 return nullptr;
         }
 
@@ -210,9 +210,9 @@ void AssetManager::destroyAsset(IAsset *asset)
 
 void ic_load_registry(const char *registry_file_path)
 {
-        IC_CORE_ASSERT(registry_file_path, "ic_load_registry — null path");
+        IC_CORE_ASSERT(registry_file_path, "ic_load_registry - null path");
         if (!ic::AssetManager::Get()->loadRegistry(registry_file_path))
-                IC_CORE_ERROR("ic_load_registry — failed to load '{}'", registry_file_path);
+                IC_CORE_ERROR("ic_load_registry - failed to load '{}'", registry_file_path);
 }
 
 bool ic_load_model(GUID modelID)

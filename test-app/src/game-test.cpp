@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
 
         defaultScene.addMesh(entt).modelID       = id;
         defaultScene.addTransform(entt).position = {0, 0, 0};
+        defaultScene.addTransform(entt).scale    = glm::vec3(0.1f);
 
         // Camera Entity
 

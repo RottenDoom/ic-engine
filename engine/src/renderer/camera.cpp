@@ -168,6 +168,7 @@ bool Camera::onKeyPressed(ic::KeyPressedEvent &e)
         }
         if (ic::input::isKeyPressed(ic::Key::C))
         {
+                // This doesnt exactly work corret for some reason
                 switch (type)
                 {
                 case lookat:
@@ -230,8 +231,10 @@ Camera createCamera(Camera::CameraType type, glm::vec3 position)
 {
         Camera camera;
 
-        camera.type = Camera::CameraType::firstperson;
-        camera.setViewDirection(position, glm::vec3(0.0f, 0.0f, 1.0f));
+        camera.type = type;
+        camera.setViewDirection(position, glm::vec3(0.0f, 0.0f, -1.0f));
+        /** TODO: Make better camera component so that it doesnt have a dependency on windows all the time. Maybe have a
+         * global application state all the time after each update  */
         camera.setPerspectiveProjection(45.0f,
                                         (float)ic::Application::get().getWindow()->getWidth() /
                                             (float)ic::Application::get().getWindow()->getHeight(),

@@ -35,7 +35,7 @@ public:
          * Load by ID + explicit filepath.
          * Registers the asset if it isn't already in the registry.
          * If already loaded, increments refcount and returns cached pointer.
-         * path is used for the first load only — ignored on cache hits.
+         * path is used for the first load only - ignored on cache hits.
          */
         IAsset *load(GUID id, const char *path, AssetType type = ASSET_TYPE_MODEL);
 
@@ -47,7 +47,7 @@ public:
                         return nullptr;
                 if (asset->getAssetType() != T::getStaticType())
                 {
-                        IC_CORE_ERROR("AssetManager::loadAs — type mismatch for {}", id);
+                        IC_CORE_ERROR("AssetManager::loadAs - type mismatch for {}", id);
                         unload(id);  // undo the addRef from load()
                         return nullptr;
                 }
@@ -62,7 +62,7 @@ public:
                         return nullptr;
                 if (asset->getAssetType() != T::getStaticType())
                 {
-                        IC_CORE_ERROR("AssetManager::loadAs — type mismatch for {}", id);
+                        IC_CORE_ERROR("AssetManager::loadAs - type mismatch for {}", id);
                         unload(id);
                         return nullptr;
                 }
@@ -100,7 +100,7 @@ private:
         /** Allocate and construct an asset of the given type. */
         IAsset *createAsset(AssetType type, GUID id);
 
-        /** Internal destroy — calls destructor + ic_free. */
+        /** Internal destroy - calls destructor + ic_free. */
         void destroyAsset(IAsset *asset);
 
         static AssetManager *s_instance;

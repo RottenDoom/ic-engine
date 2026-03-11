@@ -12,14 +12,14 @@
 #include <type_traits>
 
 /**
- * asset_serializer.h — Binary serializer for .icache asset files.
+ * asset_serializer.h - Binary serializer for .icmodel asset files.
  *
  * Two modes, mutually exclusive per instance:
- *   Read  — memory-mapped via Mmap (C struct, zero-copy)
- *   Write — std::ofstream binary
+ *   Read  - memory-mapped via Mmap (C struct, zero-copy)
+ *   Write - std::ofstream binary
  *
  * -------------------------------------------------------------------------
- * SYMMETRY RULE — this is the source of most serialization bugs:
+ * SYMMETRY RULE - this is the source of most serialization bugs:
  *
  *   Every writeX() call must be matched by exactly one readX() call
  *   in the same position, reading the same number of bytes.
@@ -137,10 +137,10 @@ public:
 
                 // A count this large is always a stream-offset bug, not a real asset.
                 // Catches the "288230376151711744 bad_alloc" class of crash before
-                // it reaches vector::resize. Limit is 4 GB of elements — no asset
+                // it reaches vector::resize. Limit is 4 GB of elements - no asset
                 // will ever legitimately exceed this.
                 IC_CORE_ASSERT(count <= 0x0000000100000000ULL,
-                               "Serializer::readVector — count {} is impossibly large "
+                               "Serializer::readVector - count {} is impossibly large "
                                "(file='{}' offset={}). "
                                "Save/load field order mismatch or corrupt cache.",
                                count,
@@ -160,7 +160,7 @@ public:
         void readString(std::string &out);
 
 private:
-        Mmap           m_mmap    = {};  // zero-init — mmap_valid() returns false
+        Mmap           m_mmap    = {};  // zero-init - mmap_valid() returns false
         const uint8_t *m_readPos = nullptr;
         std::ofstream  m_writeFile;
         string         m_filename;

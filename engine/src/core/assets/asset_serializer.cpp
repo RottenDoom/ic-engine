@@ -55,7 +55,7 @@ void Serializer::close()
         {
                 mmap_close(&m_mmap);
                 m_readPos = nullptr;
-                // mmap_close zeros the struct — mmap_valid() will return false
+                // mmap_close zeros the struct - mmap_valid() will return false
         }
 
         if (m_writeFile.is_open())
@@ -82,7 +82,7 @@ size_t Serializer::bytesLeft() const
 
 const uint8_t *Serializer::getData() const
 {
-        IC_CORE_ASSERT(mmap_valid(&m_mmap), "Serializer::getData — not open for reading");
+        IC_CORE_ASSERT(mmap_valid(&m_mmap), "Serializer::getData - not open for reading");
         return m_readPos;
 }
 
@@ -91,10 +91,10 @@ void Serializer::read(void *buffer, size_t bytes)
         if (bytes == 0)
                 return;
 
-        IC_CORE_ASSERT(buffer, "Serializer::read — null buffer");
-        IC_CORE_ASSERT(m_readPos, "Serializer::read — not open for reading");
+        IC_CORE_ASSERT(buffer, "Serializer::read - null buffer");
+        IC_CORE_ASSERT(m_readPos, "Serializer::read - not open for reading");
         IC_CORE_ASSERT((m_readPos - static_cast<const uint8_t *>(m_mmap.data)) + bytes <= m_mmap.file_size,
-                       "Serializer::read — {} bytes requested at offset {} would exceed file size {} ('{}')",
+                       "Serializer::read - {} bytes requested at offset {} would exceed file size {} ('{}')",
                        bytes,
                        tell(),
                        m_mmap.file_size,
@@ -109,9 +109,9 @@ void Serializer::write(const void *buffer, size_t bytes)
         if (bytes == 0)
                 return;
 
-        IC_CORE_ASSERT(m_writeFile.is_open(), "Serializer::write — not open for writing");
-        IC_CORE_ASSERT(buffer, "Serializer::write — null buffer");
-        IC_CORE_ASSERT(m_writeFile.good(), "Serializer::write — stream in bad state");
+        IC_CORE_ASSERT(m_writeFile.is_open(), "Serializer::write - not open for writing");
+        IC_CORE_ASSERT(buffer, "Serializer::write - null buffer");
+        IC_CORE_ASSERT(m_writeFile.good(), "Serializer::write - stream in bad state");
 
         m_writeFile.write(reinterpret_cast<const char *>(buffer), static_cast<std::streamsize>(bytes));
 }
@@ -121,9 +121,9 @@ void Serializer::skip(size_t bytes)
         if (bytes == 0)
                 return;
 
-        IC_CORE_ASSERT(m_readPos, "Serializer::skip — not open for reading");
+        IC_CORE_ASSERT(m_readPos, "Serializer::skip - not open for reading");
         IC_CORE_ASSERT((m_readPos - static_cast<const uint8_t *>(m_mmap.data)) + bytes <= m_mmap.file_size,
-                       "Serializer::skip — {} bytes would exceed file size",
+                       "Serializer::skip - {} bytes would exceed file size",
                        bytes);
 
         m_readPos += bytes;
@@ -142,9 +142,9 @@ void Serializer::readString(string &out)
         uint32_t len = 0;
         read(&len, sizeof(len));
 
-        // Same guard as readVector — a corrupt offset produces a garbage length
+        // Same guard as readVector - a corrupt offset produces a garbage length
         IC_CORE_ASSERT(len <= 65536,
-                       "Serializer::readString — length {} is impossibly large "
+                       "Serializer::readString - length {} is impossibly large "
                        "(offset={} file='{}'). Field order mismatch?",
                        len,
                        tell(),
