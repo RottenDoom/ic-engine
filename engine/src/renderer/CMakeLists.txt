@@ -8,7 +8,8 @@ set(RENDERER_SRC
 add_library(engine-renderer OBJECT ${RENDERER_SRC})
 
 target_include_directories(engine-renderer
-    PUBLIC ${CMAKE_SOURCE_DIR}/engine/include
+    PUBLIC 
+    ${CMAKE_SOURCE_DIR}/engine/include
 )
 
 target_link_libraries(engine-renderer

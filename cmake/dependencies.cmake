@@ -104,3 +104,39 @@ set(KTX_FEATURE_TOOLS OFF CACHE BOOL "" FORCE)
 set(KTX_FEATURE_DOC OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(ktx)	
+
+## ENTT
+add_library(entt INTERFACE)
+target_include_directories(entt INTERFACE
+	${CMAKE_SOURCE_DIR}/third-party/entt/src
+)
+##
+
+## IMGUI
+add_library(imgui STATIC
+    third-party/imgui/imgui.cpp
+    third-party/imgui/imgui_draw.cpp
+    third-party/imgui/imgui_tables.cpp
+    third-party/imgui/imgui_widgets.cpp
+    third-party/imgui/imgui_demo.cpp
+    third-party/imgui/backends/imgui_impl_glfw.cpp
+    # third-party/imgui/backends/imgui_impl_vulkan.cpp # test this out later.
+    third-party/imgui/backends/imgui_impl_opengl3.cpp
+)
+
+target_include_directories(imgui PUBLIC
+    third-party/imgui
+)
+
+target_compile_definitions(imgui PUBLIC
+    IMGUI_ENABLE_DOCKING
+    IMGUI_ENABLE_VIEWPORTS
+)
+
+target_link_libraries(imgui
+    PUBLIC
+    glfw
+    # Vulkan::Vulkan # test this out.
+)
+
+##

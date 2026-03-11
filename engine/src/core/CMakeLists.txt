@@ -31,8 +31,10 @@ PUBLIC
 	dependencies
 	glm
 	spdlog::spdlog
+	imgui # this is public because we need the editor.
 PRIVATE
 	stb
+	entt
 )
 
 # When building the engine as a DLL we must compile these static subtargets

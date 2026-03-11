@@ -1,0 +1,7 @@
+[submodule "third-party/entt"]
+	path = third-party/entt
+	url = https://github.com/skypjack/entt.git
+[submodule "third-party/imgui"]
+	path = third-party/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking
