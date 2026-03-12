@@ -18,6 +18,8 @@ PUBLIC
     	dependencies
 	spdlog::spdlog
 	glm
+	entt
+	imgui
 PRIVATE
 	glad
 )

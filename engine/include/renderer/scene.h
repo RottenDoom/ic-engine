@@ -5,7 +5,10 @@
 #include "camera.h"
 #include "core/assets/types/asset_base.h"
 #include "core/ecs/entity.h"
+#include "core/ecs/components.h"
 #include "core/application.h"
+
+#include <entt/entt.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -16,39 +19,36 @@ namespace ic
 class IC_API RenderScene
 {
 public:
-        Entity createEntity()
-        {
-                Entity e = ++m_next;
-                m_entities.push_back(e);
-                return e;
-        }
-
-        void destroyEntity(Entity e)
-        {
-                // simplified for now
-        }
-
         // Default camera see if this can be improved with a better entity class
-        Camera camera;
+        Camera defaultCamera;
 
-        TransformComponent &addTransform(Entity e) { return m_transforms[e]; }
+public:
+        RenderScene();
+        ~RenderScene();
 
-        MeshComponent &addMesh(Entity e) { return m_meshes[e]; }
+        Entity createEntity(const string &name = string());
+        Entity createEntity(UUID id, const string &name = string());
+        void   destroyEntity(Entity entity);
 
-        CameraComponent &addCamera(Entity e) { return m_cameras[e]; }
+        template <typename T>
+        void onComponentAdded(Entity entity, T &component);
+        void renderScene(Camera &editorCamera);
 
-        std::unordered_map<Entity, TransformComponent> &transforms() { return m_transforms; }
-        std::unordered_map<Entity, MeshComponent>      &meshes() { return m_meshes; }
-        std::unordered_map<Entity, CameraComponent>    &cameras() { return m_cameras; }
+        Entity findEntityByName(string &name);
+        Entity getEntityByUUID(UUID uuid);
+
+        bool isRunning() const { return m_IsRunning; }
+        bool isPaused() const { return m_IsPaused; }
+
+        void setPaused(bool paused) { m_IsPaused = paused; }
 
 private:
-        Entity m_next = 0;
+        entt::registry m_Registry;
+        uint32_t       m_ViewportWidth = 0, m_ViewportHeight = 0;
+        bool           m_IsRunning = false;
+        bool           m_IsPaused  = false;
 
-        std::vector<Entity> m_entities;
-
-        std::unordered_map<Entity, TransformComponent> m_transforms;
-        std::unordered_map<Entity, MeshComponent>      m_meshes;
-        std::unordered_map<Entity, CameraComponent>    m_cameras;
+        std::unordered_map<UUID, entt::entity> m_EntityMap;
 };
 
 }  // namespace ic

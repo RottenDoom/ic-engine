@@ -83,7 +83,7 @@ void OpenGLRenderer::setScene(RenderScene *scene)
 {
         m_scene = scene;
         // TODO: Remove the camera from here and make an entity out of it
-        m_scene->camera = createCamera(Camera::CameraType::firstperson, glm::vec3(0.0f, 0.0f, 0.0f));
+        m_scene->defaultCamera = createCamera(Camera::CameraType::firstperson, glm::vec3(0.0f, 0.0f, 0.0f));
 
         // If the renderer is already initialized, load and upload the new scene.
         if (m_window)
@@ -115,15 +115,15 @@ void OpenGLRenderer::loadAssets()
         if (!m_scene)
                 return;
 
-        for (auto &[entity, mesh] : m_scene->meshes())
-        {
-                Model *model = AssetManager::Get()->loadAs<Model>(mesh.modelID);
+        // for (auto &[entity, mesh] : m_scene->meshes())
+        // {
+        //         Model *model = AssetManager::Get()->loadAs<Model>(mesh.modelID);
 
-                if (!model)
-                {
-                        IC_CORE_WARN("Failed loading model {}", mesh.modelID);
-                }
-        }
+        //         if (!model)
+        //         {
+        //                 IC_CORE_WARN("Failed loading model {}", mesh.modelID);
+        //         }
+        // }
 }
 
 void OpenGLRenderer::setupBuffers()
@@ -131,13 +131,13 @@ void OpenGLRenderer::setupBuffers()
         if (!m_scene)
                 return;
 
-        for (auto &[entity, mesh] : m_scene->meshes())
-        {
-                if (m_gpuCache.count(mesh.modelID))
-                        continue;
+        // for (auto &[entity, mesh] : m_scene->meshes())
+        // {
+        //         if (m_gpuCache.count(mesh.modelID))
+        //                 continue;
 
-                uploadModel(mesh.modelID);
-        }
+        //         uploadModel(mesh.modelID);
+        // }
 }
 
 GLModel *OpenGLRenderer::uploadModel(GUID id)
@@ -190,7 +190,7 @@ void OpenGLRenderer::update(float dt)
 {
         // Entity Camera?
         if (m_scene)
-                m_scene->camera.onUpdate(dt);
+                m_scene->defaultCamera.onUpdate(dt);
 }
 
 void OpenGLRenderer::draw(float dt)
@@ -204,30 +204,31 @@ void OpenGLRenderer::draw(float dt)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         m_shader->use();
-        m_shader->setMat4("u_projection", m_scene->camera.projection);
-        m_shader->setMat4("u_view", m_scene->camera.matrices.view);
+        /** TODO: Fix these */
+        // m_shader->setMat4("u_projection", m_scene->camera.projection);
+        // m_shader->setMat4("u_view", m_scene->camera.matrices.view);
 
-        auto &meshes     = m_scene->meshes();
-        auto &transforms = m_scene->transforms();
+        // auto &meshes     = m_scene->meshes();
+        // auto &transforms = m_scene->transforms();
 
-        for (auto &[entity, mesh] : meshes)
-        {
-                auto tIt = transforms.find(entity);
+        // for (auto &[entity, mesh] : meshes)
+        // {
+        //         auto tIt = transforms.find(entity);
 
-                if (tIt == transforms.end())
-                        continue;
+        //         if (tIt == transforms.end())
+        //                 continue;
 
-                GLModel *glModel = getOrUpload(mesh.modelID);
+        //         GLModel *glModel = getOrUpload(mesh.modelID);
 
-                if (!glModel)
-                        continue;
+        //         if (!glModel)
+        //                 continue;
 
-                glm::mat4 modelMat = tIt->second.matrix();
+        //         glm::mat4 modelMat = tIt->second.matrix();
 
-                m_shader->setMat4("u_model", modelMat);
+        //         m_shader->setMat4("u_model", modelMat);
 
-                glModel->draw(m_shader);
-        }
+        //         glModel->draw(m_shader);
+        // }
 }
 
 // ---------------------------------------------------------------------------
@@ -237,7 +238,7 @@ void OpenGLRenderer::draw(float dt)
 void OpenGLRenderer::onEvent(event &e)
 {
         if (m_scene)
-                m_scene->camera.onEvent(e);
+                m_scene->defaultCamera.onEvent(e);
 
         eventDispatcher dispatcher(e);
         dispatcher.dispatch<WindowResizedEvent>(BIND_EVENT(OpenGLRenderer::onWindowResize));

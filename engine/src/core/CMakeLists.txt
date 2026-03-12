@@ -7,6 +7,7 @@ set(CORE_SRC
 
     application.cpp
     filesystem.cpp
+    uuid.cpp
     input.cpp
     logger.cpp
     allocator.cpp
@@ -30,16 +31,12 @@ target_link_libraries(engine-core
 PUBLIC 
 	dependencies
 	glm
+	entt
 	spdlog::spdlog
 	imgui # this is public because we need the editor.
 PRIVATE
 	stb
-	entt
 )
 
-# When building the engine as a DLL we must compile these static subtargets
-# with the export macro so their symbols are emitted into the final shared
-# `engine` library. This ensures classes annotated with `IC_API` are
-# exported correctly.
 target_compile_definitions(engine-core PRIVATE IC_EXPORT)
 set_target_properties(engine-core PROPERTIES POSITION_INDEPENDENT_CODE ON)

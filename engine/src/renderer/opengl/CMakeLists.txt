@@ -11,6 +11,8 @@ target_link_libraries(engine-opengl
 PUBLIC
 	engine-renderer
 	glad
+	entt
+	imgui
 PRIVATE	
 	stb
 	ktx
