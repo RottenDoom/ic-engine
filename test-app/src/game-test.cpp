@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
         g_state.models.push_back(id);
 
         ic::RenderScene defaultScene;
-        ic::Entity      entt = defaultScene.createEntity();
+        Entity          entt = defaultScene.createEntity();
 
         defaultScene.addMesh(entt).modelID       = id;
         defaultScene.addTransform(entt).position = {0, 0, 0};
