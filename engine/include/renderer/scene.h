@@ -30,6 +30,11 @@ public:
         Entity createEntity(UUID id, const string &name = string());
         void   destroyEntity(Entity entity);
 
+        MeshComponent      &addMesh(Entity entity) { return m_Registry.emplace<MeshComponent>(entity); }
+        TransformComponent &addTransform(Entity entity) { return m_Registry.emplace<TransformComponent>(entity); }
+        CameraComponent    &addCamera(Entity entity) { return m_Registry.emplace<CameraComponent>(entity); }
+        LightComponent     &addLight(Entity entity) { return m_Registry.emplace<LightComponent>(entity); }
+
         template <typename T>
         void onComponentAdded(Entity entity, T &component);
         void renderScene(Camera &editorCamera);
