@@ -6,15 +6,15 @@
 
 namespace ic
 {
-class input
+class IC_API input
 {
 public:
         static bool isKeyPressed(KeyCode key);
 
-        static bool isMouseButtonPressed(MouseCode button);
+        static bool                    isMouseButtonPressed(MouseCode button);
         static std::pair<float, float> getMousePosition();
-        static float getMouseX();
-        static float getMouseY();
+        static float                   getMouseX();
+        static float                   getMouseY();
 };
 }  // namespace ic
 

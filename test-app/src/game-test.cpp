@@ -59,11 +59,12 @@ int main(int argc, char *argv[])
         g_state.models.push_back(id);
 
         ic::RenderScene defaultScene;
-        Entity          entt = defaultScene.createEntity();
+        ic::Entity      entt = defaultScene.CreateEntityWithName("Player");
 
-        defaultScene.addMesh(entt).modelID       = id;
-        defaultScene.addTransform(entt).position = {0, 0, 0};
-        defaultScene.addTransform(entt).scale    = glm::vec3(0.1f);
+        // TODO: make the scene class actually use the mesh and model.
+        // defaultScene.addMesh(entt).modelID       = id;
+        // defaultScene.addTransform(entt).position = {0, 0, 0};
+        // defaultScene.addTransform(entt).scale    = glm::vec3(0.1f);
 
         // Camera Entity
 

@@ -123,7 +123,7 @@ public:
                 }
         }
 
-        void setZoomSpeed(float speed) { this->zoomSpeed; }
+        void setZoomSpeed(float speed) { this->zoomSpeed = speed; }
         void setMouseSensitivity(float sensitivity) { this->mouseSensitivity = sensitivity; }
         void setMovementSpeed(float speed) { this->movementSpeed = speed; }
         void resetCameraPosition();

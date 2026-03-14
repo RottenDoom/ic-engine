@@ -142,7 +142,7 @@ void OpenGLRenderer::setupBuffers()
 
 GLModel *OpenGLRenderer::uploadModel(GUID id)
 {
-        Model *model = AssetManager::Get()->getAsset<Model>(id);
+        Model *model = AssetManager::Get().getAsset<Model>(id);
         if (!model)
         {
                 IC_CORE_WARN("OpenGLRenderer::uploadModel -> model {} not in AssetManager", id);
@@ -281,12 +281,7 @@ void OpenGLRenderer::cleanUp()
 
 }  // namespace ic
 
-// ---------------------------------------------------------------------------
-// C-linkage scene setter -> allows script/C layers to set the scene without
-// pulling in C++ renderer headers.
-// ---------------------------------------------------------------------------
-
 void ic_set_scene(ic::RenderScene *scene)
 {
-        ic::Application::get().getRenderer()->setScene(scene);
+        ic::Application::Get().GetRenderer()->setScene(scene);
 }

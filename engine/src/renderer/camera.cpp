@@ -236,8 +236,8 @@ Camera createCamera(Camera::CameraType type, glm::vec3 position)
         /** TODO: Make better camera component so that it doesnt have a dependency on windows all the time. Maybe have a
          * global application state all the time after each update  */
         camera.setPerspectiveProjection(45.0f,
-                                        (float)ic::Application::get().getWindow()->getWidth() /
-                                            (float)ic::Application::get().getWindow()->getHeight(),
+                                        (float)ic::Application::Get().GetWindow()->getWidth() /
+                                            (float)ic::Application::Get().GetWindow()->getHeight(),
                                         0.1f,
                                         256.0f);
         return camera;

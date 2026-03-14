@@ -41,12 +41,6 @@ void AssetManager::Shutdown()
         s_instance = nullptr;
 }
 
-AssetManager *AssetManager::Get()
-{
-        IC_CORE_ASSERT(s_instance, "AssetManager not initialized - call Initialize() first");
-        return s_instance;
-}
-
 AssetManager::~AssetManager()
 {
         // Force-destroy all remaining assets regardless of refcount.
@@ -211,14 +205,14 @@ void AssetManager::destroyAsset(IAsset *asset)
 void ic_load_registry(const char *registry_file_path)
 {
         IC_CORE_ASSERT(registry_file_path, "ic_load_registry - null path");
-        if (!ic::AssetManager::Get()->loadRegistry(registry_file_path))
+        if (!ic::AssetManager::Get().loadRegistry(registry_file_path))
                 IC_CORE_ERROR("ic_load_registry - failed to load '{}'", registry_file_path);
 }
 
 bool ic_load_model(GUID modelID)
 {
         IC_CORE_INFO("Loading model with ID: {}", modelID);
-        if (!ic::AssetManager::Get()->loadAs<ic::Model>(modelID))
+        if (!ic::AssetManager::Get().loadAs<ic::Model>(modelID))
         {
                 return false;
         }
@@ -227,7 +221,7 @@ bool ic_load_model(GUID modelID)
 
 const char *ic_get_model_path(GUID modelID)
 {
-        ic::AssetRegistry *reg = ic::AssetManager::Get()->getRegistry();
+        ic::AssetRegistry *reg = ic::AssetManager::Get().getRegistry();
         if (!reg->contains(modelID))
                 return nullptr;
         return reg->getFilePath(modelID);
@@ -235,6 +229,6 @@ const char *ic_get_model_path(GUID modelID)
 
 bool ic_unload_model(GUID modelID)
 {
-        ic::AssetManager::Get()->unload(modelID);
+        ic::AssetManager::Get().unload(modelID);
         return true;
 }

@@ -22,7 +22,6 @@ target_compile_options(app PRIVATE
 target_compile_definitions(app PRIVATE
     $<$<CONFIG:Debug>:DEBUG;IC_ENABLE_ASSERTS>
     $<$<CONFIG:Release>:NDEBUG>
-    IC_IMPORT
 )
 
 set_target_properties(app PROPERTIES
@@ -30,11 +29,12 @@ set_target_properties(app PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
 )
 
-# Copy assets to build dir so the exe can find them at runtime
+
+# # Copy assets to build dir so the exe can find them at runtime
 add_custom_command(TARGET app POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/test-app/assets
-        ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets
+        ${CMAKE_SOURCE_DIR}/shaders/opengl
+        ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/shaders/opengl
     COMMENT "Copying test-app assets..."
     VERBATIM
 )

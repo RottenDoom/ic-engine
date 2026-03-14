@@ -11,7 +11,7 @@ layout(location = 8) in uvec4 a_Joints;
 layout(location = 9) in vec4 a_Weights;
 
 uniform mat4 u_model;
-uniform mau_t4 u_view;
+uniform mat4 u_view;
 uniform mat4 u_projection;
 
 out vec3 v_Position;

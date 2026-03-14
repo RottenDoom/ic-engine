@@ -1,15 +1,18 @@
 # engine/CMakeLists.txt
+
 set(CORE_SRC
     src/core/platform/mmapped.c
     src/core/platform/win32/input_win32.cpp
     src/core/platform/win32/window_win32.cpp
     src/core/platform/win32/filesystem_win32.cpp
+
     src/core/application.cpp
     src/core/filesystem.cpp
     src/core/uuid.cpp
     src/core/input.cpp
     src/core/logger.cpp
     src/core/allocator.cpp
+
     src/core/assets/types/model.cpp
     src/core/assets/types/material.cpp
     src/core/assets/asset_cache.cpp
@@ -17,12 +20,14 @@ set(CORE_SRC
     src/core/assets/asset_registry.cpp
     src/core/assets/asset_serializer.cpp
     src/core/assets/asset_loaders/gltf_loader.cpp
-    # src/core/ecs/components.cpp
+
+    src/core/ecs/entity.cpp
 )
 
 set(RENDERER_SRC
     src/renderer/camera.cpp
     src/renderer/renderer_frontend.cpp
+    src/renderer/scene.cpp
 )
 
 set(OPENGL_SRC
@@ -36,7 +41,65 @@ set(VULKAN_SRC
     # src/renderer/vulkan/vk_renderer.cpp
 )
 
-# STATIC CORE
+# compiler selection
+function(set_compiler_options TARGET)
+    if(MSVC)
+        target_compile_options(${TARGET} PRIVATE
+            /W4             # High warning level
+            /MP             # Multi-processor compilation
+            /EHsc           # Standard C++ exception handling
+            $<$<CONFIG:Debug>:/Od /Zi /RTC1>
+            $<$<CONFIG:Release>:/O2 /GL>    # Whole-program optimization in release
+        )
+        target_link_options(${TARGET} PRIVATE
+            $<$<CONFIG:Release>:/LTCG>      # Link-time code gen to match /GL
+        )
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(${TARGET} PRIVATE
+            -Wall -Wextra -Wpedantic
+            -Wno-unused-parameter
+            $<$<CONFIG:Debug>:-g -O0 -fno-omit-frame-pointer>
+            $<$<CONFIG:Release>:-O3 -flto>
+        )
+        target_link_options(${TARGET} PRIVATE
+            $<$<CONFIG:Release>:-flto>
+        )
+    else()
+        # GCC / MinGW
+        target_compile_options(${TARGET} PRIVATE
+            -Wall -Wextra -Wpedantic
+            -Wno-unused-parameter
+            $<$<CONFIG:Debug>:-g -O0 -fno-omit-frame-pointer>
+            $<$<CONFIG:Release>:-O2>
+        )
+    endif()
+endfunction()
+
+function(link_whole_archive TARGET STATIC_LIB)
+    if(MSVC)
+        # MSVC: /WHOLEARCHIVE:<lib>
+        target_link_options(${TARGET} PRIVATE
+            /WHOLEARCHIVE:$<TARGET_FILE:${STATIC_LIB}>
+        )
+        target_link_libraries(${TARGET} PRIVATE ${STATIC_LIB})
+    elseif(APPLE)
+        # macOS linker uses -force_load
+        target_link_libraries(${TARGET} PRIVATE
+            -Wl,-force_load,$<TARGET_FILE:${STATIC_LIB}>
+        )
+    else()
+        # GCC / MinGW / Clang on Linux & Windows
+        target_link_libraries(${TARGET} PRIVATE
+            -Wl,--whole-archive
+            ${STATIC_LIB}
+            -Wl,--no-whole-archive
+        )
+    endif()
+endfunction()
+
+# ─────────────────────────────────────────────
+#  STATIC CORE
+# ─────────────────────────────────────────────
 add_library(engine-core STATIC ${CORE_SRC} ${RENDERER_SRC})
 
 target_include_directories(engine-core
@@ -44,6 +107,18 @@ target_include_directories(engine-core
         ${CMAKE_SOURCE_DIR}/engine/include
         ${CMAKE_BINARY_DIR}/generated
 )
+
+target_compile_definitions(engine-core
+    PRIVATE IC_BUILD_ENGINE
+)
+
+# Windows: tell MSVC/clang-cl to export all symbols automatically
+# (equivalent of --whole-archive on the consumer side)
+if(WIN32 AND MSVC)
+    set_target_properties(engine-core PROPERTIES
+        WINDOWS_EXPORT_ALL_SYMBOLS ON
+    )
+endif()
 
 target_link_libraries(engine-core
     PUBLIC
@@ -59,14 +134,10 @@ target_link_libraries(engine-core
         stb
 )
 
-target_compile_definitions(engine-core
-    PUBLIC  IC_ENGINE
-    PRIVATE IC_EXPORT
-)
-
+set_compiler_options(engine-core)
 set_target_properties(engine-core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# SHARED LIB (TODO: Make hot reload stuff.)
+# build the lib
 add_library(engine SHARED src/engine.cpp)
 
 target_include_directories(engine
@@ -75,6 +146,8 @@ target_include_directories(engine
         $<INSTALL_INTERFACE:include>
 )
 
+link_whole_archive(engine engine-core)
+
 target_link_libraries(engine
     PUBLIC
         glm
@@ -82,7 +155,6 @@ target_link_libraries(engine
         spdlog::spdlog
         imgui
     PRIVATE
-        engine-core
         glad
 )
 
@@ -97,6 +169,7 @@ if(IC_ENGINE_USE_VULKAN)
     include(${CMAKE_SOURCE_DIR}/cmake/shaders.cmake)
     target_sources(engine PRIVATE ${VULKAN_SRC})
     target_link_libraries(engine PRIVATE Vulkan::Vulkan ktx)
+
     file(GLOB_RECURSE ENGINE_SHADERS
         "${CMAKE_SOURCE_DIR}/shaders/*.vert"
         "${CMAKE_SOURCE_DIR}/shaders/*.frag"
@@ -109,12 +182,10 @@ if(IC_ENGINE_USE_VULKAN)
 endif()
 
 target_compile_definitions(engine
-    PUBLIC
-        $<$<BOOL:${IC_ENGINE_USE_OPENGL}>:IC_USE_OPENGL>
-        $<$<BOOL:${IC_ENGINE_USE_VULKAN}>:IC_USE_VULKAN>
-    PRIVATE
-        IC_EXPORT
+    PRIVATE IC_BUILD_ENGINE
 )
+
+set_compiler_options(engine)
 
 set_target_properties(engine PROPERTIES
     OUTPUT_NAME                      "engine"
@@ -123,7 +194,9 @@ set_target_properties(engine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
 )
 
-# INSTALL
+# ─────────────────────────────────────────────
+#  INSTALL
+# ─────────────────────────────────────────────
 install(TARGETS engine
     EXPORT   ic_engineTargets
     RUNTIME  DESTINATION bin

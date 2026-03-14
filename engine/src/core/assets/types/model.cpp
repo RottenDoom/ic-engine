@@ -474,7 +474,7 @@ bool Model::load(const char *filepath)
         // -----------------------------------------------------------------------
         // Try cache first
         // -----------------------------------------------------------------------
-        const char *cachePath = AssetManager::Get()->getRegistry()->getCachePath(getID());
+        const char *cachePath = AssetManager::Get().getRegistry()->getCachePath(getID());
         if (cachePath && fs_exists(cachePath))
         {
                 uint64_t srcTime   = fs_getLastModificationTime(filepath);

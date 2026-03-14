@@ -16,7 +16,7 @@ class AssetManager
 public:
         static void          Initialize(const char *registryFile);
         static void          Shutdown();
-        static AssetManager *Get();
+        static AssetManager &Get() { return *s_instance; }
 
         // Non-copyable singleton
         AssetManager(const AssetManager &)            = delete;

@@ -24,21 +24,21 @@
 
 using string = std::string;
 
+// clang-format off
 #if defined(_WIN32) || defined(_WIN64)
-#if defined(IC_EXPORT)
-#define IC_API __declspec(dllexport)
-#elif defined(IC_IMPORT)
-#define IC_API __declspec(dllimport)
+    #ifdef IC_BUILD_ENGINE
+        #define IC_API __declspec(dllexport)
+    #else
+        #define IC_API __declspec(dllimport)
+    #endif
 #else
-#define IC_API
+    #if __GNUC__ >= 4
+	#define IC_API __attribute__((visibility("default")))
+    #else
+	#define IC_API
+    #endif
 #endif
-#else
-#if __GNUC__ >= 4
-#define IC_API __attribute__((visibility("default")))
-#else
-#define IC_API
-#endif
-#endif
+
 
 #include "core/logger.h"
 
@@ -118,5 +118,7 @@ typedef void(AppRenderFn)(void);
 #define IC_INLINE inline __attribute__((always_inline))
 #define IC_NOINLINE __attribute__((noinline))
 #endif
+
+// clang-format on
 
 #endif

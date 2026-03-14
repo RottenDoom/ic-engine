@@ -15,7 +15,7 @@ void Init()
 
 uint64_t GetAssetTimeStamp(AssetType type, const GUID id)
 {
-        const char *filename = AssetManager::Get()->getRegistry()->getCachePath(id);
+        const char *filename = AssetManager::Get().getRegistry()->getCachePath(id);
 
         if (!fs_exists(filename))
         {
@@ -31,7 +31,7 @@ uint64_t GetAssetTimeStamp(AssetType type, const GUID id)
 
 bool CacheAsset(AssetType type, const GUID id, IAsset *asset)
 {
-        const char *filename  = AssetManager::Get()->getRegistry()->getCachePath(id);
+        const char *filename  = AssetManager::Get().getRegistry()->getCachePath(id);
         const char *full_path = fs_getfullpath(filename);  /// fix this buillshit
 
         ic_free(filename);
@@ -57,7 +57,7 @@ bool CacheAsset(AssetType type, const GUID id, IAsset *asset)
 uint8_t *GetCachedAssetRaw(AssetType type, const GUID id, size_t numBytes)
 {
         numBytes              = 0;
-        const char *filename  = AssetManager::Get()->getRegistry()->getCachePath(id);
+        const char *filename  = AssetManager::Get().getRegistry()->getCachePath(id);
         char       *full_path = fs_getfullpath(filename);
         ic_free(filename);
 

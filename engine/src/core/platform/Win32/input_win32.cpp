@@ -8,7 +8,7 @@ namespace ic
 
 bool input::isKeyPressed(const KeyCode key)
 {
-        Window *window     = Application::get().getWindow();
+        Window *window     = Application::Get().GetWindow();
         auto   *glfwWindow = static_cast<GLFWwindow *>(window->getNativeWindow());
 
         auto state = glfwGetKey(glfwWindow, static_cast<int32_t>(key));
@@ -16,14 +16,14 @@ bool input::isKeyPressed(const KeyCode key)
 }
 bool input::isMouseButtonPressed(const MouseCode button)
 {
-        Window *window     = Application::get().getWindow();
+        Window *window     = Application::Get().GetWindow();
         auto   *glfwWindow = static_cast<GLFWwindow *>(window->getNativeWindow());
         auto    state      = glfwGetMouseButton(glfwWindow, static_cast<int32_t>(button));
         return state == GLFW_PRESS;
 }
 std::pair<float, float> input::getMousePosition()
 {
-        Window *window     = Application::get().getWindow();
+        Window *window     = Application::Get().GetWindow();
         auto   *glfwWindow = static_cast<GLFWwindow *>(window->getNativeWindow());
         double  xpos, ypos;
         glfwGetCursorPos(glfwWindow, &xpos, &ypos);

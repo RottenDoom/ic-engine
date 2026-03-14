@@ -1,7 +1,6 @@
 function(add_sample TARGET_NAME SOURCE_FILE)
     add_executable(${TARGET_NAME} ${SOURCE_FILE})
     target_link_libraries(${TARGET_NAME} PRIVATE engine)
-    target_compile_definitions(${TARGET_NAME} PRIVATE IC_IMPORT)
     set_target_properties(${TARGET_NAME} PROPERTIES
         FOLDER "samples"
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/$<CONFIG>

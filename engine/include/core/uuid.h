@@ -20,4 +20,17 @@ private:
 
 }  // namespace ic
 
+namespace std
+{
+template <typename T>
+struct hash;
+
+template <>
+struct hash<ic::UUID>
+{
+        std::size_t operator()(const ic::UUID &uuid) const { return (uint64_t)uuid; }
+};
+
+}  // namespace std
+
 #endif  // UUID_H
