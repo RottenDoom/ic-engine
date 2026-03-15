@@ -3,33 +3,23 @@
 
 #include "defines.h"
 #include "camera.h"
-#include "core/assets/types/asset_base.h"
+#include "core/uuid.h"
+#include "core/ecs/entity.h"
 #include "core/ecs/components.h"
-#include "core/application.h"
-
 #include <entt/entt.hpp>
-
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
-// makes life easier.
-#define NULL_ENTITY { entt::null, nullptr }
+#define NULL_ENTITY ic::Entity{}
 
-/** Scene class that can be setup by user or anyone. */
 namespace ic
 {
-
-class Entity;
 
 class IC_API RenderScene
 {
 public:
-        // Default camera see if this can be improved with a better entity class
         Camera defaultCamera;
-
         friend class Entity;
 
-public:
         RenderScene();
         ~RenderScene();
 
@@ -37,34 +27,55 @@ public:
         Entity CreateEntity(UUID id, const string &name = string());
         void   DestroyEntity(Entity entity);
 
-        template <typename T>
-        void OnComponentAdded(Entity entity, T &component);
-        void DrawScene(Camera &editorCamera);
-
-        // void OnUpdateRuntime(Timestep ts);
-        // void OnUpdateSimulation(Timestep ts, EditorCamera &camera);
-        // void OnUpdateEditor(Timestep ts, EditorCamera &camera);
-        // void OnViewportResize(uint32_t width, uint32_t height);
-
-        Entity FindEntityByName(std::string_view name);  // we use string view when we dont wanna story the memory so
-                                                         // use them as params
-
+        Entity FindEntityByName(std::string_view name);
         Entity GetEntityByUUID(UUID uuid);
 
         bool IsRunning() const { return m_IsRunning; }
         bool IsPaused() const { return m_IsPaused; }
+        void SetPaused(bool p) { m_IsPaused = p; }
 
-        void SetPaused(bool paused) { m_IsPaused = paused; }
+        // --------------------------------------------------
+        // Template queries — defined inline here so the
+        // compiler can instantiate them in any translation unit
+        // --------------------------------------------------
+        template <typename... T, typename Func>
+        void Each(Func &&fn)
+        {
+                m_Registry.view<T...>().each(std::forward<Func>(fn));
+        }
+
+        template <typename... T>
+        std::vector<Entity> GetEntitiesWith()
+        {
+                std::vector<Entity> result;
+                for (auto handle : m_Registry.view<T...>())
+                        result.emplace_back(handle, this);
+                return result;
+        }
+
+        template <typename T>
+        Entity GetFirstWith()
+        {
+                auto view = m_Registry.view<T>();
+                if (view.begin() == view.end())
+                        return Entity{};
+                return Entity(*view.begin(), this);
+        }
+
+        // Base template function can be defined for each class internal struct.
+        template <typename T>
+        void OnComponentAdded(Entity entity, T &component)
+        {
+        }
 
 private:
-        entt::registry m_Registry;
-        uint32_t       m_ViewportWidth = 0, m_ViewportHeight = 0;
-        bool           m_IsRunning = false;
-        bool           m_IsPaused  = false;
-
+        entt::registry                         m_Registry;
+        uint32_t                               m_ViewportWidth  = 0;
+        uint32_t                               m_ViewportHeight = 0;
+        bool                                   m_IsRunning      = false;
+        bool                                   m_IsPaused       = false;
         std::unordered_map<UUID, entt::entity> m_EntityMap;
 };
 
 }  // namespace ic
-
 #endif

@@ -35,6 +35,14 @@ add_custom_command(TARGET app POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/shaders/opengl
         ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/shaders/opengl
+    COMMENT "Copying test-app shaders..."
+    VERBATIM
+)
+
+add_custom_command(TARGET app POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/resources
+        ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets
     COMMENT "Copying test-app assets..."
     VERBATIM
 )

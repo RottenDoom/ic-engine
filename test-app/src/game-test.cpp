@@ -9,17 +9,27 @@ struct ApplicationState
 struct GameState
 {
         std::vector<GUID> models;
+        ic::RenderScene   defaultScene;  // TODO Probably gonna make a World class later instead of directly using scene
+                                         // here.
 };
 
 GameState g_state;
 
+struct PlayerComponent
+{
+        float   speed  = 5.0f;
+        uint8_t health = 100;
+};
+
 /** User side update and render functions */
 void update(float deltaTime) /** TODO: add user side time update functions or udata pointer */
 {
-        if (ic_input_key_pressed(ic::Key::G))
-        {
-                IC_INFO("G pressed");
-        }
+        g_state.defaultScene.Each<PlayerComponent, ic::TransformComponent>(
+            [&](auto entity, PlayerComponent &p, ic::TransformComponent &t)
+            {
+                    if (ic_input_key_pressed(ic::Key::W))
+                            t.position.y += p.speed * deltaTime;
+            });
 }
 
 void render() {}
@@ -41,10 +51,8 @@ int main(int argc, char *argv[])
         ic_app_set_callback(update, render);
 
         /** TODO:
-         * 1. ICM or fast file loads
          * 2. Load the model with names and everything.
-         * 3. Write files from gltf i.e create a converter for my project
-         * 4. Do fast file loads and multi threading
+         * 4. Do multi threading
          */
 
         // path after post-build
@@ -55,20 +63,17 @@ int main(int argc, char *argv[])
 
         // load model
         GUID id = 0x1000000000000004;
-        ic_load_model(id);
-        g_state.models.push_back(id);
+        ic_load_model(id);  // make so that this thing calls by name of the mesh.
+                            // story the id provided for now I am storying in some variable. like playerModel;
 
-        ic::RenderScene defaultScene;
-        ic::Entity      entt = defaultScene.CreateEntityWithName("Player");
-
-        // TODO: make the scene class actually use the mesh and model.
-        // defaultScene.addMesh(entt).modelID       = id;
-        // defaultScene.addTransform(entt).position = {0, 0, 0};
-        // defaultScene.addTransform(entt).scale    = glm::vec3(0.1f);
+        ic::Entity entt = g_state.defaultScene.CreateEntityWithName("Player");
+        entt.AddComponent<PlayerComponent>();
+        entt.GetComponent<ic::TransformComponent>().SetPosition({0.0f, 0.0f, 0.0f});
+        entt.AddComponent<ic::MeshComponent>().SetMesh(id);  // this id that is output must be from
 
         // Camera Entity
 
-        ic_set_scene(&defaultScene);
+        ic_set_scene(&g_state.defaultScene);  // TODO: this should be done internally
 
         ic_app_run();
 

@@ -15,6 +15,7 @@
 #include "core/keycodes.h"
 
 #include "core/ecs/entity.h"
+#include "core/ecs/entity_impl.h"
 #include "core/ecs/components.h"
 
 #include "core/events/event.h"

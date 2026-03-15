@@ -62,15 +62,15 @@ public:
         // IRenderer interface
         // -----------------------------------------------------------------------
 
-        bool init(Window *w) override;
+        bool Init(Window *w) override;
 
-        void setScene(RenderScene *scene);
+        void SetScene(RenderScene *scene);
 
-        void renderFrame(float dt) override;
+        void RenderFrame(float dt) override;
 
-        void onEvent(event &e) override;
+        void OnEvent(event &e) override;
 
-        void cleanUp() override;
+        void CleanUp() override;
 
 private:
         // -----------------------------------------------------------------------
@@ -78,42 +78,42 @@ private:
         // -----------------------------------------------------------------------
 
         /** Enable depth test, face culling, etc. */
-        void enableFeatures();
+        void EnableFeatures();
 
         /** Compile and link the PBR model shader. */
-        void createShader();
+        void CreateShader();
 
         /**
          * Load all model assets referenced by the current scene into AssetManager.
          * Must be called before setupBuffers().
          */
-        void loadAssets();
+        void LoadAssets();
 
         /**
          * Upload all loaded scene models to the GPU.
          * Populates m_gpuCache. Called once after loadAssets().
          */
-        void setupBuffers();
+        void SetupBuffers();
 
         // -----------------------------------------------------------------------
         // Per-frame helpers -> called from renderFrame()
         // -----------------------------------------------------------------------
 
-        void update(float dt);
-        void draw(float dt);
+        void Update(float dt);
+        void Draw(float dt);
 
         // -----------------------------------------------------------------------
         // Event handlers
         // -----------------------------------------------------------------------
 
-        bool onWindowResize(WindowResizedEvent &e);
+        bool OnWindowResize(WindowResizedEvent &e);
 
         // -----------------------------------------------------------------------
         // Internal: upload a single model to GPU and cache it
         // Returns the cached GLModel or nullptr on failure.
         // -----------------------------------------------------------------------
-        GLModel *uploadModel(GUID id);
-        GLModel *getOrUpload(GUID id);
+        GLModel *UploadModel(GUID id);
+        GLModel *GetOrUpload(GUID id);
 
         // -----------------------------------------------------------------------
         // State

@@ -490,11 +490,13 @@ bool Model::load(const char *filepath)
                         if (s.openForRead(cachePath) && serializedLoad(&s))
                         {
                                 s.close();
-                                IC_CORE_INFO("Model::load -> loaded from cache '{}'", filepath);
+                                IC_CORE_INFO("Model::load -> loaded from cache '{}'", cachePath);
 #ifndef NDEBUG
                                 auto end = std::chrono::high_resolution_clock::now();
                                 auto us  = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-                                IC_CORE_INFO("Model::serializeLoad -> parsed '{}' in {:.2f} ms", filepath, us / 1000.0);
+                                IC_CORE_INFO("Model::serializeLoad -> parsed '{}' in {:.2f} ms",
+                                             cachePath,
+                                             us / 1000.0);
 #endif
                                 ic_free(cachePath);
                                 return true;

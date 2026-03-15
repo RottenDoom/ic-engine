@@ -1,5 +1,8 @@
 #include "renderer/scene.h"
 #include "core/ecs/entity.h"
+#include "core/ecs/entity_impl.h"
+
+#include <entt/entt.hpp>
 
 namespace ic
 {
@@ -29,12 +32,6 @@ void RenderScene::DestroyEntity(Entity entity)
         m_EntityMap.erase(entity.GetUUID());
 }
 
-void RenderScene::DrawScene(Camera &editorCamera)
-{
-        // Go through all the entities that have mesh / model component and draw them
-        // Also take the transform and shit like that
-}
-
 Entity RenderScene::FindEntityByName(std::string_view name)
 {
         auto view = m_Registry.view<TagComponent>();
@@ -54,12 +51,6 @@ Entity RenderScene::GetEntityByUUID(UUID uuid)
                 return {m_EntityMap.at(uuid), this};
         }
         return NULL_ENTITY;
-}
-
-template <typename T>
-void RenderScene::OnComponentAdded(Entity entity, T &component)
-{
-        static_assert(sizeof(T) == 0);
 }
 
 template <>

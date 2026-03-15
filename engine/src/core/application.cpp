@@ -34,8 +34,8 @@ void Application::Initialize()
         AssetManager::Initialize("assets/registry.yaml");
 
         // TODO: Not by build system but by UI systems. This makes application reloads so handle that
-        m_renderer = createRenderer(RendererAPI::OpenGL);
-        m_renderer->init(m_Window);
+        m_renderer = create_renderer(RendererAPI::OpenGL);
+        m_renderer->Init(m_Window);
 
         IC_CORE_INFO("Application Initialized!");
 }
@@ -44,8 +44,8 @@ Application::~Application()
 {
         AssetManager::Shutdown();
         fs_deinit();
-        m_renderer->cleanUp();
-        destroyRenderer(m_renderer);
+        m_renderer->CleanUp();
+        destroy_renderer(m_renderer);
         delete m_Window;
 }
 
@@ -68,7 +68,7 @@ bool Application::Run()
                 {
                         user_render();
                 }
-                m_renderer->renderFrame(delta);
+                m_renderer->RenderFrame(delta);
         }
 
         return true;
@@ -79,7 +79,7 @@ void Application::OnEvent(event &e)
         eventDispatcher dispatcher(e);
         dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT(OnWindowClose));
 
-        m_renderer->onEvent(e);
+        m_renderer->OnEvent(e);
 }
 
 // TODO rewrite this function

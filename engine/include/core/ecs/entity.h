@@ -2,78 +2,53 @@
 #define ENTITY_H
 
 #include "defines.h"
-
 #include "core/uuid.h"
-#include "renderer/scene.h"
-
+#include "core/ecs/components.h"
 #include <entt/entt.hpp>
 
 namespace ic
 {
+
 class RenderScene;
 
-class Entity
+class IC_API Entity
 {
-private:
-        string           name;
-        ic::RenderScene *scene;
-        entt::entity     handle;
-
 public:
-        Entity(entt::entity handle, ic::RenderScene *scene);
+        Entity() : handle(entt::null), scene(nullptr) {}
+        Entity(entt::entity handle, RenderScene *scene);
         Entity(const Entity &other) = default;
 
-        const std::string &GetName() const { return name; }
-
+        // declarations only — implementations in entity_impl.h
         template <typename T, typename... Args>
-        T &AddComponent(Args &&...args)
-        {
-                IC_CORE_ASSERT(!HasComponent<T>(), "Entity already has component!");
-                T &component = scene->m_Registry.emplace<T>(handle, std::forward<Args>(args)...);
-                scene->OnComponentAdded<T>(*this, component);
-                return component;
-        }
-
+        T &AddComponent(Args &&...args);
         template <typename T, typename... Args>
-        T &AddOrReplaceComponent(Args &&...args)
-        {
-                T &component = scene->m_Registry.emplace_or_replace<T>(handle, std::forward<Args>(args)...);
-                scene->OnComponentAdded<T>(*this, component);
-                return component;
-        }
-
+        T &AddOrReplaceComponent(Args &&...args);
         template <typename T>
-        T &GetComponent()
-        {
-                IC_CORE_ASSERT(HasComponent<T>(), "Entity does not have component!");
-                return scene->m_Registry.get<T>(handle);
-        }
-
+        T &GetComponent();
         template <typename T>
-        bool HasComponent()
-        {
-                return scene->m_Registry.all_of<T>(handle);
-        }
-
+        T *TryGetComponent();
         template <typename T>
-        void RemoveComponent()
-        {
-                IC_CORE_ASSERT(HasComponent<T>(), "Entity does not have component!");
-                scene->m_Registry.remove<T>(handle);
-        }
-
-        operator bool() const { return handle != entt::null; }
-        operator entt::entity() const { return handle; }
-        operator uint32_t() const { return (uint32_t)handle; }
+        bool HasComponent() const;
+        template <typename T>
+        void RemoveComponent();
 
         UUID               GetUUID() { return GetComponent<IDComponent>().ID; }
         const std::string &GetName() { return GetComponent<TagComponent>().Tag; }
 
-        bool operator==(const Entity &other) const { return handle == other.handle && scene == other.scene; }
+        bool IsValid() const { return handle != entt::null && scene != nullptr; }
 
+        operator bool() const { return IsValid(); }
+        operator entt::entity() const { return handle; }
+        operator uint32_t() const { return (uint32_t)handle; }
+
+        bool operator==(const Entity &other) const { return handle == other.handle && scene == other.scene; }
         bool operator!=(const Entity &other) const { return !(*this == other); }
+
+private:
+        entt::entity handle;
+        RenderScene *scene;
 };
 
 }  // namespace ic
 
-#endif  // ENTITY_H
+#endif
