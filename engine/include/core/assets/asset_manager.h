@@ -29,7 +29,7 @@ public:
          * If already loaded, just increments refcount and returns cached pointer.
          * Returns nullptr if the ID is unknown or load fails.
          */
-        IAsset *load(GUID id);
+        IAsset *Load(GUID id);
 
         /**
          * Load by ID + explicit filepath.
@@ -37,25 +37,25 @@ public:
          * If already loaded, increments refcount and returns cached pointer.
          * path is used for the first load only - ignored on cache hits.
          */
-        IAsset *load(GUID id, const char *path, AssetType type = ASSET_TYPE_MODEL);
+        IAsset *Load(GUID id, const char *path, AssetType type = ASSET_TYPE_MODEL);
 
         template <typename T>
-        T *loadAs(GUID id)
+        T *LoadAs(GUID id)
         {
-                IAsset *asset = load(id);
+                IAsset *asset = Load(id);
                 if (!asset)
                         return nullptr;
                 if (asset->getAssetType() != T::getStaticType())
                 {
                         IC_CORE_ERROR("AssetManager::loadAs - type mismatch for {}", id);
-                        unload(id);  // undo the addRef from load()
+                        Unload(id);  // undo the addRef from load()
                         return nullptr;
                 }
                 return static_cast<T *>(asset);
         }
 
         template <typename T>
-        T *loadAs(GUID id, const char *path)
+        T *LoadAs(GUID id, const char *path)
         {
                 IAsset *asset = load(id, path, T::getStaticType());
                 if (!asset)
@@ -63,18 +63,18 @@ public:
                 if (asset->getAssetType() != T::getStaticType())
                 {
                         IC_CORE_ERROR("AssetManager::loadAs - type mismatch for {}", id);
-                        unload(id);
+                        Unload(id);
                         return nullptr;
                 }
                 return static_cast<T *>(asset);
         }
 
-        IAsset *getAsset(GUID id);
+        IAsset *GetAsset(GUID id);
 
         template <typename T>
-        T *getAsset(GUID id)
+        T *GetAsset(GUID id)
         {
-                IAsset *asset = getAsset(id);
+                IAsset *asset = GetAsset(id);
                 if (!asset)
                         return nullptr;
                 if (asset->getAssetType() != T::getStaticType())
@@ -82,7 +82,7 @@ public:
                 return static_cast<T *>(asset);
         }
 
-        void unload(GUID id);
+        void Unload(GUID id);
 
         using InternalIterator = std::unordered_map<GUID, IAsset *>::iterator;
         using Iterator         = MapIterator<InternalIterator, GUID, IAsset *>;
@@ -90,21 +90,22 @@ public:
         Iterator begin() { return Iterator(m_assets.begin()); }
         Iterator end() { return Iterator(m_assets.end()); }
 
-        bool           isLoaded(GUID id) const;
-        AssetRegistry *getRegistry() { return &m_registry; }
-        bool           loadRegistry(const char *path);
+        bool           IsLoaded(GUID id) const;
+        AssetRegistry *GetRegistry() { return &m_registry; }
+        bool           LoadRegistry(const char *path);
 
 private:
         AssetManager() = default;
 
         /** Allocate and construct an asset of the given type. */
-        IAsset *createAsset(AssetType type, GUID id);
+        IAsset *CreateAsset(AssetType type, GUID id);
 
         /** Internal destroy - calls destructor + ic_free. */
-        void destroyAsset(IAsset *asset);
+        void DestroyAsset(IAsset *asset);
 
         static AssetManager *s_instance;
-
+	
+	string m_AssetRegistryPath;
         std::unordered_map<GUID, IAsset *> m_assets;
         AssetRegistry                      m_registry;
 };
@@ -125,11 +126,14 @@ extern "C"
 
         /** @function ic_load_model
          * @category assets
-         * @brief Loads models from asset id. Checks in the registry if it contains the GUID else returns
-         * (exception/nothing) for now.
+         * @brief Loads a model using model name. Returns false if no model of that name found.
          elID modelID from a registry file.
          */
-        IC_API bool ic_load_model(GUID modelId);
+        IC_API GUID ic_load_model(const char* name);
+
+	// TODO: load model without registry and then save it into the file.
+
+	IC_API void ic_name_model(GUID id, const char* name);
 
         IC_API const char *ic_get_model_path(GUID modelID);
 

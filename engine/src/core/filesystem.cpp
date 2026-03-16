@@ -565,7 +565,6 @@ const char *fs_joinPath(const char *relPath, const char *fullpath)
                 return nullptr;
         }
 
-        IC_CORE_INFO("Joining {} and {}", fullpath, relPath);
         const char *out = join_path(fullpath, relPath);
 
         return out;

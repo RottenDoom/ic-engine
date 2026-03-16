@@ -61,9 +61,7 @@ int main(int argc, char *argv[])
         // load the registry
         ic_load_registry("assets/registry.yaml");
 
-        // load model
-        GUID id = 0x1000000000000004;
-        ic_load_model(id);  // make so that this thing calls by name of the mesh.
+        GUID id = ic_load_model("player_model");  // make so that this thing calls by name of the mesh.
                             // story the id provided for now I am storying in some variable. like playerModel;
 
         ic::Entity entt = g_state.defaultScene.CreateEntityWithName("Player");

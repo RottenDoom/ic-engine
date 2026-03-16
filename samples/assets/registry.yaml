@@ -2,16 +2,19 @@ assets_folder: "/assets"
 
 assets:
   - id: 0x1000000000000001
+    name: cube_model
     filepath: cube/shape.gltf
     cache: cube/shape.icmodel
     type: model
 
   - id: 0x1000000000000004
+    name: player_model
     filepath: shibahu/scene.gltf
     cache: shibahu/scene.icmodel
     type: model
 
   - id: 0x1000000000000002
+    name: tree_house_model
     filepath: tree_house/scene.gltf
     cache: tree_house/scene.icmodel
     type: model
@@ -19,5 +22,6 @@ assets:
       - 0x1000000000000003
 
   - id: 0x1000000000000003
+    name: tree_house_texture
     filepath: tree_house/textures/Envi_baseColor.png
     type: texture

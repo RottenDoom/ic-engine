@@ -128,7 +128,7 @@ void OpenGLRenderer::LoadAssets()
         for (auto &e : mesh_entities)
         {
                 MeshComponent &c     = e.GetComponent<MeshComponent>();
-                Model         *model = AssetManager::Get().loadAs<Model>(c.modelID);
+                Model         *model = AssetManager::Get().LoadAs<Model>(c.modelID);
 
                 if (!model)
                 {
@@ -154,7 +154,7 @@ void OpenGLRenderer::SetupBuffers()
 
 GLModel *OpenGLRenderer::UploadModel(GUID id)
 {
-        Model *model = AssetManager::Get().getAsset<Model>(id);
+        Model *model = AssetManager::Get().GetAsset<Model>(id);
         if (!model)
         {
                 IC_CORE_WARN("OpenGLRenderer::uploadModel -> model {} not in AssetManager", id);

@@ -58,6 +58,7 @@ enum AssetType : uint8_t
 struct AssetMeta
 {
         GUID      id;
+        string    name;
         string    filepath;
         string    cachePath;
         AssetType type;
