@@ -39,10 +39,10 @@ add_custom_command(TARGET app POST_BUILD
     VERBATIM
 )
 
-add_custom_command(TARGET app POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/resources
-        ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets
-    COMMENT "Copying test-app assets..."
-    VERBATIM
-)
+# add_custom_command(TARGET app POST_BUILD
+#     COMMAND ${CMAKE_COMMAND} -E copy_directory
+#         ${CMAKE_SOURCE_DIR}/resources
+#         ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets
+#     COMMENT "Copying test-app assets..."
+#     VERBATIM
+# )

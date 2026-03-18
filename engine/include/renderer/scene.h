@@ -26,7 +26,12 @@ public:
         Entity CreateEntityWithName(const string &name = string());
         Entity CreateEntity(UUID id, const string &name = string());
         void   DestroyEntity(Entity entity);
+	bool SetParent(Entity child, Entity parent);
+	bool ClearParent(Entity child);
+	bool SetMeshComponent(Entity entity, GUID id);
 
+        std::vector<Entity> GetAllEntities();
+        bool                HasEntity(UUID uuid) const;
         Entity FindEntityByName(std::string_view name);
         Entity GetEntityByUUID(UUID uuid);
 

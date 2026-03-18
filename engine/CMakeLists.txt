@@ -2,9 +2,9 @@
 
 set(CORE_SRC
     src/core/platform/mmapped.c
-    src/core/platform/win32/input_win32.cpp
-    src/core/platform/win32/window_win32.cpp
-    src/core/platform/win32/filesystem_win32.cpp
+    src/core/platform/Win32/input_win32.cpp
+    src/core/platform/Win32/window_win32.cpp
+    src/core/platform/Win32/filesystem_win32.cpp
 
     src/core/application.cpp
     src/core/filesystem.cpp

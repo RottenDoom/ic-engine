@@ -22,14 +22,16 @@ struct PlayerComponent
 };
 
 /** User side update and render functions */
-void update(float deltaTime) /** TODO: add user side time update functions or udata pointer */
+void update(float deltaTime)
 {
-        g_state.defaultScene.Each<PlayerComponent, ic::TransformComponent>(
-            [&](auto entity, PlayerComponent &p, ic::TransformComponent &t)
-            {
-                    if (ic_input_key_pressed(ic::Key::W))
-                            t.position.y += p.speed * deltaTime;
-            });
+	ic::Entity player = g_state.defaultScene.FindEntityByName("Player");
+	PlayerComponent& p = player.GetComponent<PlayerComponent>();
+	ic::TransformComponent& t = player.GetComponent<ic::TransformComponent>();
+
+	if (ic_input_key_pressed(ic::Key::W)) {
+		t.SetPosition(t.position + glm::vec3(0.0f, p.speed * deltaTime, 0.0f));
+		IC_CORE_INFO("{}, {}, {}", t.position.x, t.position.y, t.position.z);
+	}
 }
 
 void render() {}
@@ -68,6 +70,12 @@ int main(int argc, char *argv[])
         entt.AddComponent<PlayerComponent>();
         entt.GetComponent<ic::TransformComponent>().SetPosition({0.0f, 0.0f, 0.0f});
         entt.AddComponent<ic::MeshComponent>().SetMesh(id);  // this id that is output must be from
+
+	GUID cube = ic_load_model("cube_model");
+
+	ic::Entity cube_entt = g_state.defaultScene.CreateEntityWithName("Cube");
+	cube_entt.GetComponent<ic::TransformComponent>().SetPosition({15.0f, 15.0f, 0.0f});
+	cube_entt.AddComponent<ic::MeshComponent>().SetMesh(cube);
 
         // Camera Entity
 

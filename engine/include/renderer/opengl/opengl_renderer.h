@@ -24,6 +24,11 @@
  *   setupBuffers() is called once during init() and uploads all scene models.
  *   draw() never uploads -> if a model isn't in m_gpuCache it logs a warning
  *   and skips rather than stalling the render thread mid-frame.
+ * 
+ * TODO: connect the transform system and other things to actual model matrices
+ * TODO: start with a basic imgui demo base. and start with a basic component window for tranforms.
+ * TODO: Add more asset types and more models and fix the material system.
+ * TODO: Big goal: Scene Graph.
  */
 
 namespace ic

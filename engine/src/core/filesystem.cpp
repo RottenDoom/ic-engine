@@ -600,7 +600,7 @@ File *fs_open(const char *filename, int flags)
                 }
 
                 bool found = false;
-                for (int i = 0; i < g_filesystem->mount_count; i++)
+                for (size_t i = 0; i < g_filesystem->mount_count; i++)
                 {
                         Mount *mnt = &g_filesystem->mounts[i];
                         if (mnt->type != MOUNT_TYPE_DIRECTORY)
@@ -1131,7 +1131,7 @@ static bool path_matches_mount(const char *virtual_path, const char *mount_point
 static bool translate_mount_path(const char *virtual_path, char *out_buffer, size_t buffer_size)
 {
         // Iterate through mounts (most recent first = highest priority
-        for (int i = 0; i < g_filesystem->mount_count; i++)
+        for (size_t i = 0; i < g_filesystem->mount_count; i++)
         {
                 ic::Mount *mount = &g_filesystem->mounts[i];
                 if (path_matches_mount(virtual_path, mount->virtual_path))
@@ -1159,7 +1159,7 @@ static bool translate_mount_path(const char *virtual_path, char *out_buffer, siz
 
 static bool resolve(const char *virtual_path, char *out_path, size_t out_size)
 {
-        for (int i = 0; i < g_filesystem->mount_count; i++)
+        for (size_t i = 0; i < g_filesystem->mount_count; i++)
         {
                 ic::Mount *mnt = &g_filesystem->mounts[i];
 

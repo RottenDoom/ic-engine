@@ -188,7 +188,7 @@ bool AssetRegistry::Contains(GUID id) const
         if (it == m_assets.end())
                 return false;
 
-        return fs_exists(it->second.filepath.c_str());
+        return true;
 }
 
 GUID AssetRegistry::GetAssetId(const char *name) const

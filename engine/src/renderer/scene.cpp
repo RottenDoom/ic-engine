@@ -41,6 +41,7 @@ Entity RenderScene::FindEntityByName(std::string_view name)
                 if (tc.Tag == name)
                         return Entity{entity, this};
         }
+	IC_CORE_WARN("Entity named {}, does not exist", name);
         return NULL_ENTITY;
 }
 
