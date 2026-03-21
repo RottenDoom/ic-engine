@@ -1,6 +1,8 @@
 #include <ic_engine.h>
 #include <renderer/opengl/gl_framebuffer.h> // we are going to use gl_framebuffer for now.
 
+/** ISSUE: Some kind of blitting issue on camera and cant open IMGUI windows gotta fix that. */
+
 namespace ic
 {
 
@@ -20,13 +22,13 @@ private:
 	// TODO : For now we need a framebuffer and some entities and a editor and active scene 
 	// We also need some kind of serializatin for saving and opening scenes. 
 	// Also need some panels and some kind viewport values and resize things which doesnt really depends on the application windows. 
-
+	// ALso m_ScenePath is not config path of editor but we will see that later .
 	
 	Framebuffer *m_fb = nullptr;
 	Camera m_EditorCamera;
 
 	// Refs to the scene
-	const char* m_ScenePath = "assets/default_scene/scene.yaml";
+	const char* m_ScenePath = "assets/scene.yaml"; // set this somehow somewhere else
 	ic::RenderScene* m_ActiveScene;
 	ic::RenderScene* m_EditorScene;
 

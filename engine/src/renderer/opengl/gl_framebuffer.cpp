@@ -106,14 +106,8 @@ bool Framebuffer::IsColorFormat(FramebufferTextureFormat fmt) {
 // -------------------------------------------------------
 // Constructor / Destructor
 // -------------------------------------------------------
-Framebuffer::Framebuffer(uint32_t width, uint32_t height, uint32_t samples, uint32_t flags) {
-	FramebufferSpec spec;
-	spec.width = width;
-	spec.height = height;
-	spec.samples = samples;
-	
-	/** TODO: do something about the attachements */
-	// Split the flat attachment list into color specs + depth spec
+Framebuffer::Framebuffer(FramebufferSpec& spec) : m_spec(spec) 
+{
 	for (auto& att : m_spec.attachments) {
 		if (IsDepthFormat(att.format))
 			m_depthSpec = att;
@@ -235,6 +229,15 @@ void Framebuffer::Invalidate() {
 		glReadBuffer(GL_NONE);
 	}
 
+	m_hasIntegerAttachment = false;
+	for (auto& spec : m_colorSpecs) {
+		if (spec.format == FramebufferTextureFormat::RED_INTEGER) 
+		{
+			m_hasIntegerAttachment = true;
+			break;
+		}
+	}
+
     // ---- Completeness check ----
 	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (status != GL_FRAMEBUFFER_COMPLETE) {
@@ -269,16 +272,29 @@ void Framebuffer::Release() {
 // -------------------------------------------------------
 // Bind / Unbind
 // -------------------------------------------------------
+
+// TODO: fix whatever this is 
 void Framebuffer::Bind() const {
 	IC_CORE_ASSERT(m_fbo, "Framebuffer::Bind called on invalid FBO");
 	glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
 	glViewport(0, 0,
 		static_cast<GLsizei>(m_spec.width),
 		static_cast<GLsizei>(m_spec.height));
+
+	if (m_hasIntegerAttachment) {
+		glDisable(GL_BLEND);
+		glDisable(GL_DITHER);
+    	}
 }
 
 void Framebuffer::Unbind() const {
     	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Restore blending for the default framebuffer
+	// (ImGui and your scene color pass need it)
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DITHER);
 }
 
 // -------------------------------------------------------

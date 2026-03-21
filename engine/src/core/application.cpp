@@ -6,9 +6,7 @@
 #include "core/assets/asset_manager.h"
 #include "renderer/renderer.h"
 
-#define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
 
 // TODO: add a linux build with wayland to start building with valgrind memory checks
 // TODO: maybe write a memory effecient class for checking how much memory is being used. I suspect that memory of

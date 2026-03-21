@@ -65,11 +65,17 @@ void EditorSystem::Init()	{
 	}
 	// FramebufferSpec fbSpec = {};
 	// Convert framebuffer attachments into bit flags.
-	// fbSpec.attachments = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::RED_INTEGER, FramebufferTextureFormat::DEPTH24_STENCIL8 };
-	// fbSpec.width = 1280;
-	// fbSpec.height = 720;
+	FramebufferSpec fbSpec;
+	fbSpec.attachments = 
+		{ 
+			FramebufferTextureFormat::RGBA8, 
+			// FramebufferTextureFormat::RED_INTEGER, 
+			FramebufferTextureFormat::DEPTH24_STENCIL8 
+		};
+	fbSpec.width = 1280;
+	fbSpec.height = 720;
 
-	m_fb = new Framebuffer(1280, 720, 1, 0);
+	m_fb = new Framebuffer(fbSpec);
 
 	ic::SceneSerializer serializer;
 	const char* lastScene = LoadLastScenePath();
@@ -137,19 +143,24 @@ void EditorSystem::Render() {
 		ImGui::End();
 	}
 
-	// Panels
-	//     panels::HierarchyDraw(g_scene, &g_selected);
-	//     panels::PropertiesDraw(g_selected);
-	//     panels::ViewportDraw(s_colorTex, s_vpWidth, s_vpHeight);
-	
-	//     if (g_showProfiler)
-	//         panels::ProfilerDraw();
-	
-	//     panels::CommandPaletteDraw();
-	
-	//     // Finalize
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+	ImGui::Begin("Viewport");
+	ImVec2 size = ImGui::GetContentRegionAvail();
+
+	ImGui::Image(
+		(ImTextureID)(uintptr_t)m_fb->GetColorAttachment(0),
+		size,
+		ImVec2(0, 1),   // uv0
+		ImVec2(1, 0)    // uv1
+	);
+	if (size.x > 0 && size.y > 0) {
+		m_fb->Resize((uint32_t)size.x, (uint32_t)size.y);
+	}
+	ImGui::End();
+	ImGui::PopStyleVar();
 
 	ImGui::ShowDemoWindow();
+
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
@@ -212,15 +223,42 @@ void EditorSystem::OpenScene(const char* path) {
 	IC_CORE_INFO("Editor: opened scene {}", path);
 }
 
+// These functions are used with multiple scenes and editor config with a scene for now we are working with default scne.
 const char* EditorSystem::LoadLastScenePath() {
-	if (!ic_exists(m_ScenePath)) return "";
-	return "";
+	if (!ic_exists(m_ScenePath))
+		return "";
+	try 
+	{
+		std::ifstream f(m_ScenePath);
+		string line;
+		while (getline(f, line)) {
+			auto pos = line.find("last_scene:");
+			if (pos != string::npos) {
+				string val = line.substr(pos + 11);
+				// trim whitespace and quotes
+				auto s = val.find_first_not_of(" \t\"");
+				auto e = val.find_last_not_of(" \t\"");
+				if (s != std::string::npos)
+					return val.substr(s, e - s + 1).c_str();
+			}
+		}
+	}
+	catch (const std::exception& e)
+	{
+		IC_CORE_WARN("EditorSystem: failed to read config: {}", e.what());
+		return "";
+	}
 
-	// NOT IMPLEMENTED YET
+	return m_ScenePath;
 }
 
-void EditorSystem::SaveLastScenePath(const char* path) 
-{
+void EditorSystem::SaveLastScenePath(const char* path) {
+	const char* parent = fs_getParentPath(path);
+	if (!fs_mkdir(parent)) {
+		IC_CORE_WARN("EditorSystem: cannot create parent path");
+	}
+	std::ofstream f(m_ScenePath);
+	f << "last_scene: \"" << path << "\"\n";
 }
 
 } // namespace ic

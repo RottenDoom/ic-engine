@@ -53,6 +53,7 @@ bool OpenGLRenderer::Init(Window *w)
                 return false;
         }
 
+	IC_CORE_INFO("GLFW platform: {}", glfwGetPlatform());
         IC_CORE_INFO("GL Vendor:   {}", reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
         IC_CORE_INFO("GL Renderer: {}", reinterpret_cast<const char *>(glGetString(GL_RENDERER)));
         IC_CORE_INFO("GL Version:  {}", reinterpret_cast<const char *>(glGetString(GL_VERSION)));

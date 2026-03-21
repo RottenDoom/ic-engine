@@ -43,23 +43,22 @@ set(VULKAN_SRC
     # src/renderer/vulkan/vk_renderer.cpp
 )
 
-# compiler selection
+# ─────────────────────────────────────────────
+#  Compiler options
+# ─────────────────────────────────────────────
 function(set_compiler_options TARGET)
     if(MSVC)
         target_compile_options(${TARGET} PRIVATE
-            /W4             # High warning level
-            /MP             # Multi-processor compilation
-            /EHsc           # Standard C++ exception handling
+            /W4 /MP /EHsc
             $<$<CONFIG:Debug>:/Od /Zi /RTC1>
-            $<$<CONFIG:Release>:/O2 /GL>    # Whole-program optimization in release
+            $<$<CONFIG:Release>:/O2 /GL>
         )
         target_link_options(${TARGET} PRIVATE
-            $<$<CONFIG:Release>:/LTCG>      # Link-time code gen to match /GL
+            $<$<CONFIG:Release>:/LTCG>
         )
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         target_compile_options(${TARGET} PRIVATE
-            -Wall -Wextra -Wpedantic
-            -Wno-unused-parameter
+            -Wall -Wextra -Wpedantic -Wno-unused-parameter
             $<$<CONFIG:Debug>:-g -O0 -fno-omit-frame-pointer>
             $<$<CONFIG:Release>:-O3 -flto>
         )
@@ -69,109 +68,67 @@ function(set_compiler_options TARGET)
     else()
         # GCC / MinGW
         target_compile_options(${TARGET} PRIVATE
-            -Wall -Wextra -Wpedantic
-            -Wno-unused-parameter
+            -Wall -Wextra -Wpedantic -Wno-unused-parameter
             $<$<CONFIG:Debug>:-g -O0 -fno-omit-frame-pointer>
             $<$<CONFIG:Release>:-O2>
         )
     endif()
 endfunction()
 
-function(link_whole_archive TARGET STATIC_LIB)
-    if(MSVC)
-        # MSVC: /WHOLEARCHIVE:<lib>
-        target_link_options(${TARGET} PRIVATE
-            /WHOLEARCHIVE:$<TARGET_FILE:${STATIC_LIB}>
-        )
-        target_link_libraries(${TARGET} PRIVATE ${STATIC_LIB})
-    elseif(APPLE)
-        # macOS linker uses -force_load
-        target_link_libraries(${TARGET} PRIVATE
-            -Wl,-force_load,$<TARGET_FILE:${STATIC_LIB}>
-        )
-    else()
-        # GCC / MinGW / Clang on Linux & Windows
-        target_link_libraries(${TARGET} PRIVATE
-            -Wl,--whole-archive
-            ${STATIC_LIB}
-            -Wl,--no-whole-archive
-        )
-    endif()
-endfunction()
-
 # ─────────────────────────────────────────────
-#  STATIC CORE
+#  ENGINE
 # ─────────────────────────────────────────────
-add_library(engine-core STATIC ${CORE_SRC} ${RENDERER_SRC})
+add_library(engine STATIC
+    src/engine.cpp
+    ${CORE_SRC}
+    ${RENDERER_SRC}
+)
 
-target_include_directories(engine-core
+target_include_directories(engine
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/engine/include
-        ${CMAKE_BINARY_DIR}/generated
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/engine/include>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
+        $<INSTALL_INTERFACE:include>
 )
 
-target_compile_definitions(engine-core
-    PRIVATE IC_BUILD_ENGINE
+target_compile_definitions(engine
+    PRIVATE
+        IC_BUILD_ENGINE
+    PUBLIC
+        $<$<CONFIG:Debug>:DEBUG IC_ENABLE_ASSERTS>
+        $<$<CONFIG:Release>:NDEBUG>
 )
 
-# Windows: tell MSVC/clang-cl to export all symbols automatically
-# (equivalent of --whole-archive on the consumer side)
-if(WIN32 AND MSVC)
-    set_target_properties(engine-core PROPERTIES
-        WINDOWS_EXPORT_ALL_SYMBOLS ON
-    )
-endif()
-
-target_link_libraries(engine-core
-PUBLIC
+target_link_libraries(engine
+    PUBLIC
         glm
         entt
         spdlog::spdlog
-PRIVATE
-	glfw
-        imgui
+    PRIVATE
+        glfw
+        glad
         yaml-cpp
         fastgltf
         ktx
         stb
 )
 
-set_compiler_options(engine-core)
-set_target_properties(engine-core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-# build the lib
-add_library(engine SHARED src/engine.cpp)
-
-target_include_directories(engine
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-)
-
-link_whole_archive(engine engine-core)
-
-target_link_libraries(engine
-PUBLIC
-        glm
-        entt
-        spdlog::spdlog
-PRIVATE
-	glfw
-        imgui
-        glad
-)
-
+# OpenGL backend sources + libs
 if(IC_ENGINE_USE_OPENGL)
     find_package(OpenGL REQUIRED)
     target_sources(engine PRIVATE ${OPENGL_SRC})
-    target_link_libraries(engine PRIVATE OpenGL::GL glad ktx stb)
+    target_link_libraries(engine PRIVATE OpenGL::GL)
+    target_compile_definitions(engine PUBLIC IC_ENGINE_USE_OPENGL)
 endif()
 
+# Vulkan backend sources + libs
 if(IC_ENGINE_USE_VULKAN)
     find_package(Vulkan REQUIRED)
     include(${CMAKE_SOURCE_DIR}/cmake/shaders.cmake)
     target_sources(engine PRIVATE ${VULKAN_SRC})
-    target_link_libraries(engine PRIVATE Vulkan::Vulkan ktx)
+    target_link_libraries(engine PRIVATE Vulkan::Vulkan)
+    target_compile_definitions(engine PUBLIC IC_ENGINE_USE_VULKAN)
 
     file(GLOB_RECURSE ENGINE_SHADERS
         "${CMAKE_SOURCE_DIR}/shaders/*.vert"
@@ -180,21 +137,17 @@ if(IC_ENGINE_USE_VULKAN)
     if(ENGINE_SHADERS)
         target_link_spv_shaders(engine ${ENGINE_SHADERS})
     else()
-        message(WARNING "IC_ENGINE_USE_VULKAN=ON but no shaders found")
+        message(WARNING "IC_ENGINE_USE_VULKAN=ON but no shaders found in shaders/")
     endif()
 endif()
-
-target_compile_definitions(engine
-    PRIVATE IC_BUILD_ENGINE
-)
 
 set_compiler_options(engine)
 
 set_target_properties(engine PROPERTIES
-    OUTPUT_NAME                      "engine"
-    POSITION_INDEPENDENT_CODE        ON
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_BINARY_DIR}/bin/Debug
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
+    OUTPUT_NAME               "engine"
+    POSITION_INDEPENDENT_CODE ON
+    ARCHIVE_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_BINARY_DIR}/bin/Debug
+    ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
 )
 
 # ─────────────────────────────────────────────
@@ -202,8 +155,6 @@ set_target_properties(engine PROPERTIES
 # ─────────────────────────────────────────────
 install(TARGETS engine
     EXPORT   ic_engineTargets
-    RUNTIME  DESTINATION bin
-    LIBRARY  DESTINATION lib
     ARCHIVE  DESTINATION lib
     INCLUDES DESTINATION include
 )

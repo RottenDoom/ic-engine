@@ -70,17 +70,21 @@ endif()
 
 add_library(imgui STATIC ${IMGUI_SRC})
 
+# TODO: this is only for windows backends for others as well needed.
+target_compile_definitions(imgui PRIVATE GLFW_EXPOSE_NATIVE_WIN32)
+
 target_include_directories(imgui PUBLIC
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
+    ${PROJECT_SOURCE_DIR}/third-party/glfw/include
 )
+
+
 
 target_compile_definitions(imgui PUBLIC
     IMGUI_ENABLE_DOCKING
     IMGUI_ENABLE_VIEWPORTS
 )
-
-target_link_libraries(imgui PRIVATE glfw)
 
 if(IC_ENGINE_USE_OPENGL)
     find_package(OpenGL REQUIRED)

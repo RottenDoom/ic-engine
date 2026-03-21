@@ -33,7 +33,7 @@ struct FramebufferSpec {
 
 class IC_API Framebuffer {
 public:
-	explicit Framebuffer(uint32_t width, uint32_t height, uint32_t samples, uint32_t flags);
+	explicit Framebuffer(FramebufferSpec& spec);
    	~Framebuffer();
 
 	Framebuffer(const Framebuffer&)            = delete;
@@ -77,6 +77,7 @@ private:
 
 	std::vector<uint32_t>    m_colorAttachments;  // GL texture IDs, one per color spec
 	uint32_t                 m_depthAttachment  = 0;
+	bool 			 m_hasIntegerAttachment = false;
 
 	std::vector<FramebufferTextureSpec> m_colorSpecs;
 	FramebufferTextureSpec              m_depthSpec;

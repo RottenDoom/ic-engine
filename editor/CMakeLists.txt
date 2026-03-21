@@ -38,10 +38,10 @@ add_custom_command(TARGET editor POST_BUILD
     VERBATIM
 )
 
-# add_custom_command(TARGET editor POST_BUILD
-#     COMMAND ${CMAKE_COMMAND} -E copy_directory
-#         ${CMAKE_SOURCE_DIR}/resources
-#         ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets
-#     COMMENT "Copying editor assets..."
-#     VERBATIM
-# )
+add_custom_command(TARGET editor POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/editor/default_scene
+        ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets
+    COMMENT "Copying editor assets..."
+    VERBATIM
+)
