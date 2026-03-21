@@ -13,7 +13,7 @@ void Init()
         // IMPLEMENT DEFAULT FOLDERS FOR PUTTING ALL THE FILES HONESTY THEY ARE WRITTEN IN THE Registry
 }
 
-uint64_t GetAssetTimeStamp(AssetType type, const GUID id)
+uint64_t GetAssetTimeStamp(AssetType type, const IC_GUID id)
 {
         const char *filename = AssetManager::Get().GetRegistry()->GetCachePath(id);
 
@@ -29,7 +29,7 @@ uint64_t GetAssetTimeStamp(AssetType type, const GUID id)
         return timestamp;
 }
 
-bool CacheAsset(AssetType type, const GUID id, IAsset *asset)
+bool CacheAsset(AssetType type, const IC_GUID id, IAsset *asset)
 {
         const char *filename  = AssetManager::Get().GetRegistry()->GetCachePath(id);
         const char *full_path = fs_getfullpath(filename);  /// fix this buillshit
@@ -54,7 +54,7 @@ bool CacheAsset(AssetType type, const GUID id, IAsset *asset)
         return true;
 }
 
-uint8_t *GetCachedAssetRaw(AssetType type, const GUID id, size_t numBytes)
+uint8_t *GetCachedAssetRaw(AssetType type, const IC_GUID id, size_t numBytes)
 {
         numBytes              = 0;
         const char *filename  = AssetManager::Get().GetRegistry()->GetCachePath(id);

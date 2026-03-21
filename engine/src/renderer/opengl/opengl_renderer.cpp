@@ -45,7 +45,7 @@ bool OpenGLRenderer::Init(Window *w)
         IC_CORE_ASSERT(w, "OpenGLRenderer::init -> null window");
         m_window = w;
 
-        glfwMakeContextCurrent(static_cast<GLFWwindow *>(m_window->getNativeWindow()));
+        glfwMakeContextCurrent(m_window->GetNativeWindow());
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
@@ -152,7 +152,7 @@ void OpenGLRenderer::SetupBuffers()
         }
 }
 
-GLModel *OpenGLRenderer::UploadModel(GUID id)
+GLModel *OpenGLRenderer::UploadModel(IC_GUID id)
 {
         Model *model = AssetManager::Get().GetAsset<Model>(id);
         if (!model)
@@ -178,7 +178,7 @@ GLModel *OpenGLRenderer::UploadModel(GUID id)
         return glModel;
 }
 
-GLModel *OpenGLRenderer::GetOrUpload(GUID id)
+GLModel *OpenGLRenderer::GetOrUpload(IC_GUID id)
 {
         auto it = m_gpuCache.find(id);
 

@@ -16,14 +16,13 @@
 
 class IC_API Camera
 {
-private:
+public:
         float fovY;
         float znear, zfar;
         float aspectRatio;
 
         void updateViewMatrix();
 
-public:
         enum CameraType
         {
                 lookat,

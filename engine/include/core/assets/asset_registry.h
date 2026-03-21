@@ -30,38 +30,38 @@ public:
 	bool IsUnsaved() { return m_registry_unsaved; }
 
         // Check if an asset is in the registry
-        bool Contains(GUID id) const;
+        bool Contains(IC_GUID id) const;
 
-        // Return an asset's GUID based on the filepath. If filepath does not exist return INVALID_GUID
-        GUID GetAssetId(const char *name) const;
+        // Return an asset's IC_GUID based on the filepath. If filepath does not exist return INVALID_IC_GUID
+        IC_GUID GetAssetId(const char *name) const;
 
-        AssetType GetAssetType(GUID id) const;
+        AssetType GetAssetType(IC_GUID id) const;
 
         // Return file path for a asset id
-        const char *GetFilePath(GUID id) const;
+        const char *GetFilePath(IC_GUID id) const;
 
         // Get relative file path of a file with respect to root mount folder.
-        const char *GetCachePath(GUID id) const;
+        const char *GetCachePath(IC_GUID id) const;
 
-        const char *GetAssetName(GUID id) const;
-	void SetAssetName(GUID id, const string& name);
+        const char *GetAssetName(IC_GUID id) const;
+	void SetAssetName(IC_GUID id, const string& name);
 
         // Register filepath into the asset registy.
-        GUID RegisterAsset(GUID id, const char *file_path, AssetType type);
-        void RegisterDependency(GUID id, GUID dependency_id);
+        IC_GUID RegisterAsset(IC_GUID id, const char *file_path, AssetType type);
+        void RegisterDependency(IC_GUID id, IC_GUID dependency_id);
 
-        const std::unordered_set<GUID> *GetDependencies(GUID id) const;
+        const std::unordered_set<IC_GUID> *GetDependencies(IC_GUID id) const;
 
-        void Unregister(GUID id);
+        void Unregister(IC_GUID id);
 
 private:
         // common asset folder
         string m_asset_folder;
 	bool m_registry_unsaved = false;
 
-        std::unordered_map<GUID, AssetMeta>                m_assets;
-        std::unordered_map<string, GUID>                   m_ids;
-        std::unordered_map<GUID, std::unordered_set<GUID>> m_dependencies;
+        std::unordered_map<IC_GUID, AssetMeta>                m_assets;
+        std::unordered_map<string, IC_GUID>                   m_ids;
+        std::unordered_map<IC_GUID, std::unordered_set<IC_GUID>> m_dependencies;
 
         void             ParseAssetEntry(const YAML::Node &node);
         static AssetType AssetTypeFromString(const string &s);

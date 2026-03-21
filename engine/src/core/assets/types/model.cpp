@@ -256,7 +256,7 @@ static Material buildMaterial(const MaterialImportData &src, const std::vector<T
 // ic::buildModel -> the single entry point
 // ---------------------------------------------------------------------------
 
-Model buildModel(ModelImportData *data, GUID id)
+Model buildModel(ModelImportData *data, IC_GUID id)
 {
         Model model(id);
 

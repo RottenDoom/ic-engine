@@ -80,7 +80,7 @@ target_compile_definitions(imgui PUBLIC
     IMGUI_ENABLE_VIEWPORTS
 )
 
-target_link_libraries(imgui PUBLIC glfw)
+target_link_libraries(imgui PRIVATE glfw)
 
 if(IC_ENGINE_USE_OPENGL)
     find_package(OpenGL REQUIRED)

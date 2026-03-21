@@ -58,7 +58,7 @@ AssetManager::~AssetManager()
         m_assets.clear();
 }
 
-IAsset *AssetManager::Load(GUID id)
+IAsset *AssetManager::Load(IC_GUID id)
 {
         // --- Cache hit: already loaded, just bump refcount ---
         auto it = m_assets.find(id);
@@ -82,7 +82,7 @@ IAsset *AssetManager::Load(GUID id)
         return Load(id, path, type);
 }
 
-IAsset *AssetManager::Load(GUID id, const char *path, AssetType type)
+IAsset *AssetManager::Load(IC_GUID id, const char *path, AssetType type)
 {
         IC_CORE_ASSERT(path, "AssetManager::load - null path");
 
@@ -125,7 +125,7 @@ IAsset *AssetManager::Load(GUID id, const char *path, AssetType type)
         return asset;
 }
 
-IAsset *AssetManager::GetAsset(GUID id)
+IAsset *AssetManager::GetAsset(IC_GUID id)
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())
@@ -136,7 +136,7 @@ IAsset *AssetManager::GetAsset(GUID id)
         return it->second;
 }
 
-void AssetManager::Unload(GUID id)
+void AssetManager::Unload(IC_GUID id)
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())
@@ -160,7 +160,7 @@ void AssetManager::Unload(GUID id)
         }
 }
 
-bool AssetManager::IsLoaded(GUID id) const
+bool AssetManager::IsLoaded(IC_GUID id) const
 {
         auto it = m_assets.find(id);
         return it != m_assets.end() && it->second->isLoaded();
@@ -171,7 +171,7 @@ bool AssetManager::LoadRegistry(const char *path)
         return m_registry.Init(path);
 }
 
-IAsset *AssetManager::CreateAsset(AssetType type, GUID id)
+IAsset *AssetManager::CreateAsset(AssetType type, IC_GUID id)
 {
         void *mem = ic_malloc(assetSize(type));
         if (!mem)
@@ -214,9 +214,9 @@ void ic_load_registry(const char *registry_file_path)
                 IC_CORE_ERROR("ic_load_registry - failed to load '{}'", registry_file_path);
 }
 
-GUID ic_load_model(const char* name)
+IC_GUID ic_load_model(const char* name)
 {
-	GUID modelID = ic::AssetManager::Get().GetRegistry()->GetAssetId(name);
+	IC_GUID modelID = ic::AssetManager::Get().GetRegistry()->GetAssetId(name);
 	if (modelID == INVALID_ID) {
 		IC_CORE_ERROR("Model {} does not exist!", name);
 		return modelID;
@@ -232,12 +232,12 @@ GUID ic_load_model(const char* name)
         return modelID;
 }
 
-void ic_name_model(GUID id, const char* name) {
+void ic_name_model(IC_GUID id, const char* name) {
 	ic::AssetRegistry* reg = ic::AssetManager::Get().GetRegistry();
 	reg->SetAssetName(id, name);
 }
 
-const char *ic_get_model_path(GUID modelID)
+const char *ic_get_model_path(IC_GUID modelID)
 {
         ic::AssetRegistry *reg = ic::AssetManager::Get().GetRegistry();
         if (!reg->Contains(modelID))
@@ -245,7 +245,7 @@ const char *ic_get_model_path(GUID modelID)
         return reg->GetFilePath(modelID);
 }
 
-bool ic_unload_model(GUID modelID)
+bool ic_unload_model(IC_GUID modelID)
 {
         ic::AssetManager::Get().Unload(modelID);
         return true;

@@ -5,7 +5,7 @@
 
 #include <yaml-cpp/yaml.h>
 
-const GUID INVALID_ID = ~0u;
+const IC_GUID INVALID_ID = ~0u;
 
 /** TODO:
  * 1. Name based assets asset searches
@@ -51,7 +51,7 @@ bool AssetRegistry::Init(const char *m_assetsregistry_file)
         }
 }
 
-AssetType AssetRegistry::GetAssetType(GUID id) const
+AssetType AssetRegistry::GetAssetType(IC_GUID id) const
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())
@@ -66,7 +66,7 @@ void AssetRegistry::ParseAssetEntry(const YAML::Node &node)
                 return;
 
         string idStr = node["id"].as<string>();
-        GUID   id    = 0;
+        IC_GUID   id    = 0;
 
         if (idStr.rfind("0x", 0) == 0)
                 id = std::stoull(idStr, nullptr, 16);
@@ -78,7 +78,7 @@ void AssetRegistry::ParseAssetEntry(const YAML::Node &node)
         // ---- name ----
         if (!node["name"])
         {
-                IC_CORE_WARN("TODO: Implement a fallback function that takes filename and attaches GUID. Throwing "
+                IC_CORE_WARN("TODO: Implement a fallback function that takes filename and attaches IC_GUID. Throwing "
                              "exception for now.");
         }
         string asset_name = node["name"].as<string>();
@@ -110,7 +110,7 @@ void AssetRegistry::ParseAssetEntry(const YAML::Node &node)
                 for (auto depNode : node["dependencies"])
                 {
                         string depStr = depNode.as<string>();
-                        GUID   depId  = 0;
+                        IC_GUID   depId  = 0;
 
                         if (depStr.rfind("0x", 0) == 0)
                                 depId = std::stoull(depStr, nullptr, 16);
@@ -158,7 +158,7 @@ bool AssetRegistry::Save(const char *m_assetsregistry_file)
                         out << YAML::Key << "dependencies";
                         out << YAML::Value << YAML::BeginSeq;
 
-                        for (GUID dep : depIt->second)
+                        for (IC_GUID dep : depIt->second)
                         {
                                 std::stringstream depSS;
                                 depSS << "0x" << std::hex << dep;
@@ -182,7 +182,7 @@ bool AssetRegistry::Save(const char *m_assetsregistry_file)
         return true;
 }
 
-bool AssetRegistry::Contains(GUID id) const
+bool AssetRegistry::Contains(IC_GUID id) const
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())
@@ -191,7 +191,7 @@ bool AssetRegistry::Contains(GUID id) const
         return true;
 }
 
-GUID AssetRegistry::GetAssetId(const char *name) const
+IC_GUID AssetRegistry::GetAssetId(const char *name) const
 {
         auto it = m_ids.find(name);
         if (it == m_ids.end())
@@ -201,7 +201,7 @@ GUID AssetRegistry::GetAssetId(const char *name) const
         return it->second;
 }
 
-const char *AssetRegistry::GetFilePath(GUID id) const
+const char *AssetRegistry::GetFilePath(IC_GUID id) const
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())
@@ -210,7 +210,7 @@ const char *AssetRegistry::GetFilePath(GUID id) const
         return it->second.filepath.c_str();
 }
 
-const char *AssetRegistry::GetCachePath(GUID id) const
+const char *AssetRegistry::GetCachePath(IC_GUID id) const
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())
@@ -233,7 +233,7 @@ const char *AssetRegistry::GetCachePath(GUID id) const
 }
 
 
-const char* AssetRegistry::GetAssetName(GUID id) const
+const char* AssetRegistry::GetAssetName(IC_GUID id) const
 {
 	auto it = m_assets.find(id);
 	if (it == m_assets.end()) {
@@ -244,7 +244,7 @@ const char* AssetRegistry::GetAssetName(GUID id) const
 
 }
 
-void AssetRegistry::SetAssetName(GUID id, const string& name) {
+void AssetRegistry::SetAssetName(IC_GUID id, const string& name) {
 	auto it = m_assets.find(id);
 	if (it == m_assets.end()) {
 		IC_CORE_WARN("AssetRegistry: Asset requested does not exist");
@@ -255,7 +255,7 @@ void AssetRegistry::SetAssetName(GUID id, const string& name) {
 	m_registry_unsaved = true;
 }
 
-GUID AssetRegistry::RegisterAsset(GUID id, const char *file_path, AssetType type)
+IC_GUID AssetRegistry::RegisterAsset(IC_GUID id, const char *file_path, AssetType type)
 {
 
         AssetMeta meta;
@@ -272,12 +272,12 @@ GUID AssetRegistry::RegisterAsset(GUID id, const char *file_path, AssetType type
         return id;
 }
 
-void AssetRegistry::RegisterDependency(GUID id, GUID dependency_id)
+void AssetRegistry::RegisterDependency(IC_GUID id, IC_GUID dependency_id)
 {
         m_dependencies[id].insert(dependency_id);
 }
 
-const std::unordered_set<GUID> *AssetRegistry::GetDependencies(GUID id) const
+const std::unordered_set<IC_GUID> *AssetRegistry::GetDependencies(IC_GUID id) const
 {
         auto it = m_dependencies.find(id);
         if (it == m_dependencies.end())
@@ -288,7 +288,7 @@ const std::unordered_set<GUID> *AssetRegistry::GetDependencies(GUID id) const
         return &it->second;
 }
 
-void AssetRegistry::Unregister(GUID id)
+void AssetRegistry::Unregister(IC_GUID id)
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())

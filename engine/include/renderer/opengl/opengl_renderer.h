@@ -117,8 +117,8 @@ private:
         // Internal: upload a single model to GPU and cache it
         // Returns the cached GLModel or nullptr on failure.
         // -----------------------------------------------------------------------
-        GLModel *UploadModel(GUID id);
-        GLModel *GetOrUpload(GUID id);
+        GLModel *UploadModel(IC_GUID id);
+        GLModel *GetOrUpload(IC_GUID id);
 
         // -----------------------------------------------------------------------
         // State
@@ -128,8 +128,8 @@ private:
         RenderScene *m_scene       = nullptr;  // See into this and more of this
         bool         m_isMinimized = false;
 
-        // GPU cache -> one GLModel per unique model GUID..
-        std::unordered_map<GUID, GLModel *> m_gpuCache;
+        // GPU cache -> one GLModel per unique model IC_GUID..
+        std::unordered_map<IC_GUID, GLModel *> m_gpuCache;
 
         Shader *m_shader = nullptr;
 

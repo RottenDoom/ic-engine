@@ -235,7 +235,7 @@ void *debug_bump_alloc_tagged(
                 bump->high_water_mark = bump->offset;
 
         memset((void *)user_addr, 0xCD, size);
-        printf("[header: %d, data: %d, size: %zu offset: %d]\n", header, user_addr, size, bump->offset);
+        // printf("[header: %d, data: %d, size: %zu offset: %d]\n", header, user_addr, size, bump->offset);
         return (void *)user_addr;
 }
 

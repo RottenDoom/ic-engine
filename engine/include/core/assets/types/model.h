@@ -34,7 +34,7 @@ class Model;
  * This is the only function that may write into Model's private members.
  * Defined in model_builder.cpp.
  */
-Model buildModel(ModelImportData *data, GUID id);
+Model buildModel(ModelImportData *data, IC_GUID id);
 
 // ---------------------------------------------------------------------------
 // AABB
@@ -325,13 +325,13 @@ class Model : public IAsset
         // Only these two may write into private data.
         // A free function is preferred over a friend class -> it grants
         // access to exactly one operation rather than an entire class scope.
-        friend Model ic::buildModel(ic::ModelImportData *data, GUID id);
+        friend Model ic::buildModel(ic::ModelImportData *data, IC_GUID id);
         friend class ic::Serializer;
 
 public:
         ASSET_CLASS_TYPE(ASSET_TYPE_MODEL)
 
-        explicit Model(GUID id) : IAsset(id) {}
+        explicit Model(IC_GUID id) : IAsset(id) {}
 
         // Non-copyable -> owns potentially large vertex/pixel buffers
         Model(const Model &)            = delete;

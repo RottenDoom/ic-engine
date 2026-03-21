@@ -6,9 +6,15 @@
 #include "core/assets/types/asset_base.h"
 #include "core/uuid.h"
 
+#include <entt/entt.hpp>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+// namespace entt {
+// enum class entity;
+// }
 
 namespace ic
 {
@@ -29,6 +35,13 @@ struct TagComponent
         TagComponent()                     = default;
         TagComponent(const TagComponent &) = default;
         TagComponent(const std::string &tag) : Tag(tag) {}
+};
+
+struct HierarchyComponent
+{
+	entt::entity            parent   = entt::null;
+	std::vector<entt::entity> children = {};
+	uint32_t                 depth    = 0;  // root = 0, child = 1, etc.
 };
 
 struct TransformComponent
@@ -76,10 +89,10 @@ struct TransformComponent
 
 struct MeshComponent
 {
-        GUID modelID;
+        IC_GUID modelID;
 
         // Material ID or material pointer
-        void SetMesh(GUID id) { modelID = id; }
+        void SetMesh(IC_GUID id) { modelID = id; }
         // void SetMaterial(MaterialID id) {MaterialID = id;}
 
         // Some kind of render component?

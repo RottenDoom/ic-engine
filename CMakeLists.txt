@@ -70,3 +70,5 @@ if(IC_BUILD_SAMPLES)
 endif()
 
 add_subdirectory(test-app)
+
+add_subdirectory(editor)

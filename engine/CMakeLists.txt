@@ -28,12 +28,14 @@ set(RENDERER_SRC
     src/renderer/camera.cpp
     src/renderer/renderer_frontend.cpp
     src/renderer/scene.cpp
+    src/renderer/scene_serializer.cpp
 )
 
 set(OPENGL_SRC
     src/renderer/opengl/gl_material.cpp
     src/renderer/opengl/gl_model.cpp
     src/renderer/opengl/gl_shader.cpp
+    src/renderer/opengl/gl_framebuffer.cpp
     src/renderer/opengl/opengl_renderer.cpp
 )
 
@@ -121,13 +123,13 @@ if(WIN32 AND MSVC)
 endif()
 
 target_link_libraries(engine-core
-    PUBLIC
+PUBLIC
         glm
         entt
         spdlog::spdlog
+PRIVATE
+	glfw
         imgui
-    PRIVATE
-        glfw
         yaml-cpp
         fastgltf
         ktx
@@ -149,12 +151,13 @@ target_include_directories(engine
 link_whole_archive(engine engine-core)
 
 target_link_libraries(engine
-    PUBLIC
+PUBLIC
         glm
         entt
         spdlog::spdlog
+PRIVATE
+	glfw
         imgui
-    PRIVATE
         glad
 )
 

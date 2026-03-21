@@ -111,6 +111,9 @@ std::ostream &operator<<(std::ostream &stream, const std::vector<T> &other)
 typedef void(AppUpdateFn)(float dt);
 typedef void(AppRenderFn)(void);
 
+#define NOT_IMPL() IC_CORE_ASSERT(false, "Function not implemented yet!")
+
+
 #if defined(_MSC_VER)
 #define IC_INLINE __forceinline
 #define IC_NOINLINE __declspec(noinline)

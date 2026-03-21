@@ -242,8 +242,8 @@ namespace ic
                 else
                 {
                         int width, height;
-                        glfwGetFramebufferSize(static_cast<GLFWwindow*>(
-                                                   application::get().getWindow().getNativeWindow()),
+                        glfwGetFramebufferSize(
+                                                   Application::Get().GetWindow()->GetNativeWindow(),
                                                &width,
                                                &height);
 

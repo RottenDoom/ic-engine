@@ -8,7 +8,7 @@ struct ApplicationState
 
 struct GameState
 {
-        std::vector<GUID> models;
+        std::vector<IC_GUID> models;
         ic::RenderScene   defaultScene;  // TODO Probably gonna make a World class later instead of directly using scene
                                          // here.
 };
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
         // load the registry
         ic_load_registry("assets/registry.yaml");
 
-        GUID id = ic_load_model("player_model");  // make so that this thing calls by name of the mesh.
+        IC_GUID id = ic_load_model("player_model");  // make so that this thing calls by name of the mesh.
                             // story the id provided for now I am storying in some variable. like playerModel;
 
         ic::Entity entt = g_state.defaultScene.CreateEntityWithName("Player");
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
         entt.GetComponent<ic::TransformComponent>().SetPosition({0.0f, 0.0f, 0.0f});
         entt.AddComponent<ic::MeshComponent>().SetMesh(id);  // this id that is output must be from
 
-	GUID cube = ic_load_model("cube_model");
+	IC_GUID cube = ic_load_model("cube_model");
 
 	ic::Entity cube_entt = g_state.defaultScene.CreateEntityWithName("Cube");
 	cube_entt.GetComponent<ic::TransformComponent>().SetPosition({15.0f, 15.0f, 0.0f});

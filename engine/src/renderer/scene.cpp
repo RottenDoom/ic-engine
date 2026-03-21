@@ -54,36 +54,104 @@ Entity RenderScene::GetEntityByUUID(UUID uuid)
         return NULL_ENTITY;
 }
 
-template <>
-void RenderScene::OnComponentAdded<IDComponent>(Entity entity, IDComponent &component)
-{
+bool RenderScene::SetParent(Entity child, Entity parent) {
+	// detach from old parent first
+    	ClearParent(child);
+
+    	auto& childHierarchy  = child.HasComponent<HierarchyComponent>()
+                          ? child.GetComponent<HierarchyComponent>()
+                          : child.AddComponent<HierarchyComponent>();
+
+    	auto& parentHierarchy = parent.HasComponent<HierarchyComponent>()
+                          ? parent.GetComponent<HierarchyComponent>()
+                          : parent.AddComponent<HierarchyComponent>();
+
+	childHierarchy.parent = parent;
+	childHierarchy.depth  = parentHierarchy.depth + 1;
+	parentHierarchy.children.push_back(child);
+	return true;
 }
 
-template <>
-void RenderScene::OnComponentAdded<TagComponent>(Entity entity, TagComponent &component)
-{
+bool RenderScene::ClearParent(Entity child) {
+	if (!child.HasComponent<HierarchyComponent>()) 
+		return false;
+	auto& h = child.GetComponent<HierarchyComponent>();
+	if (h.parent == entt::null)
+		return false;
+
+	// remove child from old parent's children list
+	Entity oldParent(h.parent, this);
+	if (oldParent.HasComponent<HierarchyComponent>())
+	{
+		auto& ph = oldParent.GetComponent<HierarchyComponent>();
+		auto& c  = ph.children;
+		c.erase(std::remove(c.begin(), c.end(), (entt::entity)child), c.end());
+	}
+	h.parent = entt::null;
+	h.depth  = 0;
+	return true;
 }
 
-template <>
-void RenderScene::OnComponentAdded<TransformComponent>(Entity entity, TransformComponent &component)
+glm::mat4 RenderScene::GetWorldTransform(Entity e)
 {
+	glm::mat4 local = e.HasComponent<TransformComponent>()
+			? e.GetComponent<TransformComponent>().GetTransformMatrix()
+			: glm::mat4(1.0f);
+
+	if (!e.HasComponent<HierarchyComponent>()) return local;
+
+	auto& h = e.GetComponent<HierarchyComponent>();
+	if (h.parent == entt::null) return local;
+
+	// recurse up the chain — parent world * local
+	return GetWorldTransform(Entity(h.parent, this)) * local;
 }
 
-template <>
-void RenderScene::OnComponentAdded<CameraComponent>(Entity entity, CameraComponent &component)
-{
-        if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
-                component.camera.setViewPortSize(m_ViewportWidth, m_ViewportHeight);
+std::vector<Entity> RenderScene::GetAllEntities() {
+	std::vector<Entity> result;
+	for (auto handle : m_Registry.view<TagComponent>())
+		result.emplace_back(handle, this);
+	return result;
 }
 
-template <>
-void RenderScene::OnComponentAdded<MeshComponent>(Entity entity, MeshComponent &component)
+Entity RenderScene::GetParent(Entity e) 
 {
+	auto& h = e.HasComponent<HierarchyComponent>() ? e.GetComponent<HierarchyComponent>() : e.AddComponent<HierarchyComponent>();
+	return {h.parent, this};
 }
 
-template <>
-void RenderScene::OnComponentAdded<LightComponent>(Entity entity, LightComponent &component)
+std::vector<Entity> RenderScene::GetChildren(Entity e)
 {
+	auto& h = e.HasComponent<HierarchyComponent>() ? e.GetComponent<HierarchyComponent>() : e.AddComponent<HierarchyComponent>();
+	std::vector<Entity> res;
+
+	for (auto e : h.children) {
+		res.push_back({e, this});
+	}
+
+	return res;
+}
+
+
+std::vector<Entity> RenderScene::GetRoots()
+{
+	std::vector<Entity> roots;
+    	// entities with no HierarchyComponent are also roots
+    	auto allEntities = m_Registry.view<TagComponent>();
+    	for (auto handle : allEntities)
+    	{
+        	Entity e(handle, this);
+        	if (!e.HasComponent<HierarchyComponent>())
+            		roots.emplace_back(e);
+        	else if (e.GetComponent<HierarchyComponent>().parent == entt::null)
+            		roots.emplace_back(e);
+    	}
+    	return roots;
+}
+
+bool RenderScene::HasEntity(UUID uuid) const {
+	NOT_IMPL();
+	return false;
 }
 
 }  // namespace ic
