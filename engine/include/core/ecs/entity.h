@@ -2,61 +2,53 @@
 #define ENTITY_H
 
 #include "defines.h"
-#include "renderer/camera.h"
-
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include "core/uuid.h"
+#include "core/ecs/components.h"
+#include <entt/entt.hpp>
 
 namespace ic
 {
-/**
- * Basic Sparse Entity component system
- * This is just a basic addition since I want to add a UI as soon as possible.
- * After writiing a basic configurable UI I will then go onto adding more stuff to the ECS while also improving
- * AssetManager. Since I want to follow KISS principle this will be a basic definition of ECS until the AssetManager
- * does not end up including MultiThreading loads and Fast file loads and caching
- *
- */
 
-// Entity is just an ID for now
-using Entity                           = uint32_t;
-static constexpr Entity INVALID_ENTITY = 0;
+class RenderScene;
 
-// Interface class which I will design later
-class Component;
-
-struct TransformComponent
+class IC_API Entity
 {
-        glm::vec3 position{0};
-        glm::quat rotation{1, 0, 0, 0};
-        glm::vec3 scale{1};
+public:
+        Entity() : handle(entt::null), scene(nullptr) {}
+        Entity(entt::entity handle, RenderScene *scene);
+        Entity(const Entity &other) = default;
 
-        glm::mat4 matrix() const
-        {
-                glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
-                glm::mat4 R = glm::mat4_cast(rotation);
-                glm::mat4 S = glm::scale(glm::mat4(1.0f), scale);
-                return T * R * S;
-        }
-};
+        // declarations only — implementations in entity_impl.h
+        template <typename T, typename... Args>
+        T &AddComponent(Args &&...args);
+        template <typename T, typename... Args>
+        T &AddOrReplaceComponent(Args &&...args);
+        template <typename T>
+        T &GetComponent();
+        template <typename T>
+        T *TryGetComponent();
+        template <typename T>
+        bool HasComponent() const;
+        template <typename T>
+        void RemoveComponent();
 
-struct MeshComponent
-{
-        GUID modelID;
-};
+        UUID               GetUUID() { return GetComponent<IDComponent>().ID; }
+        const std::string &GetName() { return GetComponent<TagComponent>().Tag; }
 
-struct CameraComponent
-{
-        Camera camera;
-};
+        bool IsValid() const { return handle != entt::null && scene != nullptr; }
 
-struct LightComponent
-{
-        glm::vec3 color{1};
-        float     intensity = 1.0f;
+        operator bool() const { return IsValid(); }
+        operator entt::entity() const { return handle; }
+        operator uint32_t() const { return (uint32_t)handle; }
+
+        bool operator==(const Entity &other) const { return handle == other.handle && scene == other.scene; }
+        bool operator!=(const Entity &other) const { return !(*this == other); }
+
+private:
+        entt::entity handle;
+        RenderScene *scene;
 };
 
 }  // namespace ic
 
-#endif  // ENTITY_H
+#endif

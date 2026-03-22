@@ -30,21 +30,20 @@ void AssetManager::Initialize(const char *registryFile)
 {
         IC_CORE_ASSERT(!s_instance, "AssetManager::Initialize called twice");
         s_instance = new AssetManager();
+	s_instance->m_AssetRegistryPath = registryFile;
 
-        if (registryFile && !s_instance->m_registry.init(registryFile))
+        if (registryFile && !s_instance->m_registry.Init(registryFile))
                 IC_CORE_WARN("AssetManager: failed to load registry '{}'", registryFile);
 }
 
 void AssetManager::Shutdown()
 {
+	if (AssetManager::Get().GetRegistry()->IsUnsaved())
+	{
+		AssetManager::Get().GetRegistry()->Save(s_instance->m_AssetRegistryPath.c_str());
+	}
         delete s_instance;
         s_instance = nullptr;
-}
-
-AssetManager *AssetManager::Get()
-{
-        IC_CORE_ASSERT(s_instance, "AssetManager not initialized - call Initialize() first");
-        return s_instance;
 }
 
 AssetManager::~AssetManager()
@@ -54,12 +53,12 @@ AssetManager::~AssetManager()
         for (auto &[id, asset] : m_assets)
         {
                 IC_CORE_TRACE("AssetManager: force-destroying asset {} at shutdown", id);
-                destroyAsset(asset);
+                DestroyAsset(asset);
         }
         m_assets.clear();
 }
 
-IAsset *AssetManager::load(GUID id)
+IAsset *AssetManager::Load(IC_GUID id)
 {
         // --- Cache hit: already loaded, just bump refcount ---
         auto it = m_assets.find(id);
@@ -71,19 +70,19 @@ IAsset *AssetManager::load(GUID id)
         }
 
         // --- Cache miss: must be in registry ---
-        if (!m_registry.contains(id))
+        if (!m_registry.Contains(id))
         {
                 IC_CORE_WARN("AssetManager::load - asset {} not in registry", id);
                 return nullptr;
         }
 
-        const char *path = m_registry.getFilePath(id);
-        AssetType   type = m_registry.getAssetType(id);
+        const char *path = m_registry.GetFilePath(id);
+        AssetType   type = m_registry.GetAssetType(id);
 
-        return load(id, path, type);
+        return Load(id, path, type);
 }
 
-IAsset *AssetManager::load(GUID id, const char *path, AssetType type)
+IAsset *AssetManager::Load(IC_GUID id, const char *path, AssetType type)
 {
         IC_CORE_ASSERT(path, "AssetManager::load - null path");
 
@@ -97,13 +96,13 @@ IAsset *AssetManager::load(GUID id, const char *path, AssetType type)
         }
 
         // --- Register if not already in registry ---
-        if (!m_registry.contains(id))
+        if (!m_registry.Contains(id))
         {
-                m_registry.registerAsset(id, path, type);
+                m_registry.RegisterAsset(id, path, type);
         }
 
         // --- Construct ---
-        IAsset *asset = createAsset(type, id);
+        IAsset *asset = CreateAsset(type, id);
         if (!asset)
         {
                 IC_CORE_ERROR("AssetManager::load - unsupported asset type {} for id {}", static_cast<int>(type), id);
@@ -114,7 +113,7 @@ IAsset *AssetManager::load(GUID id, const char *path, AssetType type)
         if (!asset->load(path))
         {
                 IC_CORE_ERROR("AssetManager::load - failed to load '{}' (id={})", path, id);
-                destroyAsset(asset);
+                DestroyAsset(asset);
                 return nullptr;
         }
 
@@ -126,7 +125,7 @@ IAsset *AssetManager::load(GUID id, const char *path, AssetType type)
         return asset;
 }
 
-IAsset *AssetManager::getAsset(GUID id)
+IAsset *AssetManager::GetAsset(IC_GUID id)
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())
@@ -137,7 +136,7 @@ IAsset *AssetManager::getAsset(GUID id)
         return it->second;
 }
 
-void AssetManager::unload(GUID id)
+void AssetManager::Unload(IC_GUID id)
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())
@@ -153,7 +152,7 @@ void AssetManager::unload(GUID id)
         {
                 IC_CORE_INFO("AssetManager: destroying asset {} (refCount=0)", id);
                 m_assets.erase(it);
-                destroyAsset(asset);
+                DestroyAsset(asset);
         }
         else
         {
@@ -161,18 +160,18 @@ void AssetManager::unload(GUID id)
         }
 }
 
-bool AssetManager::isLoaded(GUID id) const
+bool AssetManager::IsLoaded(IC_GUID id) const
 {
         auto it = m_assets.find(id);
         return it != m_assets.end() && it->second->isLoaded();
 }
 
-bool AssetManager::loadRegistry(const char *path)
+bool AssetManager::LoadRegistry(const char *path)
 {
-        return m_registry.init(path);
+        return m_registry.Init(path);
 }
 
-IAsset *AssetManager::createAsset(AssetType type, GUID id)
+IAsset *AssetManager::CreateAsset(AssetType type, IC_GUID id)
 {
         void *mem = ic_malloc(assetSize(type));
         if (!mem)
@@ -197,7 +196,7 @@ IAsset *AssetManager::createAsset(AssetType type, GUID id)
         }
 }
 
-void AssetManager::destroyAsset(IAsset *asset)
+void AssetManager::DestroyAsset(IAsset *asset)
 {
         if (!asset)
                 return;
@@ -211,30 +210,43 @@ void AssetManager::destroyAsset(IAsset *asset)
 void ic_load_registry(const char *registry_file_path)
 {
         IC_CORE_ASSERT(registry_file_path, "ic_load_registry - null path");
-        if (!ic::AssetManager::Get()->loadRegistry(registry_file_path))
+        if (!ic::AssetManager::Get().LoadRegistry(registry_file_path))
                 IC_CORE_ERROR("ic_load_registry - failed to load '{}'", registry_file_path);
 }
 
-bool ic_load_model(GUID modelID)
+IC_GUID ic_load_model(const char* name)
 {
+	IC_GUID modelID = ic::AssetManager::Get().GetRegistry()->GetAssetId(name);
+	if (modelID == INVALID_ID) {
+		IC_CORE_ERROR("Model {} does not exist!", name);
+		return modelID;
+	}
         IC_CORE_INFO("Loading model with ID: {}", modelID);
-        if (!ic::AssetManager::Get()->loadAs<ic::Model>(modelID))
+
+	/** TODO maybe make a direct named model loading */
+        if (!ic::AssetManager::Get().LoadAs<ic::Model>(modelID))
         {
-                return false;
+		IC_CORE_WARN("Could not load model correctly!");
+                return modelID;
         }
-        return true;
+        return modelID;
 }
 
-const char *ic_get_model_path(GUID modelID)
+void ic_name_model(IC_GUID id, const char* name) {
+	ic::AssetRegistry* reg = ic::AssetManager::Get().GetRegistry();
+	reg->SetAssetName(id, name);
+}
+
+const char *ic_get_model_path(IC_GUID modelID)
 {
-        ic::AssetRegistry *reg = ic::AssetManager::Get()->getRegistry();
-        if (!reg->contains(modelID))
+        ic::AssetRegistry *reg = ic::AssetManager::Get().GetRegistry();
+        if (!reg->Contains(modelID))
                 return nullptr;
-        return reg->getFilePath(modelID);
+        return reg->GetFilePath(modelID);
 }
 
-bool ic_unload_model(GUID modelID)
+bool ic_unload_model(IC_GUID modelID)
 {
-        ic::AssetManager::Get()->unload(modelID);
+        ic::AssetManager::Get().Unload(modelID);
         return true;
 }

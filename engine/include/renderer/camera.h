@@ -16,14 +16,13 @@
 
 class IC_API Camera
 {
-private:
+public:
         float fovY;
         float znear, zfar;
         float aspectRatio;
 
         void updateViewMatrix();
 
-public:
         enum CameraType
         {
                 lookat,
@@ -123,7 +122,7 @@ public:
                 }
         }
 
-        void setZoomSpeed(float speed) { this->zoomSpeed; }
+        void setZoomSpeed(float speed) { this->zoomSpeed = speed; }
         void setMouseSensitivity(float sensitivity) { this->mouseSensitivity = sensitivity; }
         void setMovementSpeed(float speed) { this->movementSpeed = speed; }
         void resetCameraPosition();

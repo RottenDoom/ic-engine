@@ -1,87 +1,165 @@
-set(OBJ_DIR ${PROJECT_BINARY_DIR}/obj)
-get_subdirectories(SUBDIRS ${CMAKE_CURRENT_LIST_DIR})
+# engine/CMakeLists.txt
 
-# build library (create target)
-add_subdirectory(src/core)
-add_subdirectory(src/renderer)
+set(CORE_SRC
+    src/core/platform/mmapped.c
+    src/core/platform/Win32/input_win32.cpp
+    src/core/platform/Win32/window_win32.cpp
+    src/core/platform/Win32/filesystem_win32.cpp
 
-if (IC_ENGINE_USE_VULKAN)
-    find_package(Vulkan REQUIRED)
-    include(${CMAKE_SOURCE_DIR}/cmake/shaders.cmake)
-    add_subdirectory(src/renderer/vulkan)
-endif()
+    src/core/application.cpp
+    src/core/filesystem.cpp
+    src/core/uuid.cpp
+    src/core/input.cpp
+    src/core/logger.cpp
+    src/core/allocator.cpp
 
-if (IC_ENGINE_USE_OPENGL)
-    find_package(OpenGL REQUIRED)
-    add_subdirectory(src/renderer/opengl)
-endif()
+    src/core/assets/types/model.cpp
+    src/core/assets/types/material.cpp
+    src/core/assets/asset_cache.cpp
+    src/core/assets/asset_manager.cpp
+    src/core/assets/asset_registry.cpp
+    src/core/assets/asset_serializer.cpp
+    src/core/assets/asset_loaders/gltf_loader.cpp
 
-add_library(engine SHARED 
-	src/engine.cpp
-	$<TARGET_OBJECTS:engine-core>
-    	$<TARGET_OBJECTS:engine-renderer>
+    src/core/ecs/entity.cpp
 )
 
-if (IC_ENGINE_USE_OPENGL)
-    target_link_libraries(engine PRIVATE engine-opengl)
-endif()
+set(RENDERER_SRC
+    src/renderer/camera.cpp
+    src/renderer/renderer_frontend.cpp
+    src/renderer/scene.cpp
+    src/renderer/scene_serializer.cpp
+)
 
-if (IC_ENGINE_USE_VULKAN)
-    target_link_libraries(engine PRIVATE engine-vulkan Vulkan::Vulkan)
-endif()
+set(OPENGL_SRC
+    src/renderer/opengl/gl_material.cpp
+    src/renderer/opengl/gl_model.cpp
+    src/renderer/opengl/gl_shader.cpp
+    src/renderer/opengl/gl_framebuffer.cpp
+    src/renderer/opengl/opengl_renderer.cpp
+)
 
-target_link_libraries(engine PUBLIC spdlog::spdlog glm)
+set(VULKAN_SRC
+    # src/renderer/vulkan/vk_renderer.cpp
+)
 
-target_compile_definitions(engine PRIVATE IC_EXPORT)
+# ─────────────────────────────────────────────
+#  Compiler options
+# ─────────────────────────────────────────────
+function(set_compiler_options TARGET)
+    if(MSVC)
+        target_compile_options(${TARGET} PRIVATE
+            /W4 /MP /EHsc
+            $<$<CONFIG:Debug>:/Od /Zi /RTC1>
+            $<$<CONFIG:Release>:/O2 /GL>
+        )
+        target_link_options(${TARGET} PRIVATE
+            $<$<CONFIG:Release>:/LTCG>
+        )
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(${TARGET} PRIVATE
+            -Wall -Wextra -Wpedantic -Wno-unused-parameter
+            $<$<CONFIG:Debug>:-g -O0 -fno-omit-frame-pointer>
+            $<$<CONFIG:Release>:-O3 -flto>
+        )
+        target_link_options(${TARGET} PRIVATE
+            $<$<CONFIG:Release>:-flto>
+        )
+    else()
+        # GCC / MinGW
+        target_compile_options(${TARGET} PRIVATE
+            -Wall -Wextra -Wpedantic -Wno-unused-parameter
+            $<$<CONFIG:Debug>:-g -O0 -fno-omit-frame-pointer>
+            $<$<CONFIG:Release>:-O2>
+        )
+    endif()
+endfunction()
 
-set_target_properties(engine PROPERTIES
-    OUTPUT_NAME "engine"
-    POSITION_INDEPENDENT_CODE ON
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_BINARY_DIR}/bin/Debug
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
+# ─────────────────────────────────────────────
+#  ENGINE
+# ─────────────────────────────────────────────
+add_library(engine STATIC
+    src/engine.cpp
+    ${CORE_SRC}
+    ${RENDERER_SRC}
 )
 
 target_include_directories(engine
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/engine/include>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
         $<INSTALL_INTERFACE:include>
 )
 
-set(ENGINE_GENERATED_SPVS "")
+target_compile_definitions(engine
+    PRIVATE
+        IC_BUILD_ENGINE
+    PUBLIC
+        $<$<CONFIG:Debug>:DEBUG IC_ENABLE_ASSERTS>
+        $<$<CONFIG:Release>:NDEBUG>
+)
 
-if (IC_ENGINE_USE_VULKAN AND IC_ENGINE_USE_GLSLC) # or whatever flag you set
+target_link_libraries(engine
+    PUBLIC
+        glm
+        entt
+        spdlog::spdlog
+    PRIVATE
+        glfw
+        glad
+        yaml-cpp
+        fastgltf
+        ktx
+        stb
+)
+
+# OpenGL backend sources + libs
+if(IC_ENGINE_USE_OPENGL)
+    find_package(OpenGL REQUIRED)
+    target_sources(engine PRIVATE ${OPENGL_SRC})
+    target_link_libraries(engine PRIVATE OpenGL::GL)
+    target_compile_definitions(engine PUBLIC IC_ENGINE_USE_OPENGL)
+endif()
+
+# Vulkan backend sources + libs
+if(IC_ENGINE_USE_VULKAN)
+    find_package(Vulkan REQUIRED)
+    include(${CMAKE_SOURCE_DIR}/cmake/shaders.cmake)
+    target_sources(engine PRIVATE ${VULKAN_SRC})
+    target_link_libraries(engine PRIVATE Vulkan::Vulkan)
+    target_compile_definitions(engine PUBLIC IC_ENGINE_USE_VULKAN)
+
     file(GLOB_RECURSE ENGINE_SHADERS
         "${CMAKE_SOURCE_DIR}/shaders/*.vert"
         "${CMAKE_SOURCE_DIR}/shaders/*.frag"
     )
-
-    if (ENGINE_SHADERS)
+    if(ENGINE_SHADERS)
         target_link_spv_shaders(engine ${ENGINE_SHADERS})
-        # shaders.cmake sets this variable in PARENT_SCOPE for this target
-        set(ENGINE_GENERATED_SPVS ${engine_GENERATED_SPVS})
     else()
-        message(WARNING "IC_ENGINE_USE_VULKAN=ON but no shaders were found in ${CMAKE_SOURCE_DIR}/shaders")
+        message(WARNING "IC_ENGINE_USE_VULKAN=ON but no shaders found in shaders/")
     endif()
 endif()
 
-install(TARGETS engine 
-	EXPORT ic_engineTargets
-	RUNTIME DESTINATION bin
-	LIBRARY DESTINATION lib
-	ARCHIVE DESTINATION lib
-	INCLUDES DESTINATION includes
+set_compiler_options(engine)
+
+set_target_properties(engine PROPERTIES
+    OUTPUT_NAME               "engine"
+    POSITION_INDEPENDENT_CODE ON
+    ARCHIVE_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_BINARY_DIR}/bin/Debug
+    ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
 )
 
-install(DIRECTORY ${CMAKE_CURRECT_SOURCE_DIR}/src/
-	DESTINATION include/ic_engine
-	FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
-	# exclude internal headers maybe
-	# PATTERN "internal" EXCLUDE
+# ─────────────────────────────────────────────
+#  INSTALL
+# ─────────────────────────────────────────────
+install(TARGETS engine
+    EXPORT   ic_engineTargets
+    ARCHIVE  DESTINATION lib
+    INCLUDES DESTINATION include
 )
 
-if (ENGINE_GENERATED_SPVS)
-    install(FILES ${ENGINE_GENERATED_SPVS}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/ic_engine/shaders
-        OPTIONAL
-    )
-endif()
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+    DESTINATION include/ic_engine
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)

@@ -35,8 +35,8 @@ constexpr Index INVALID_INDEX = ~0u;
                 return #type;                                                                                          \
         }
 
-using GUID = uint64_t;
-extern const GUID INVALID_ID;
+using IC_GUID = uint64_t;
+extern const IC_GUID INVALID_ID;
 
 enum AssetType : uint8_t
 {
@@ -57,7 +57,8 @@ enum AssetType : uint8_t
 
 struct AssetMeta
 {
-        GUID      id;
+        IC_GUID      id;
+        string    name;
         string    filepath;
         string    cachePath;
         AssetType type;
@@ -71,7 +72,7 @@ class IAsset
 {
 public:
         IAsset() = default;
-        IAsset(GUID id) : _id(id) {}
+        IAsset(IC_GUID id) : _id(id) {}
         IAsset(const char *name)
         {
                 m_name = strdup(name);
@@ -94,7 +95,7 @@ public:
         virtual bool isLoaded() const { return loaded; }
 
         // Identifiable
-        GUID        getID() { return _id; }
+        IC_GUID        getID() { return _id; }
         void        setName(char *name) { m_name = name; };
         const char *getName() { return m_name; }
 
@@ -106,7 +107,7 @@ private:
         bool loaded = false;
 
         // Identifiable
-        GUID  _id    = INVALID_ID;
+        IC_GUID  _id    = INVALID_ID;
         char *m_name = nullptr;
 
         // Refcountable - Not every object is refcountable so maybe add refcountable object but we are not worried right

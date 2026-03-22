@@ -6,7 +6,7 @@
 namespace ic
 {
 
-IRenderer *createRenderer(RendererAPI api)
+IRenderer *create_renderer(RendererAPI api)
 {
         switch (api)
         {
@@ -19,6 +19,6 @@ IRenderer *createRenderer(RendererAPI api)
         }
 }
 
-void destroyRenderer(IRenderer *renderer) {}
+void destroy_renderer(IRenderer *renderer) {}
 
 }  // namespace ic

@@ -1,4 +1,5 @@
 build/
+.vscode/
 build-ninja/
 *.log
 .env
@@ -11,3 +12,4 @@ TODO.md
 dummy/
 todo
 /resources
+/docs

@@ -24,6 +24,10 @@
  *   setupBuffers() is called once during init() and uploads all scene models.
  *   draw() never uploads -> if a model isn't in m_gpuCache it logs a warning
  *   and skips rather than stalling the render thread mid-frame.
+ * 
+ * TODO: basic component window for tranforms.
+ * TODO: Add more asset types and more models and fix the material system.
+ * TODO: Big goal: Scene Graph.
  */
 
 namespace ic
@@ -62,15 +66,17 @@ public:
         // IRenderer interface
         // -----------------------------------------------------------------------
 
-        bool init(Window *w) override;
+        bool Init(Window *w) override;
 
-        void setScene(RenderScene *scene);
+        void SetScene(RenderScene *scene);
 
-        void renderFrame(float dt) override;
+        void RenderFrame(float dt) override;
 
-        void onEvent(event &e) override;
+        void OnEvent(event &e) override;
 
-        void cleanUp() override;
+	void ClearColor() override;
+
+        void CleanUp() override;
 
 private:
         // -----------------------------------------------------------------------
@@ -78,42 +84,42 @@ private:
         // -----------------------------------------------------------------------
 
         /** Enable depth test, face culling, etc. */
-        void enableFeatures();
+        void EnableFeatures();
 
         /** Compile and link the PBR model shader. */
-        void createShader();
+        void CreateShader();
 
         /**
          * Load all model assets referenced by the current scene into AssetManager.
          * Must be called before setupBuffers().
          */
-        void loadAssets();
+        void LoadAssets();
 
         /**
          * Upload all loaded scene models to the GPU.
          * Populates m_gpuCache. Called once after loadAssets().
          */
-        void setupBuffers();
+        void SetupBuffers();
 
         // -----------------------------------------------------------------------
         // Per-frame helpers -> called from renderFrame()
         // -----------------------------------------------------------------------
 
-        void update(float dt);
-        void draw(float dt);
+        void Update(float dt);
+        void Draw(float dt);
 
         // -----------------------------------------------------------------------
         // Event handlers
         // -----------------------------------------------------------------------
 
-        bool onWindowResize(WindowResizedEvent &e);
+        bool OnWindowResize(WindowResizedEvent &e);
 
         // -----------------------------------------------------------------------
         // Internal: upload a single model to GPU and cache it
         // Returns the cached GLModel or nullptr on failure.
         // -----------------------------------------------------------------------
-        GLModel *uploadModel(GUID id);
-        GLModel *getOrUpload(GUID id);
+        GLModel *UploadModel(IC_GUID id);
+        GLModel *GetOrUpload(IC_GUID id);
 
         // -----------------------------------------------------------------------
         // State
@@ -123,8 +129,8 @@ private:
         RenderScene *m_scene       = nullptr;  // See into this and more of this
         bool         m_isMinimized = false;
 
-        // GPU cache -> one GLModel per unique model GUID..
-        std::unordered_map<GUID, GLModel *> m_gpuCache;
+        // GPU cache -> one GLModel per unique model IC_GUID..
+        std::unordered_map<IC_GUID, GLModel *> m_gpuCache;
 
         Shader *m_shader = nullptr;
 

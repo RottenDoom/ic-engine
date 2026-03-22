@@ -13,8 +13,7 @@ int main()
         ic_load_registry("registry.yaml");
 
         // load model
-        GUID id = 0x1000000000000001;
-        ic_load_model(id);
+        ic_load_model("cube_model");
 
         ic_app_destroy();
 }

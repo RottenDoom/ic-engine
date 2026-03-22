@@ -9,7 +9,7 @@ using Pair = std::pair<TypeA, TypeB>;
 /** @brief Generic iterator wrapper.
  * @example
  * using InternalIterator = std::unordered_map<GUID, IAsset*>::iterator;
- * using Iterator = MapIterator<InternalIterator, GUID, IAsset*>;
+ * using Iterator = MapIterator<InternalIterator, IC_GUID, IAsset*>;
  */
 template <typename InternalIterator, typename Key, typename Value>
 class MapIterator

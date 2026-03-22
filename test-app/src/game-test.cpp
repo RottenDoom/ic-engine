@@ -8,18 +8,30 @@ struct ApplicationState
 
 struct GameState
 {
-        std::vector<GUID> models;
+        std::vector<IC_GUID> models;
+        ic::RenderScene   defaultScene;  // TODO Probably gonna make a World class later instead of directly using scene
+                                         // here.
 };
 
 GameState g_state;
 
-/** User side update and render functions */
-void update(float deltaTime) /** TODO: add user side time update functions or udata pointer */
+struct PlayerComponent
 {
-        if (ic_input_key_pressed(ic::Key::G))
-        {
-                IC_INFO("G pressed");
-        }
+        float   speed  = 5.0f;
+        uint8_t health = 100;
+};
+
+/** User side update and render functions */
+void update(float deltaTime)
+{
+	ic::Entity player = g_state.defaultScene.FindEntityByName("Player");
+	PlayerComponent& p = player.GetComponent<PlayerComponent>();
+	ic::TransformComponent& t = player.GetComponent<ic::TransformComponent>();
+
+	if (ic_input_key_pressed(ic::Key::W)) {
+		t.SetPosition(t.position + glm::vec3(0.0f, p.speed * deltaTime, 0.0f));
+		IC_CORE_INFO("{}, {}, {}", t.position.x, t.position.y, t.position.z);
+	}
 }
 
 void render() {}
@@ -41,10 +53,7 @@ int main(int argc, char *argv[])
         ic_app_set_callback(update, render);
 
         /** TODO:
-         * 1. ICM or fast file loads
-         * 2. Load the model with names and everything.
-         * 3. Write files from gltf i.e create a converter for my project
-         * 4. Do fast file loads and multi threading
+         * 4. Do multi threading
          */
 
         // path after post-build
@@ -53,21 +62,23 @@ int main(int argc, char *argv[])
         // load the registry
         ic_load_registry("assets/registry.yaml");
 
-        // load model
-        GUID id = 0x1000000000000004;
-        ic_load_model(id);
-        g_state.models.push_back(id);
+        IC_GUID id = ic_load_model("player_model");  // make so that this thing calls by name of the mesh.
+                            // story the id provided for now I am storying in some variable. like playerModel;
 
-        ic::RenderScene defaultScene;
-        ic::Entity      entt = defaultScene.createEntity();
+        ic::Entity entt = g_state.defaultScene.CreateEntityWithName("Player");
+        entt.AddComponent<PlayerComponent>();
+        entt.GetComponent<ic::TransformComponent>().SetPosition({0.0f, 0.0f, 0.0f});
+        entt.AddComponent<ic::MeshComponent>().SetMesh(id);  // this id that is output must be from
 
-        defaultScene.addMesh(entt).modelID       = id;
-        defaultScene.addTransform(entt).position = {0, 0, 0};
-        defaultScene.addTransform(entt).scale    = glm::vec3(0.1f);
+	IC_GUID cube = ic_load_model("cube_model");
+
+	ic::Entity cube_entt = g_state.defaultScene.CreateEntityWithName("Cube");
+	cube_entt.GetComponent<ic::TransformComponent>().SetPosition({15.0f, 15.0f, 0.0f});
+	cube_entt.AddComponent<ic::MeshComponent>().SetMesh(cube);
 
         // Camera Entity
 
-        ic_set_scene(&defaultScene);
+        ic_set_scene(&g_state.defaultScene);  // TODO: this should be done internally
 
         ic_app_run();
 

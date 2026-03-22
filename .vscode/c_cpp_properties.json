@@ -22,7 +22,6 @@
 			"includePath": [
 				"${workspaceFolder}/engine/include/**",
 				"${VULKAN_SDK}/include",
-				"${workspaceFolder}/build/build-gcc/_deps/**",
 				"${workspaceFolder}/third-party/**"
 			],
 			"defines": [

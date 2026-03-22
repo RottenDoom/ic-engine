@@ -2,6 +2,9 @@
 #define WINDOW_H
 #include "defines.h"
 #include "events/event.h"
+
+struct GLFWwindow;
+
 namespace ic
 {
 
@@ -35,7 +38,7 @@ public:
         virtual void setVSync(bool enabled)                            = 0;
         virtual bool isVSync() const                                   = 0;
 
-        virtual void *getNativeWindow() const = 0;
+        virtual GLFWwindow *GetNativeWindow() const = 0;
 
         static Window *create(const window_props &props = window_props());
 };

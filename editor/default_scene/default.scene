@@ -1,0 +1,24 @@
+#default_scene/default.scene
+scene:
+  name: "Default Scene"
+  # skybox: "assets/cubemap/sky_01"
+
+entities:
+  - id: 1829374650
+    name: "Player"
+    components:
+      TransformComponent:
+        position: [0.0, 0.0, 0.0]
+        rotation: [1.0, 0.0, 0.0, 0.0]
+        scale:    [1.0, 1.0, 1.0]
+      MeshComponent:
+        model: "player_model" # asset registry nam
+  - id: 9273648102
+    name: "Cube"
+    components:
+      TransformComponent:
+        position: [15.0, 15.0, 0.0]
+        rotation: [1.0, 0.0, 0.0, 0.0]
+        scale:    [1.0, 1.0, 1.0]
+      MeshComponent:
+        model: "cube_model"

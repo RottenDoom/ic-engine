@@ -31,7 +31,7 @@ public:
         void setVSync(bool enabled) override;
         bool isVSync() const override;
 
-        void *getNativeWindow() const override { return static_cast<void *>(m_Window); }
+        GLFWwindow *GetNativeWindow() const override { return m_Window; }
 
         bool        wasWindowResized() { return framebufferResized; }
         static void framebufferResizeCallback(GLFWwindow *handle, int width, int height);

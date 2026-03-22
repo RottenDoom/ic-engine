@@ -23,17 +23,19 @@ Application::Application(window_props &properties)
         ic::logger::init();
 
         m_Window = Window::create(properties);
-        m_Window->setEventCallback(BIND_EVENT(onEvent));
+        m_Window->setEventCallback(BIND_EVENT(OnEvent));
+
+        s_Instance = this;
 }
 
-void Application::initialize()
+void Application::Initialize()
 {
         fs_init();
         AssetManager::Initialize("assets/registry.yaml");
 
         // TODO: Not by build system but by UI systems. This makes application reloads so handle that
-        m_renderer = createRenderer(RendererAPI::OpenGL);
-        m_renderer->init(m_Window);
+        m_renderer = create_renderer(RendererAPI::OpenGL);
+        m_renderer->Init(m_Window);
 
         IC_CORE_INFO("Application Initialized!");
 }
@@ -42,88 +44,104 @@ Application::~Application()
 {
         AssetManager::Shutdown();
         fs_deinit();
-        m_renderer->cleanUp();
-        destroyRenderer(m_renderer);
+        m_renderer->CleanUp();
+        destroy_renderer(m_renderer);
         delete m_Window;
 }
 
-bool Application::run()
+bool Application::Run()
 {
+	/** TODO: Replace glfw dependencies with my own. */
         while (isRunning)
         {
                 float time      = glfwGetTime();
                 float delta     = time - m_lastFrameTime;
                 m_lastFrameTime = time;
 
+		glfwPollEvents();
+
+		// user update
                 if (user_update)
                 {
                         user_update(delta);
                 }
 
-                m_Window->onUpdate();
+		// engine render
+		m_renderer->RenderFrame(delta);
 
+		// UI + user render
                 if (user_render)
                 {
                         user_render();
                 }
-                m_renderer->renderFrame(delta);
+		glfwSwapBuffers(m_Window->GetNativeWindow());
         }
 
         return true;
 }
 
-void Application::onEvent(event &e)
+void Application::OnEvent(event &e)
 {
         eventDispatcher dispatcher(e);
-        dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT(onWindowClose));
+        dispatcher.dispatch<WindowClosedEvent>(BIND_EVENT(OnWindowClose));
 
-        m_renderer->onEvent(e);
+        m_renderer->OnEvent(e);
 }
 
-Application &Application::get()
-{
-        return *s_Instance;
-}
-bool Application::onWindowClose(WindowClosedEvent &e)
+// TODO rewrite this function
+bool Application::OnWindowClose(WindowClosedEvent &e)
 {
         isRunning = false;
         return true;
 }
 
+void Application::SetFnPointers(AppUpdateFn update_fn, AppRenderFn render_fn)
+{
+        user_update = update_fn;
+        user_render = render_fn;
+}
+
 }  // namespace ic
+
+static ic::Application *s_app = nullptr;
+
+void ic_clear_color(void)
+{
+	ic::Application::Get().GetRenderer()->ClearColor();
+}
+
+void ic_clear_buffer_bit(void)
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
 
 void ic_create_application(ic::window_props *windowProperties)
 {
-        if (ic::Application::s_Instance)
-                return;
-        void *application_memory    = ic_malloc(sizeof(ic::Application));
-        ic::Application::s_Instance = new (application_memory) ic::Application(*windowProperties);
-        ic::Application::s_Instance->initialize();
+        s_app = new ic::Application(*windowProperties);
+        s_app->Initialize();
 }
 
 bool ic_app_is_running(void)
 {
-        return ic::Application::get().isRunning;
+        return ic::Application::Get().IsAppRunning();
 }
 
 void ic_app_set_callback(AppUpdateFn update_fn, AppRenderFn render_fn)
 {
-        ic::Application::get().user_update = update_fn;
-        ic::Application::get().user_render = render_fn;
+        ic::Application::Get().SetFnPointers(update_fn, render_fn);
 }
 
 void ic_app_run(void)
 {
-        ic::Application::get().run();
+        ic::Application::Get().Run();
 }
 
 void ic_app_destroy(void)
 {
-        ic::Application::get().~Application();
-        ic_free(ic::Application::s_Instance);
-
+        delete s_app;
+        s_app = nullptr;
 #ifndef NDEBUG
         ic::heap_dump_leaks();
 #endif
-        ic::Application::s_Instance = nullptr;
 }

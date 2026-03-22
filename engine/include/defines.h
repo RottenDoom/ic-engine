@@ -24,21 +24,26 @@
 
 using string = std::string;
 
+// clang-format off
 #if defined(_WIN32) || defined(_WIN64)
-#if defined(IC_EXPORT)
-#define IC_API __declspec(dllexport)
-#elif defined(IC_IMPORT)
-#define IC_API __declspec(dllimport)
+   	 #if defined(IC_ENGINE_SHARED)
+		#ifdef IC_BUILD_ENGINE
+			#define IC_API __declspec(dllexport)
+		#else
+			#define IC_API __declspec(dllimport)
+		#endif
+	#else
+     	   	#define IC_API
+	#endif
 #else
-#define IC_API
+    	#if __GNUC__ >= 4
+        	#define IC_API __attribute__((visibility("default")))
+    	#else
+        	#define IC_API
+    	#endif
 #endif
-#else
-#if __GNUC__ >= 4
-#define IC_API __attribute__((visibility("default")))
-#else
-#define IC_API
-#endif
-#endif
+// clang-format on
+
 
 #include "core/logger.h"
 
@@ -110,6 +115,9 @@ std::ostream &operator<<(std::ostream &stream, const std::vector<T> &other)
 /** User defined functions optional */
 typedef void(AppUpdateFn)(float dt);
 typedef void(AppRenderFn)(void);
+
+#define NOT_IMPL() IC_CORE_ASSERT(false, "Function not implemented yet!")
+
 
 #if defined(_MSC_VER)
 #define IC_INLINE __forceinline

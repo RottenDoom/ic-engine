@@ -2,6 +2,9 @@
 #include "renderer/opengl/gl_debug.h"
 #include "core/assets/asset_manager.h"
 #include "core/application.h"
+#include "core/ecs/entity.h"
+#include "core/ecs/entity_impl.h"
+#include "core/ecs/components.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -30,19 +33,19 @@ OpenGLRenderer::~OpenGLRenderer()
         // cleanUp() should be called explicitly before destruction,
         // but guard here in case it wasn't.
         if (!m_gpuCache.empty())
-                cleanUp();
+                CleanUp();
 }
 
 // ---------------------------------------------------------------------------
 // IRenderer::init
 // ---------------------------------------------------------------------------
 
-bool OpenGLRenderer::init(Window *w)
+bool OpenGLRenderer::Init(Window *w)
 {
         IC_CORE_ASSERT(w, "OpenGLRenderer::init -> null window");
         m_window = w;
 
-        glfwMakeContextCurrent(static_cast<GLFWwindow *>(m_window->getNativeWindow()));
+        glfwMakeContextCurrent(m_window->GetNativeWindow());
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
@@ -50,6 +53,7 @@ bool OpenGLRenderer::init(Window *w)
                 return false;
         }
 
+	IC_CORE_INFO("GLFW platform: {}", glfwGetPlatform());
         IC_CORE_INFO("GL Vendor:   {}", reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
         IC_CORE_INFO("GL Renderer: {}", reinterpret_cast<const char *>(glGetString(GL_RENDERER)));
         IC_CORE_INFO("GL Version:  {}", reinterpret_cast<const char *>(glGetString(GL_VERSION)));
@@ -65,11 +69,11 @@ bool OpenGLRenderer::init(Window *w)
 
         glViewport(0, 0, static_cast<GLsizei>(m_window->getWidth()), static_cast<GLsizei>(m_window->getHeight()));
 
-        enableFeatures();
-        createShader();
+        EnableFeatures();
+        CreateShader();
 
-        loadAssets();
-        setupBuffers();
+        LoadAssets();
+        SetupBuffers();
 
         IC_CORE_INFO("OpenGLRenderer: initialized");
         return true;
@@ -79,17 +83,17 @@ bool OpenGLRenderer::init(Window *w)
 // IRenderer::setScene
 // ---------------------------------------------------------------------------
 
-void OpenGLRenderer::setScene(RenderScene *scene)
+void OpenGLRenderer::SetScene(RenderScene *scene)
 {
         m_scene = scene;
         // TODO: Remove the camera from here and make an entity out of it
-        m_scene->camera = createCamera(Camera::CameraType::firstperson, glm::vec3(0.0f, 0.0f, 0.0f));
+        m_scene->defaultCamera = createCamera(Camera::CameraType::firstperson, glm::vec3(0.0f, 0.0f, 0.0f));
 
         // If the renderer is already initialized, load and upload the new scene.
         if (m_window)
         {
-                loadAssets();
-                setupBuffers();
+                LoadAssets();
+                SetupBuffers();
         }
 }
 
@@ -97,7 +101,7 @@ void OpenGLRenderer::setScene(RenderScene *scene)
 // Init helpers
 // ---------------------------------------------------------------------------
 
-void OpenGLRenderer::enableFeatures()
+void OpenGLRenderer::EnableFeatures()
 {
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
@@ -105,44 +109,53 @@ void OpenGLRenderer::enableFeatures()
         // glFrontFace(GL_CCW);
 }
 
-void OpenGLRenderer::createShader()
+void OpenGLRenderer::CreateShader()
 {
         m_shader = new Shader("shaders/opengl/modelShader.vs", "shaders/opengl/modelShader.fs");
 }
 
-void OpenGLRenderer::loadAssets()
+void OpenGLRenderer::LoadAssets()
 {
         if (!m_scene)
                 return;
 
-        for (auto &[entity, mesh] : m_scene->meshes())
+        /** Just for the sake of making sure
+         * 1. m_scene get all the entities with meshcomponent
+         * 2. for each component load the model or material whatever from them
+         * 3. To keep this shit loaded
+         */
+
+        std::vector<Entity> mesh_entities = m_scene->GetEntitiesWith<MeshComponent>();
+        for (auto &e : mesh_entities)
         {
-                Model *model = AssetManager::Get()->loadAs<Model>(mesh.modelID);
+                MeshComponent &c     = e.GetComponent<MeshComponent>();
+                Model         *model = AssetManager::Get().LoadAs<Model>(c.modelID);
 
                 if (!model)
                 {
-                        IC_CORE_WARN("Failed loading model {}", mesh.modelID);
+                        IC_CORE_WARN("Failed loading model {}", c.modelID);
                 }
         }
 }
 
-void OpenGLRenderer::setupBuffers()
+void OpenGLRenderer::SetupBuffers()
 {
         if (!m_scene)
                 return;
 
-        for (auto &[entity, mesh] : m_scene->meshes())
+        std::vector<Entity> mesh_entities = m_scene->GetEntitiesWith<MeshComponent>();
+        for (auto &e : mesh_entities)
         {
-                if (m_gpuCache.count(mesh.modelID))
+                MeshComponent &c = e.GetComponent<MeshComponent>();
+                if (m_gpuCache.count(c.modelID))
                         continue;
-
-                uploadModel(mesh.modelID);
+                UploadModel(c.modelID);
         }
 }
 
-GLModel *OpenGLRenderer::uploadModel(GUID id)
+GLModel *OpenGLRenderer::UploadModel(IC_GUID id)
 {
-        Model *model = AssetManager::Get()->getAsset<Model>(id);
+        Model *model = AssetManager::Get().GetAsset<Model>(id);
         if (!model)
         {
                 IC_CORE_WARN("OpenGLRenderer::uploadModel -> model {} not in AssetManager", id);
@@ -166,66 +179,56 @@ GLModel *OpenGLRenderer::uploadModel(GUID id)
         return glModel;
 }
 
-GLModel *OpenGLRenderer::getOrUpload(GUID id)
+GLModel *OpenGLRenderer::GetOrUpload(IC_GUID id)
 {
         auto it = m_gpuCache.find(id);
 
         if (it != m_gpuCache.end())
                 return it->second;
 
-        return uploadModel(id);
+        return UploadModel(id);
 }
 
 // ---------------------------------------------------------------------------
 // Per-frame
 // ---------------------------------------------------------------------------
 
-void OpenGLRenderer::renderFrame(float dt)
+void OpenGLRenderer::RenderFrame(float dt)
 {
-        update(dt);
-        draw(dt);
+        Update(dt);
+        Draw(dt);
 }
 
-void OpenGLRenderer::update(float dt)
+void OpenGLRenderer::Update(float dt)
 {
         // Entity Camera?
         if (m_scene)
-                m_scene->camera.onUpdate(dt);
+                m_scene->defaultCamera.onUpdate(dt);
 }
 
-void OpenGLRenderer::draw(float dt)
+void OpenGLRenderer::Draw(float dt)
 {
         (void)dt;
 
         if (m_isMinimized || !m_scene || !m_shader)
                 return;
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         m_shader->use();
-        m_shader->setMat4("u_projection", m_scene->camera.projection);
-        m_shader->setMat4("u_view", m_scene->camera.matrices.view);
+        m_shader->setMat4("u_projection", m_scene->defaultCamera.projection);
+        m_shader->setMat4("u_view", m_scene->defaultCamera.matrices.view);
 
-        auto &meshes     = m_scene->meshes();
-        auto &transforms = m_scene->transforms();
+        auto meshEntities = m_scene->GetEntitiesWith<MeshComponent, TransformComponent>();
 
-        for (auto &[entity, mesh] : meshes)
+        for (Entity &e : meshEntities)
         {
-                auto tIt = transforms.find(entity);
+                auto &mesh      = e.GetComponent<MeshComponent>();
+                auto &transform = e.GetComponent<TransformComponent>();
 
-                if (tIt == transforms.end())
-                        continue;
-
-                GLModel *glModel = getOrUpload(mesh.modelID);
-
+                GLModel *glModel = GetOrUpload(mesh.modelID);
                 if (!glModel)
                         continue;
 
-                glm::mat4 modelMat = tIt->second.matrix();
-
-                m_shader->setMat4("u_model", modelMat);
-
+                m_shader->setMat4("u_model", transform.GetTransformMatrix());
                 glModel->draw(m_shader);
         }
 }
@@ -234,16 +237,22 @@ void OpenGLRenderer::draw(float dt)
 // Events
 // ---------------------------------------------------------------------------
 
-void OpenGLRenderer::onEvent(event &e)
+void OpenGLRenderer::OnEvent(event &e)
 {
         if (m_scene)
-                m_scene->camera.onEvent(e);
+                m_scene->defaultCamera.onEvent(e);
 
         eventDispatcher dispatcher(e);
-        dispatcher.dispatch<WindowResizedEvent>(BIND_EVENT(OpenGLRenderer::onWindowResize));
+        dispatcher.dispatch<WindowResizedEvent>(BIND_EVENT(OpenGLRenderer::OnWindowResize));
 }
 
-bool OpenGLRenderer::onWindowResize(WindowResizedEvent &e)
+void OpenGLRenderer::ClearColor()
+{
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+bool OpenGLRenderer::OnWindowResize(WindowResizedEvent &e)
 {
         const unsigned int w = e.getWidth();
         const unsigned int h = e.getHeight();
@@ -265,7 +274,7 @@ bool OpenGLRenderer::onWindowResize(WindowResizedEvent &e)
 // Cleanup
 // ---------------------------------------------------------------------------
 
-void OpenGLRenderer::cleanUp()
+void OpenGLRenderer::CleanUp()
 {
         for (auto &it : m_gpuCache)
         {
@@ -280,12 +289,7 @@ void OpenGLRenderer::cleanUp()
 
 }  // namespace ic
 
-// ---------------------------------------------------------------------------
-// C-linkage scene setter -> allows script/C layers to set the scene without
-// pulling in C++ renderer headers.
-// ---------------------------------------------------------------------------
-
 void ic_set_scene(ic::RenderScene *scene)
 {
-        ic::Application::get().getRenderer()->setScene(scene);
+        ic::Application::Get().GetRenderer()->SetScene(scene);
 }

@@ -14,8 +14,8 @@ class IRenderer;
 
 class IC_API Application
 {
-public:
-        bool         isRunning   = true;
+private:
+        bool         isRunning   = false;
         AppUpdateFn *user_update = nullptr;
         AppRenderFn *user_render = nullptr;
 
@@ -25,16 +25,19 @@ public:
         Application(window_props &properties);
         virtual ~Application();
 
-        void initialize();
-        bool run();
-        void onEvent(event &e);
+        void Initialize();
+        bool Run();
+        void OnEvent(event &e);
 
-        static Application &get();
-        Window             *getWindow() { return m_Window; }
-        IRenderer          *getRenderer() { return m_renderer; }
+        bool IsAppRunning() const { return isRunning; }
+        void SetFnPointers(AppUpdateFn update_fn, AppRenderFn render_fn);
+
+        static Application &Get() { return *s_Instance; }
+        Window             *GetWindow() { return m_Window; }
+        IRenderer          *GetRenderer() { return m_renderer; }
 
 private:
-        bool onWindowClose(WindowClosedEvent &e);
+        bool OnWindowClose(WindowClosedEvent &e);
 
         Window    *m_Window;
         IRenderer *m_renderer;
@@ -56,6 +59,10 @@ extern "C"
          */
         IC_API void ic_create_application(ic::window_props *windowProperties);
 
+
+	IC_API void ic_clear_color(void);
+
+	IC_API void ic_clear_buffer_bit(void);
         /**
          * @function ic_app_is_running
          * @category app

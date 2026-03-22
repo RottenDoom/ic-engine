@@ -21,9 +21,9 @@ namespace AssetCache
 {
 
 void     Init();
-uint64_t GetAssetTimeStamp(AssetType type, const GUID id);
-bool     CacheAsset(AssetType type, const GUID id, IAsset *asset);
-uint8_t *GetCachedAssetRaw(AssetType type, const GUID id, size_t numBytes);
+uint64_t GetAssetTimeStamp(AssetType type, const IC_GUID id);
+bool     CacheAsset(AssetType type, const IC_GUID id, IAsset *asset);
+uint8_t *GetCachedAssetRaw(AssetType type, const IC_GUID id, size_t numBytes);
 
 }  // namespace AssetCache
 

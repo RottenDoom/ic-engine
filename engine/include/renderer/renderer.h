@@ -22,23 +22,24 @@ enum class RendererAPI
         DXD13,
 };
 
-// Abstract renderer interface - lives in core
+// TODO: Probably replace this with IGraphicsDevice
 class IRenderer
 {
 public:
         virtual ~IRenderer() = default;
 
-        virtual bool init(Window *w)       = 0;
-        virtual void onEvent(event &e)     = 0;
-        virtual void renderFrame(float dt) = 0;
-        virtual void cleanUp()             = 0;
+        virtual bool Init(Window *w)       = 0;
+        virtual void OnEvent(event &e)     = 0;
+        virtual void RenderFrame(float dt) = 0;
+        virtual void CleanUp()             = 0;
 
-        virtual void setScene(RenderScene *scene) = 0;
+        virtual void SetScene(RenderScene *scene) = 0;
+	virtual void ClearColor() = 0;
 };
 
 // Factory function to create the renderer (implemented in engine-renderer)
-IRenderer *createRenderer(RendererAPI api);
-void       destroyRenderer(IRenderer *renderer);
+IRenderer *create_renderer(RendererAPI api);
+void       destroy_renderer(IRenderer *renderer);
 
 }  // namespace ic
 
