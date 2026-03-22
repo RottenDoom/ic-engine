@@ -1,4 +1,4 @@
-#defaultScene/scene.icscene
+#default_scene/default.scene
 scene:
   name: "Default Scene"
   # skybox: "assets/cubemap/sky_01"

@@ -9,8 +9,12 @@
 namespace ic
 {
 
-void EditorSystem::Init()	{
+void EditorSystem::Init()	
+{
+	m_EditorConfig = "assets/config.yaml";
+	m_DefaultScene = "assets/default.scene";
 	if (ImGui::GetCurrentContext() == nullptr) {
+
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 
@@ -78,10 +82,10 @@ void EditorSystem::Init()	{
 	m_fb = new Framebuffer(fbSpec);
 
 	ic::SceneSerializer serializer;
-	const char* lastScene = LoadLastScenePath();
-	if (lastScene && ic_exists(lastScene)) {
-		m_ActiveScene = serializer.Deserialize(lastScene);
-		m_ScenePath = lastScene;
+	string lastScene = LoadLastScenePath();
+	if (!lastScene.empty() && ic_exists(lastScene.c_str())) {
+		m_ActiveScene = serializer.Deserialize(lastScene.c_str());
+		m_ScenePath = lastScene.c_str();
 		IC_INFO("Editor: Loaded scene {}", lastScene);
 	} else {
 		m_ActiveScene = new ic::RenderScene();
@@ -224,12 +228,12 @@ void EditorSystem::OpenScene(const char* path) {
 }
 
 // These functions are used with multiple scenes and editor config with a scene for now we are working with default scne.
-const char* EditorSystem::LoadLastScenePath() {
-	if (!ic_exists(m_ScenePath))
+string EditorSystem::LoadLastScenePath() {
+	if (!ic_exists(m_EditorConfig))
 		return "";
 	try 
 	{
-		std::ifstream f(m_ScenePath);
+		std::ifstream f(m_EditorConfig);
 		string line;
 		while (getline(f, line)) {
 			auto pos = line.find("last_scene:");
@@ -238,8 +242,9 @@ const char* EditorSystem::LoadLastScenePath() {
 				// trim whitespace and quotes
 				auto s = val.find_first_not_of(" \t\"");
 				auto e = val.find_last_not_of(" \t\"");
-				if (s != std::string::npos)
-					return val.substr(s, e - s + 1).c_str();
+				if (s != std::string::npos) {
+					return val.substr(s, e - s + 1);
+				}
 			}
 		}
 	}
@@ -249,7 +254,7 @@ const char* EditorSystem::LoadLastScenePath() {
 		return "";
 	}
 
-	return m_ScenePath;
+	return m_DefaultScene;
 }
 
 void EditorSystem::SaveLastScenePath(const char* path) {
@@ -257,7 +262,7 @@ void EditorSystem::SaveLastScenePath(const char* path) {
 	if (!fs_mkdir(parent)) {
 		IC_CORE_WARN("EditorSystem: cannot create parent path");
 	}
-	std::ofstream f(m_ScenePath);
+	std::ofstream f(m_EditorConfig);
 	f << "last_scene: \"" << path << "\"\n";
 }
 

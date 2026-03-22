@@ -1159,29 +1159,24 @@ static bool translate_mount_path(const char *virtual_path, char *out_buffer, siz
 
 static bool resolve(const char *virtual_path, char *out_path, size_t out_size)
 {
-        for (size_t i = 0; i < g_filesystem->mount_count; i++)
-        {
-                ic::Mount *mnt = &g_filesystem->mounts[i];
+        int best_priority = -1;
+	bool found = false;
 
-                // check if virtual_path starts with this mount's virtual prefix
-                size_t prefix_len = strlen(mnt->virtual_path);
-                if (strncmp(virtual_path, mnt->virtual_path, prefix_len) != 0)
-                        continue;
+	for (size_t i = 0; i < g_filesystem->mount_count; i++) {
+		ic::Mount* mnt = &g_filesystem->mounts[i];
+		size_t prefix_len = strlen(mnt->virtual_path);
+		if (strncmp(virtual_path, mnt->virtual_path, prefix_len) != 0)
+			continue;
 
-                // build candidate physical path
-                const char *remainder = virtual_path + prefix_len;
-                if (*remainder == '/')
-                        remainder++;  // skip leading slash
-
-                snprintf(out_path, out_size, "%s/%s", mnt->physical_path, remainder);
-                normalize(out_path);
-
-                // Check if the path type of mount is corrent
-                // dont check the validdity of the path since we do it anyway
-                if (mnt->type == ic::MountType::MOUNT_TYPE_DIRECTORY)
-                        return true;
-
-                // future: if MOUNT_TYPE_ARCHIVE, ask driver if file exists in archive
-        }
-        return false;
+		if (mnt->priority > best_priority) 
+		{
+			best_priority = mnt->priority;
+			const char* remainder = virtual_path + prefix_len;
+			if (*remainder == '/') remainder++;
+			snprintf(out_path, out_size, "%s/%s", mnt->physical_path, remainder);
+			normalize(out_path);
+			found = true;
+		}
+	}
+	return found;
 }

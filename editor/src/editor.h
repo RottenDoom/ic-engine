@@ -1,7 +1,7 @@
 #include <ic_engine.h>
 #include <renderer/opengl/gl_framebuffer.h> // we are going to use gl_framebuffer for now.
 
-/** ISSUE: Some kind of blitting issue on camera and cant open IMGUI windows gotta fix that. */
+/** ISSUE: Some kind of blitting issue on camera and cant open IMGUI windows gotta fix that. CHANGELOG commit: 47a5f4c */
 
 namespace ic
 {
@@ -28,7 +28,9 @@ private:
 	Camera m_EditorCamera;
 
 	// Refs to the scene
-	const char* m_ScenePath = "assets/scene.yaml"; // set this somehow somewhere else
+	const char* m_EditorConfig;
+	const char* m_ScenePath;
+	const char* m_DefaultScene;
 	ic::RenderScene* m_ActiveScene;
 	ic::RenderScene* m_EditorScene;
 
@@ -44,7 +46,7 @@ private:
 
 	// Editor Resources
 
-	const char* LoadLastScenePath();
+	string LoadLastScenePath();
 	void SaveLastScenePath(const char* path);
 };
 
