@@ -8,7 +8,6 @@
 const IC_GUID INVALID_ID = ~0u;
 
 /** TODO:
- * 1. Name based assets asset searches
  * 2. Hashing w.r.t types and names to get new ids for new models?
  * 3. Loading models without registry and thus editing the registry.
  * 4. More sections in the asset Registry for asset scenes models and more.
