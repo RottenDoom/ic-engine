@@ -213,11 +213,7 @@ void OpenGLRenderer::Draw(float dt)
         if (m_isMinimized || !m_scene || !m_shader)
                 return;
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         m_shader->use();
-        /** TODO: Fix these */
         m_shader->setMat4("u_projection", m_scene->defaultCamera.projection);
         m_shader->setMat4("u_view", m_scene->defaultCamera.matrices.view);
 
@@ -248,6 +244,12 @@ void OpenGLRenderer::OnEvent(event &e)
 
         eventDispatcher dispatcher(e);
         dispatcher.dispatch<WindowResizedEvent>(BIND_EVENT(OpenGLRenderer::OnWindowResize));
+}
+
+void OpenGLRenderer::ClearColor()
+{
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 bool OpenGLRenderer::OnWindowResize(WindowResizedEvent &e)

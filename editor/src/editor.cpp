@@ -64,7 +64,7 @@ void EditorSystem::Init()
 		Application& app = Application::Get();
 		GLFWwindow* window = app.GetWindow()->GetNativeWindow();
 
-		ImGui_ImplGlfw_InitForOpenGL(window, false);
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init("#version 450");
 	}
 	// FramebufferSpec fbSpec = {};
@@ -98,6 +98,18 @@ void EditorSystem::Init()
 }
 
 void EditorSystem::Update(float dt) {
+	/** TODO:
+	 * viewport resize
+	 * fix blitting
+	 * camera and panel input.
+	 */
+
+	if (m_ViewportSize.x > 0 && m_ViewportSize.y > 0)
+        m_fb->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+
+    	m_fb->Bind();
+    	ic_clear_buffer_bit();
+
 	// Input to UI system wont pass to camera different camera states
 
 	// Resize
@@ -115,51 +127,52 @@ void EditorSystem::Update(float dt) {
 }
 
 void EditorSystem::Render() {
-	m_fb->Bind();
+	m_fb->Unbind();
 
 	// --- ImGui frame ---
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
+	// dockspace
 	{
 		ImGuiViewport* vp = ImGui::GetMainViewport();
 		ImGui::SetNextWindowPos(vp->Pos);
 		ImGui::SetNextWindowSize(vp->Size);
 		ImGui::SetNextWindowViewport(vp->ID);
-
 		ImGuiWindowFlags dockFlags =
-		ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
-		ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_MenuBar;
-
+		ImGuiWindowFlags_NoDocking        | ImGuiWindowFlags_NoTitleBar  |
+		ImGuiWindowFlags_NoCollapse       | ImGuiWindowFlags_NoResize    |
+		ImGuiWindowFlags_NoMove           | ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_NoNavFocus;
+		//        | ImGuiWindowFlags_MenuBar;
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
 		ImGui::Begin("##DockspaceRoot", nullptr, dockFlags);
 		ImGui::PopStyleVar(3);
-
-		// panels::MenuBarDraw();
-
-		ImGuiID dockId = ImGui::GetID("MainDockspace");
-		ImGui::DockSpace(dockId, ImVec2(0, 0), ImGuiDockNodeFlags_None);
+		ImGui::DockSpace(ImGui::GetID("MainDockspace"), ImVec2(0,0), ImGuiDockNodeFlags_PassthruCentralNode);
 		ImGui::End();
 	}
 
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+	// viewport — scene FBO as texture
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
+	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver); // first use size
 	ImGui::Begin("Viewport");
 	ImVec2 size = ImGui::GetContentRegionAvail();
+	if (size.x < 1.0f) size.x = 1.0f;
+	if (size.y < 1.0f) size.y = 1.0f;
+	m_ViewportSize = {size.x, size.y};
 
+	// Resize BEFORE drawing so image matches FBO this frame
+	if ((uint32_t)size.x != m_fb->GetWidth() || (uint32_t)size.y != m_fb->GetHeight())
+    		m_fb->Resize((uint32_t)size.x, (uint32_t)size.y);
+	
 	ImGui::Image(
 		(ImTextureID)(uintptr_t)m_fb->GetColorAttachment(0),
-		size,
-		ImVec2(0, 1),   // uv0
-		ImVec2(1, 0)    // uv1
+		size, ImVec2(0,1), ImVec2(1,0)
 	);
-	if (size.x > 0 && size.y > 0) {
-		m_fb->Resize((uint32_t)size.x, (uint32_t)size.y);
-	}
+
 	ImGui::End();
 	ImGui::PopStyleVar();
 

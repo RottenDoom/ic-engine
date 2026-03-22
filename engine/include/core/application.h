@@ -59,6 +59,10 @@ extern "C"
          */
         IC_API void ic_create_application(ic::window_props *windowProperties);
 
+
+	IC_API void ic_clear_color(void);
+
+	IC_API void ic_clear_buffer_bit(void);
         /**
          * @function ic_app_is_running
          * @category app

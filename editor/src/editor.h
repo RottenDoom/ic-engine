@@ -47,6 +47,7 @@ private:
 	// Editor Resources
 
 	string LoadLastScenePath();
+	void ClearColor();
 	void SaveLastScenePath(const char* path);
 };
 

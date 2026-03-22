@@ -75,6 +75,8 @@ public:
 
         void OnEvent(event &e) override;
 
+	void ClearColor() override;
+
         void CleanUp() override;
 
 private:

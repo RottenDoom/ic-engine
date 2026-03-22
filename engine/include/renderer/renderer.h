@@ -34,6 +34,7 @@ public:
         virtual void CleanUp()             = 0;
 
         virtual void SetScene(RenderScene *scene) = 0;
+	virtual void ClearColor() = 0;
 };
 
 // Factory function to create the renderer (implemented in engine-renderer)

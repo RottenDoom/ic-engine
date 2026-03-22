@@ -53,7 +53,6 @@ int main(int argc, char *argv[])
         ic_app_set_callback(update, render);
 
         /** TODO:
-         * 2. Load the model with names and everything.
          * 4. Do multi threading
          */
 

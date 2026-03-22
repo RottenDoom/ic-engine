@@ -51,24 +51,30 @@ Application::~Application()
 
 bool Application::Run()
 {
+	/** TODO: Replace glfw dependencies with my own. */
         while (isRunning)
         {
                 float time      = glfwGetTime();
                 float delta     = time - m_lastFrameTime;
                 m_lastFrameTime = time;
 
+		glfwPollEvents();
+
+		// user update
                 if (user_update)
                 {
                         user_update(delta);
                 }
 
-                m_Window->onUpdate();
+		// engine render
+		m_renderer->RenderFrame(delta);
 
+		// UI + user render
                 if (user_render)
                 {
                         user_render();
                 }
-                m_renderer->RenderFrame(delta);
+		glfwSwapBuffers(m_Window->GetNativeWindow());
         }
 
         return true;
@@ -98,6 +104,17 @@ void Application::SetFnPointers(AppUpdateFn update_fn, AppRenderFn render_fn)
 }  // namespace ic
 
 static ic::Application *s_app = nullptr;
+
+void ic_clear_color(void)
+{
+	ic::Application::Get().GetRenderer()->ClearColor();
+}
+
+void ic_clear_buffer_bit(void)
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
 
 void ic_create_application(ic::window_props *windowProperties)
 {
