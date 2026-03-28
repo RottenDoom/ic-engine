@@ -16,14 +16,14 @@
 
 #define degreeToRadian(x) (x * (1 / 57.295779513082320876798154814105))
 
-void Camera::updateViewMatrix()
+void Camera::UpdateViewMatrix()
 {
         glm::mat4 rotation    = glm::mat4_cast(glm::conjugate(orientation));
         glm::mat4 translation = glm::translate(glm::mat4(1.0f), -position);
         matrices.view         = rotation * translation;
 }
 
-void Camera::setPerspectiveProjection(float fov, float aspect, float znear, float zfar)
+void Camera::SetPerspectiveProjection(float fov, float aspect, float znear, float zfar)
 {
         this->zfar        = zfar;
         this->znear       = znear;
@@ -43,7 +43,7 @@ void Camera::setPerspectiveProjection(float fov, float aspect, float znear, floa
                 projection[1][1] *= -1;
 }
 
-void Camera::setOrthographicProjection(float left, float right, float top, float bottom, float near, float far)
+void Camera::SetOrthographicProjection(float left, float right, float top, float bottom, float near, float far)
 {
         this->zfar  = far;
         this->znear = near;
@@ -60,7 +60,7 @@ void Camera::setOrthographicProjection(float left, float right, float top, float
                 projection[1][1] *= -1;
 }
 
-void Camera::setViewDirection(glm::vec3 position, glm::vec3 direction)
+void Camera::SetViewDirection(glm::vec3 position, glm::vec3 direction)
 {
         glm::vec3 forward = glm::normalize(direction);
         glm::vec3 right   = glm::normalize(glm::cross(glm::vec3(0.0f, (flipY ? -1.0f : 1.0f), 0.0f), forward));
@@ -71,20 +71,20 @@ void Camera::setViewDirection(glm::vec3 position, glm::vec3 direction)
         this->position    = position;
 
         // FIX THIS
-        updateViewMatrix();
+        UpdateViewMatrix();
 }
 
-void Camera::setViewTarget(glm::vec3 position, glm::vec3 target)
+void Camera::SetViewTarget(glm::vec3 position, glm::vec3 target)
 {
         if (glm::normalize(target - position) == glm::vec3(0.0f))
         {
                 IC_CORE_ERROR("Camera: position and target point to the same location!");
                 return;
         }
-        setViewDirection(position, target - position);
+        SetViewDirection(position, target - position);
 }
 
-void Camera::updateAspectRatio(float aspect)
+void Camera::UpdateAspectRatio(float aspect)
 {
         glm::mat4 currentMatrix = matrices.perspective;
         matrices.perspective    = glm::perspective(glm::radians(fovY), aspect, znear, zfar);
@@ -98,7 +98,7 @@ void Camera::updateAspectRatio(float aspect)
         }
 }
 
-void Camera::resetCameraPosition()
+void Camera::ResetCameraPosition()
 {
         // Reset position to world origin or a desired point
         position = glm::vec3(0.0f, 0.0f, -10.0f);  // Camera 10 units back, facing origin
@@ -111,12 +111,12 @@ void Camera::resetCameraPosition()
         fovChanged = true;
 
         // Recalculate the view matrix based on new transforms
-        updateViewMatrix();
+        UpdateViewMatrix();
 
         updated = true;
 }
 
-void Camera::handleInput(float deltaTime)
+void Camera::HandleInput(float deltaTime)
 {
         if (type == firstperson)
         {
@@ -141,30 +141,30 @@ void Camera::handleInput(float deltaTime)
         }
 }
 
-void Camera::onUpdate(float deltaTime)
+void Camera::OnUpdate(float deltaTime)
 {
         updated = false;
-        handleInput(deltaTime);
-        updateViewMatrix();
+        HandleInput(deltaTime);
+        UpdateViewMatrix();
 
         if (fovChanged)
-                setPerspectiveProjection(this->fovY, this->aspectRatio, this->znear, this->zfar);
+                SetPerspectiveProjection(this->fovY, this->aspectRatio, this->znear, this->zfar);
         fovChanged = false;
 }
 
-void Camera::onEvent(ic::event &e)
+void Camera::OnEvent(ic::event &e)
 {
         ic::eventDispatcher dispatcher(e);
-        dispatcher.dispatch<ic::MouseMovedEvent>(BIND_EVENT(Camera::onMouseMoved));
-        dispatcher.dispatch<ic::MouseScrolledEvent>(BIND_EVENT(Camera::onMouseScroll));
-        dispatcher.dispatch<ic::KeyPressedEvent>(BIND_EVENT(Camera::onKeyPressed));
+        dispatcher.dispatch<ic::MouseMovedEvent>(BIND_EVENT(Camera::OnMouseMoved));
+        dispatcher.dispatch<ic::MouseScrolledEvent>(BIND_EVENT(Camera::OnMouseScroll));
+        dispatcher.dispatch<ic::KeyPressedEvent>(BIND_EVENT(Camera::OnKeyPressed));
 }
 
-bool Camera::onKeyPressed(ic::KeyPressedEvent &e)
+bool Camera::OnKeyPressed(ic::KeyPressedEvent &e)
 {
         if (ic::input::isKeyPressed(ic::Key::R))
         {
-                resetCameraPosition();
+                ResetCameraPosition();
         }
         if (ic::input::isKeyPressed(ic::Key::C))
         {
@@ -181,7 +181,7 @@ bool Camera::onKeyPressed(ic::KeyPressedEvent &e)
         return false;
 }
 
-bool Camera::onMouseMoved(ic::MouseMovedEvent &e)
+bool Camera::OnMouseMoved(ic::MouseMovedEvent &e)
 {
         static bool  firstMouse = true;
         static float lastX      = 0.0f;
@@ -215,11 +215,11 @@ bool Camera::onMouseMoved(ic::MouseMovedEvent &e)
         // Combine rotations: yaw first, then pitch
         orientation = glm::normalize(yaw * orientation * pitch);
 
-        updateViewMatrix();
+        UpdateViewMatrix();
         return false;
 }
 
-bool Camera::onMouseScroll(ic::MouseScrolledEvent &e)
+bool Camera::OnMouseScroll(ic::MouseScrolledEvent &e)
 {
         fovY       -= e.getYOffset() * zoomSpeed;      // zoom speed
         fovY        = glm::clamp(fovY, 10.0f, 90.0f);  // prevent extreme zoom
@@ -232,10 +232,10 @@ Camera createCamera(Camera::CameraType type, glm::vec3 position)
         Camera camera;
 
         camera.type = type;
-        camera.setViewDirection(position, glm::vec3(0.0f, 0.0f, -1.0f));
+        camera.SetViewDirection(position, glm::vec3(0.0f, 0.0f, -1.0f));
         /** TODO: Make better camera component so that it doesnt have a dependency on windows all the time. Maybe have a
          * global application state all the time after each update  */
-        camera.setPerspectiveProjection(45.0f,
+        camera.SetPerspectiveProjection(45.0f,
                                         (float)ic::Application::Get().GetWindow()->getWidth() /
                                             (float)ic::Application::Get().GetWindow()->getHeight(),
                                         0.1f,
