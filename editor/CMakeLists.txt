@@ -1,6 +1,8 @@
 set(EDITOR_SOURCES
     src/main.cpp
     src/editor.cpp
+    src/panels/component.cpp
+    src/panels/heirarchy.cpp
 )
 
 add_executable(editor ${EDITOR_SOURCES})

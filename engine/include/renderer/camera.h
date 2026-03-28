@@ -16,12 +16,16 @@
 
 class IC_API Camera
 {
+private:
+        void UpdateViewMatrix();
+
+        void ResetCameraPosition();
+        void HandleInput(float deltaTime);
+
 public:
         float fovY;
         float znear, zfar;
         float aspectRatio;
-
-        void updateViewMatrix();
 
         enum CameraType
         {
@@ -48,8 +52,9 @@ public:
         float mouseSensitivity = 0.5f;
         float movementSpeed    = 10.0f;  // bumped up the speed as debug camera is too slow
 
-        bool updated    = true;
-        bool fovChanged = false;
+        bool updated      = true;
+        bool fovChanged   = false;
+        bool inputEnabled = false;
 
         struct
         {
@@ -59,14 +64,14 @@ public:
                 bool down  = false;
         } keys;
 
-        bool moving() const { return keys.left || keys.right || keys.up || keys.down; }
+        bool Moving() const { return keys.left || keys.right || keys.up || keys.down; }
 
-        float getNearClip() const { return znear; }
-        float getFarClip() const { return zfar; }
+        float GetNearClip() const { return znear; }
+        float GetFarClip() const { return zfar; }
 
         // sets up perspective or orthographic projection
-        void setPerspectiveProjection(float fov, float aspect, float znear, float zfar);
-        void setOrthographicProjection(float left, float right, float top, float bottom, float near, float far);
+        void SetPerspectiveProjection(float fov, float aspect, float znear, float zfar);
+        void SetOrthographicProjection(float left, float right, float top, float bottom, float near, float far);
 
         // set view direction set view target
 
@@ -78,42 +83,42 @@ public:
         /// @param direction The direction of the matrix we will calculate the quaternion to find the rotation
         /// matrix to that direction in the space and multiply the negative of it to the tranform to find the
         /// view matrix
-        void setViewDirection(glm::vec3 position, glm::vec3 direction);
-        void setViewTarget(glm::vec3 position, glm::vec3 target);
+        void SetViewDirection(glm::vec3 position, glm::vec3 direction);
+        void SetViewTarget(glm::vec3 position, glm::vec3 target);
 
-        void updateAspectRatio(float aspect);
+        void UpdateAspectRatio(float aspect);
 
-        void setPosition(glm::vec3 position)
+        void SetPosition(glm::vec3 position)
         {
                 this->position = position;
-                updateViewMatrix();
+                UpdateViewMatrix();
         }
 
-        void setTranslation(glm::vec3 translation)
+        void SetTranslation(glm::vec3 translation)
         {
                 this->position = translation;
-                updateViewMatrix();
+                UpdateViewMatrix();
         };
 
         // same as set direction except it sets the quaternion of the camera direction
-        void setOrientation(glm::vec3 angles)
+        void SetOrientation(glm::vec3 angles)
         {
                 this->orientation = glm::quat(angles);
-                updateViewMatrix();
+                UpdateViewMatrix();
         }
 
-        void translate(glm::vec3 delta)
+        void Translate(glm::vec3 delta)
         {
                 this->position += delta;
-                updateViewMatrix();
+                UpdateViewMatrix();
         }
 
-        void setViewPortSize(uint32_t width, uint32_t height)
+        void SetViewPortSize(uint32_t width, uint32_t height)
         {
                 if (height != 0)
                 {
                         float aspect = (float)width / (float)height;
-                        updateAspectRatio(aspect);
+                        UpdateAspectRatio(aspect);
                 }
                 else
                 {
@@ -122,17 +127,15 @@ public:
                 }
         }
 
-        void setZoomSpeed(float speed) { this->zoomSpeed = speed; }
-        void setMouseSensitivity(float sensitivity) { this->mouseSensitivity = sensitivity; }
-        void setMovementSpeed(float speed) { this->movementSpeed = speed; }
-        void resetCameraPosition();
+        void SetZoomSpeed(float speed) { this->zoomSpeed = speed; }
+        void SetMouseSensitivity(float sensitivity) { this->mouseSensitivity = sensitivity; }
+        void SetMovementSpeed(float speed) { this->movementSpeed = speed; }
 
-        void handleInput(float deltaTime);
-        void onUpdate(float deltaTime);
-        void onEvent(ic::event &e);
-        bool onKeyPressed(ic::KeyPressedEvent &e);
-        bool onMouseMoved(ic::MouseMovedEvent &e);
-        bool onMouseScroll(ic::MouseScrolledEvent &e);
+        void OnUpdate(float deltaTime);
+        void OnEvent(ic::event &e);
+        bool OnKeyPressed(ic::KeyPressedEvent &e);
+        bool OnMouseMoved(ic::MouseMovedEvent &e);
+        bool OnMouseScroll(ic::MouseScrolledEvent &e);
 };
 
 #ifdef __cplusplus

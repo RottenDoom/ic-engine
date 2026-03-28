@@ -33,8 +33,9 @@ public:
         virtual void RenderFrame(float dt) = 0;
         virtual void CleanUp()             = 0;
 
-        virtual void SetScene(RenderScene *scene) = 0;
-	virtual void ClearColor() = 0;
+        // should setscene be pure virtual?
+        virtual void SetScene(RenderScene *scene, Camera &editorCamera) = 0;
+        virtual void ClearColor()                                       = 0;
 };
 
 // Factory function to create the renderer (implemented in engine-renderer)
@@ -48,7 +49,7 @@ extern "C"
 {
 #endif
 
-        IC_API void ic_set_scene(ic::RenderScene *scene);
+        IC_API void ic_set_scene(ic::RenderScene *scene, Camera &editorCamera);
 
 #ifdef __cplusplus
 }

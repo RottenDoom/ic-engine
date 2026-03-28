@@ -53,7 +53,7 @@ bool OpenGLRenderer::Init(Window *w)
                 return false;
         }
 
-	IC_CORE_INFO("GLFW platform: {}", glfwGetPlatform());
+        IC_CORE_INFO("GLFW platform: {}", glfwGetPlatform());
         IC_CORE_INFO("GL Vendor:   {}", reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
         IC_CORE_INFO("GL Renderer: {}", reinterpret_cast<const char *>(glGetString(GL_RENDERER)));
         IC_CORE_INFO("GL Version:  {}", reinterpret_cast<const char *>(glGetString(GL_VERSION)));
@@ -83,11 +83,10 @@ bool OpenGLRenderer::Init(Window *w)
 // IRenderer::setScene
 // ---------------------------------------------------------------------------
 
-void OpenGLRenderer::SetScene(RenderScene *scene)
+void OpenGLRenderer::SetScene(RenderScene *scene, Camera &editorCamera)
 {
-        m_scene = scene;
-        // TODO: Remove the camera from here and make an entity out of it
-        m_scene->defaultCamera = createCamera(Camera::CameraType::firstperson, glm::vec3(0.0f, 0.0f, 0.0f));
+        m_scene        = scene;
+        m_pEditorCamera = &editorCamera;
 
         // If the renderer is already initialized, load and upload the new scene.
         if (m_window)
@@ -199,23 +198,19 @@ void OpenGLRenderer::RenderFrame(float dt)
         Draw(dt);
 }
 
-void OpenGLRenderer::Update(float dt)
-{
-        // Entity Camera?
-        if (m_scene)
-                m_scene->defaultCamera.onUpdate(dt);
-}
+// Check if nothing in update function here.
+void OpenGLRenderer::Update(float dt) {}
 
 void OpenGLRenderer::Draw(float dt)
 {
         (void)dt;
 
-        if (m_isMinimized || !m_scene || !m_shader)
+        if (m_isMinimized || !m_scene || !m_shader || !m_pEditorCamera)
                 return;
 
         m_shader->use();
-        m_shader->setMat4("u_projection", m_scene->defaultCamera.projection);
-        m_shader->setMat4("u_view", m_scene->defaultCamera.matrices.view);
+        m_shader->setMat4("u_projection", m_pEditorCamera->projection);
+        m_shader->setMat4("u_view", m_pEditorCamera->matrices.view);
 
         auto meshEntities = m_scene->GetEntitiesWith<MeshComponent, TransformComponent>();
 
@@ -239,8 +234,8 @@ void OpenGLRenderer::Draw(float dt)
 
 void OpenGLRenderer::OnEvent(event &e)
 {
-        if (m_scene)
-                m_scene->defaultCamera.onEvent(e);
+        if (m_pEditorCamera && m_pEditorCamera->inputEnabled)
+                m_pEditorCamera->OnEvent(e);
 
         eventDispatcher dispatcher(e);
         dispatcher.dispatch<WindowResizedEvent>(BIND_EVENT(OpenGLRenderer::OnWindowResize));
@@ -248,7 +243,7 @@ void OpenGLRenderer::OnEvent(event &e)
 
 void OpenGLRenderer::ClearColor()
 {
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
@@ -289,7 +284,7 @@ void OpenGLRenderer::CleanUp()
 
 }  // namespace ic
 
-void ic_set_scene(ic::RenderScene *scene)
+void ic_set_scene(ic::RenderScene *scene, Camera &editorCamera)
 {
-        ic::Application::Get().GetRenderer()->SetScene(scene);
+        ic::Application::Get().GetRenderer()->SetScene(scene, editorCamera);
 }
