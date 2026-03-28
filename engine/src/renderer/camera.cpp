@@ -155,9 +155,12 @@ void Camera::OnUpdate(float deltaTime)
 void Camera::OnEvent(ic::event &e)
 {
         ic::eventDispatcher dispatcher(e);
-        dispatcher.dispatch<ic::MouseMovedEvent>(BIND_EVENT(Camera::OnMouseMoved));
-        dispatcher.dispatch<ic::MouseScrolledEvent>(BIND_EVENT(Camera::OnMouseScroll));
-        dispatcher.dispatch<ic::KeyPressedEvent>(BIND_EVENT(Camera::OnKeyPressed));
+        if (ic::input::isKeyPressed(ic::Key::LeftControl) && inputEnabled)
+        {
+                dispatcher.dispatch<ic::MouseScrolledEvent>(BIND_EVENT(Camera::OnMouseScroll));
+                dispatcher.dispatch<ic::MouseMovedEvent>(BIND_EVENT(Camera::OnMouseMoved));
+                dispatcher.dispatch<ic::KeyPressedEvent>(BIND_EVENT(Camera::OnKeyPressed));
+        }
 }
 
 bool Camera::OnKeyPressed(ic::KeyPressedEvent &e)
@@ -173,8 +176,10 @@ bool Camera::OnKeyPressed(ic::KeyPressedEvent &e)
                 {
                 case lookat:
                         type = firstperson;
+                        break;
                 case firstperson:
                         type = lookat;
+                        break;
                 }
         }
 

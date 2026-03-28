@@ -17,7 +17,6 @@ namespace ic
 class IC_API RenderScene
 {
 public:
-        Camera defaultCamera; // TODO: remove this.
         friend class Entity;
 
         RenderScene();
@@ -26,18 +25,18 @@ public:
         Entity CreateEntityWithName(const string &name = string());
         Entity CreateEntity(UUID id, const string &name = string());
         void   DestroyEntity(Entity entity);
-	bool SetParent(Entity child, Entity parent);
-	bool ClearParent(Entity child);
+        bool   SetParent(Entity child, Entity parent);
+        bool   ClearParent(Entity child);
 
-	Entity              GetParent(Entity e);
-	std::vector<Entity> GetChildren(Entity e);
-	std::vector<Entity> GetRoots();
-	std::vector<Entity> GetAllEntities();
+        Entity              GetParent(Entity e);
+        std::vector<Entity> GetChildren(Entity e);
+        std::vector<Entity> GetRoots();
+        std::vector<Entity> GetAllEntities();
 
-	// walks the parent chain multiplying transforms
-	glm::mat4 GetWorldTransform(Entity e);
+        // walks the parent chain multiplying transforms
+        glm::mat4 GetWorldTransform(Entity e);
 
-        bool                HasEntity(UUID uuid) const;
+        bool   HasEntity(UUID uuid) const;
         Entity FindEntityByName(std::string_view name);
         Entity GetEntityByUUID(UUID uuid);
 
@@ -55,17 +54,18 @@ public:
                 m_Registry.view<T...>().each(std::forward<Func>(fn));
         }
 
-	// walks the whole subtree rooted at e, calls fn on each
-	template<typename Func>
-	void EachInSubtree(Entity root, Func&& fn)
-	{
-		fn(root);
-		if (!root.HasComponent<HierarchyComponent>()) return;
-		for (auto childHandle : root.GetComponent<HierarchyComponent>().children)
-		{
-			EachInSubtree({childHandle, this}, fn);
-		}
-	}
+        // walks the whole subtree rooted at e, calls fn on each
+        template <typename Func>
+        void EachInSubtree(Entity root, Func &&fn)
+        {
+                fn(root);
+                if (!root.HasComponent<HierarchyComponent>())
+                        return;
+                for (auto childHandle : root.GetComponent<HierarchyComponent>().children)
+                {
+                        EachInSubtree({childHandle, this}, fn);
+                }
+        }
 
         template <typename... T>
         std::vector<Entity> GetEntitiesWith()
@@ -89,7 +89,7 @@ public:
         template <typename T>
         void OnComponentAdded(Entity entity, T &component)
         {
-	}
+        }
 
 private:
         entt::registry                         m_Registry;
@@ -103,8 +103,8 @@ private:
 template <>
 inline void RenderScene::OnComponentAdded<CameraComponent>(Entity entity, CameraComponent &component)
 {
-	if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
-		component.camera.setViewPortSize(m_ViewportWidth, m_ViewportHeight);
+        if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
+                component.camera.SetViewPortSize(m_ViewportWidth, m_ViewportHeight);
 }
 
 }  // namespace ic

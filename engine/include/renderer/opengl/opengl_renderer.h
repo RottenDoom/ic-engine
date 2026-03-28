@@ -24,7 +24,7 @@
  *   setupBuffers() is called once during init() and uploads all scene models.
  *   draw() never uploads -> if a model isn't in m_gpuCache it logs a warning
  *   and skips rather than stalling the render thread mid-frame.
- * 
+ *
  * TODO: basic component window for tranforms.
  * TODO: Add more asset types and more models and fix the material system.
  * TODO: Big goal: Scene Graph.
@@ -68,13 +68,13 @@ public:
 
         bool Init(Window *w) override;
 
-        void SetScene(RenderScene *scene);
+        void SetScene(RenderScene *scene, Camera &editorCamera);
 
         void RenderFrame(float dt) override;
 
         void OnEvent(event &e) override;
 
-	void ClearColor() override;
+        void ClearColor() override;
 
         void CleanUp() override;
 
@@ -127,7 +127,8 @@ private:
 private:
         Window      *m_window      = nullptr;
         RenderScene *m_scene       = nullptr;  // See into this and more of this
-        bool         m_isMinimized = false;
+        bool         m_isMinimized   = false;
+        Camera      *m_pEditorCamera = nullptr;
 
         // GPU cache -> one GLModel per unique model IC_GUID..
         std::unordered_map<IC_GUID, GLModel *> m_gpuCache;
@@ -145,7 +146,7 @@ extern "C"
 {
 #endif
 
-        void ic_set_scene(ic::RenderScene *scene);
+        void ic_set_scene(ic::RenderScene *scene, Camera &editorCamera);
 
 #ifdef __cplusplus
 }

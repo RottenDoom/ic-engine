@@ -52,8 +52,9 @@ public:
         float mouseSensitivity = 0.5f;
         float movementSpeed    = 10.0f;  // bumped up the speed as debug camera is too slow
 
-        bool updated    = true;
-        bool fovChanged = false;
+        bool updated      = true;
+        bool fovChanged   = false;
+        bool inputEnabled = false;
 
         struct
         {

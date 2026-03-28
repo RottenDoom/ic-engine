@@ -9,8 +9,8 @@ struct ApplicationState
 struct GameState
 {
         std::vector<IC_GUID> models;
-        ic::RenderScene   defaultScene;  // TODO Probably gonna make a World class later instead of directly using scene
-                                         // here.
+        ic::RenderScene defaultScene;  // TODO Probably gonna make a World class later instead of directly using scene
+                                       // here.
 };
 
 GameState g_state;
@@ -24,14 +24,15 @@ struct PlayerComponent
 /** User side update and render functions */
 void update(float deltaTime)
 {
-	ic::Entity player = g_state.defaultScene.FindEntityByName("Player");
-	PlayerComponent& p = player.GetComponent<PlayerComponent>();
-	ic::TransformComponent& t = player.GetComponent<ic::TransformComponent>();
+        ic::Entity              player = g_state.defaultScene.FindEntityByName("Player");
+        PlayerComponent        &p      = player.GetComponent<PlayerComponent>();
+        ic::TransformComponent &t      = player.GetComponent<ic::TransformComponent>();
 
-	if (ic_input_key_pressed(ic::Key::W)) {
-		t.SetPosition(t.position + glm::vec3(0.0f, p.speed * deltaTime, 0.0f));
-		IC_CORE_INFO("{}, {}, {}", t.position.x, t.position.y, t.position.z);
-	}
+        if (ic_input_key_pressed(ic::Key::W))
+        {
+                t.SetPosition(t.position + glm::vec3(0.0f, p.speed * deltaTime, 0.0f));
+                IC_CORE_INFO("{}, {}, {}", t.position.x, t.position.y, t.position.z);
+        }
 }
 
 void render() {}
@@ -62,23 +63,25 @@ int main(int argc, char *argv[])
         // load the registry
         ic_load_registry("assets/registry.yaml");
 
-        IC_GUID id = ic_load_model("player_model");  // make so that this thing calls by name of the mesh.
-                            // story the id provided for now I am storying in some variable. like playerModel;
+        IC_GUID id = ic_load_model(
+            "player_model");  // make so that this thing calls by name of the mesh.
+                              // story the id provided for now I am storying in some variable. like playerModel;
 
         ic::Entity entt = g_state.defaultScene.CreateEntityWithName("Player");
         entt.AddComponent<PlayerComponent>();
         entt.GetComponent<ic::TransformComponent>().SetPosition({0.0f, 0.0f, 0.0f});
         entt.AddComponent<ic::MeshComponent>().SetMesh(id);  // this id that is output must be from
 
-	IC_GUID cube = ic_load_model("cube_model");
+        IC_GUID cube = ic_load_model("cube_model");
 
-	ic::Entity cube_entt = g_state.defaultScene.CreateEntityWithName("Cube");
-	cube_entt.GetComponent<ic::TransformComponent>().SetPosition({15.0f, 15.0f, 0.0f});
-	cube_entt.AddComponent<ic::MeshComponent>().SetMesh(cube);
+        ic::Entity cube_entt = g_state.defaultScene.CreateEntityWithName("Cube");
+        cube_entt.GetComponent<ic::TransformComponent>().SetPosition({15.0f, 15.0f, 0.0f});
+        cube_entt.AddComponent<ic::MeshComponent>().SetMesh(cube);
 
         // Camera Entity
 
-        ic_set_scene(&g_state.defaultScene);  // TODO: this should be done internally
+        // TODO: fix
+        // ic_set_scene(&g_state.defaultScene);  // TODO: this should be done internally
 
         ic_app_run();
 

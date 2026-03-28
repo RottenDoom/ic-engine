@@ -14,64 +14,62 @@ void EditorSystem::Init()
 {
         m_EditorConfig = "assets/config.yaml";
         m_DefaultScene = "assets/default.scene";
-        if (ImGui::GetCurrentContext() == nullptr)
-        {
 
-                IMGUI_CHECKVERSION();
-                ImGui::CreateContext();
+        m_EditorCamera = createCamera(Camera::CameraType::firstperson, glm::vec3(0.0f, 0.0f, -5.0f));
 
-                // enable docking and nav keyboard
-                ImGuiIO &io = ImGui::GetIO();
-                (void)io;
-                io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
-                // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-                io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
-                // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;      // Enable Multi-Viewport // Exception on
-                // platform windows? FIx?
-                // io.ConfigFlags |= ImGuiConfigFlags_ViewportsNoTaskBarIcons;
-                // io.ConfigFlags |= ImGuiConfigFlags_ViewportsNoMerge;
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
 
-                // some boilerplate code
-                // TODO: this style must be changeable by in editor layout or some other lib
-                ImGui::StyleColorsDark();
-                ImGuiStyle &style       = ImGui::GetStyle();
-                style.WindowRounding    = 4.0f;
-                style.FrameRounding     = 3.0f;
-                style.PopupRounding     = 4.0f;
-                style.ScrollbarRounding = 3.0f;
-                style.GrabRounding      = 3.0f;
-                style.TabRounding       = 4.0f;
-                style.WindowBorderSize  = 1.0f;
-                style.FrameBorderSize   = 0.0f;
+        // enable docking and nav keyboard
+        ImGuiIO &io = ImGui::GetIO();
+        (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
+        // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;      // Enable Multi-Viewport // Exception on
+        // platform windows? FIx?
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsNoTaskBarIcons;
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsNoMerge;
 
-                // Slightly warmer dark palette
-                auto *colors                      = style.Colors;
-                colors[ImGuiCol_WindowBg]         = ImVec4(0.12f, 0.12f, 0.13f, 1.00f);
-                colors[ImGuiCol_Header]           = ImVec4(0.20f, 0.20f, 0.22f, 1.00f);
-                colors[ImGuiCol_HeaderHovered]    = ImVec4(0.28f, 0.28f, 0.31f, 1.00f);
-                colors[ImGuiCol_HeaderActive]     = ImVec4(0.35f, 0.35f, 0.38f, 1.00f);
-                colors[ImGuiCol_FrameBg]          = ImVec4(0.18f, 0.18f, 0.20f, 1.00f);
-                colors[ImGuiCol_FrameBgHovered]   = ImVec4(0.24f, 0.24f, 0.26f, 1.00f);
-                colors[ImGuiCol_Button]           = ImVec4(0.22f, 0.22f, 0.24f, 1.00f);
-                colors[ImGuiCol_ButtonHovered]    = ImVec4(0.30f, 0.30f, 0.33f, 1.00f);
-                colors[ImGuiCol_ButtonActive]     = ImVec4(0.40f, 0.40f, 0.44f, 1.00f);
-                colors[ImGuiCol_TitleBg]          = ImVec4(0.09f, 0.09f, 0.10f, 1.00f);
-                colors[ImGuiCol_TitleBgActive]    = ImVec4(0.14f, 0.14f, 0.16f, 1.00f);
-                colors[ImGuiCol_Tab]              = ImVec4(0.14f, 0.14f, 0.16f, 1.00f);
-                colors[ImGuiCol_TabHovered]       = ImVec4(0.30f, 0.30f, 0.33f, 1.00f);
-                colors[ImGuiCol_TabActive]        = ImVec4(0.22f, 0.22f, 0.25f, 1.00f);
-                colors[ImGuiCol_CheckMark]        = ImVec4(0.56f, 0.83f, 0.26f, 1.00f);
-                colors[ImGuiCol_SliderGrab]       = ImVec4(0.56f, 0.83f, 0.26f, 0.80f);
-                colors[ImGuiCol_SliderGrabActive] = ImVec4(0.56f, 0.83f, 0.26f, 1.00f);
+        // some boilerplate code
+        // TODO: this style must be changeable by in editor layout or some other lib
+        ImGui::StyleColorsDark();
+        ImGuiStyle &style       = ImGui::GetStyle();
+        style.WindowRounding    = 4.0f;
+        style.FrameRounding     = 3.0f;
+        style.PopupRounding     = 4.0f;
+        style.ScrollbarRounding = 3.0f;
+        style.GrabRounding      = 3.0f;
+        style.TabRounding       = 4.0f;
+        style.WindowBorderSize  = 1.0f;
+        style.FrameBorderSize   = 0.0f;
 
-                Application &app    = Application::Get();
-                GLFWwindow  *window = app.GetWindow()->GetNativeWindow();
+        // Slightly warmer dark palette
+        auto *colors                      = style.Colors;
+        colors[ImGuiCol_WindowBg]         = ImVec4(0.12f, 0.12f, 0.13f, 1.00f);
+        colors[ImGuiCol_Header]           = ImVec4(0.20f, 0.20f, 0.22f, 1.00f);
+        colors[ImGuiCol_HeaderHovered]    = ImVec4(0.28f, 0.28f, 0.31f, 1.00f);
+        colors[ImGuiCol_HeaderActive]     = ImVec4(0.35f, 0.35f, 0.38f, 1.00f);
+        colors[ImGuiCol_FrameBg]          = ImVec4(0.18f, 0.18f, 0.20f, 1.00f);
+        colors[ImGuiCol_FrameBgHovered]   = ImVec4(0.24f, 0.24f, 0.26f, 1.00f);
+        colors[ImGuiCol_Button]           = ImVec4(0.22f, 0.22f, 0.24f, 1.00f);
+        colors[ImGuiCol_ButtonHovered]    = ImVec4(0.30f, 0.30f, 0.33f, 1.00f);
+        colors[ImGuiCol_ButtonActive]     = ImVec4(0.40f, 0.40f, 0.44f, 1.00f);
+        colors[ImGuiCol_TitleBg]          = ImVec4(0.09f, 0.09f, 0.10f, 1.00f);
+        colors[ImGuiCol_TitleBgActive]    = ImVec4(0.14f, 0.14f, 0.16f, 1.00f);
+        colors[ImGuiCol_Tab]              = ImVec4(0.14f, 0.14f, 0.16f, 1.00f);
+        colors[ImGuiCol_TabHovered]       = ImVec4(0.30f, 0.30f, 0.33f, 1.00f);
+        colors[ImGuiCol_TabActive]        = ImVec4(0.22f, 0.22f, 0.25f, 1.00f);
+        colors[ImGuiCol_CheckMark]        = ImVec4(0.56f, 0.83f, 0.26f, 1.00f);
+        colors[ImGuiCol_SliderGrab]       = ImVec4(0.56f, 0.83f, 0.26f, 0.80f);
+        colors[ImGuiCol_SliderGrabActive] = ImVec4(0.56f, 0.83f, 0.26f, 1.00f);
 
-                ImGui_ImplGlfw_InitForOpenGL(window, true);
-                ImGui_ImplOpenGL3_Init("#version 450");
-        }
-        // FramebufferSpec fbSpec = {};
-        // Convert framebuffer attachments into bit flags.
+        Application &app    = Application::Get();
+        GLFWwindow  *window = app.GetWindow()->GetNativeWindow();
+
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplOpenGL3_Init("#version 450");
+
         FramebufferSpec fbSpec;
         fbSpec.attachments = {FramebufferTextureFormat::RGBA8,
                               // FramebufferTextureFormat::RED_INTEGER,
@@ -95,18 +93,25 @@ void EditorSystem::Init()
                 IC_CORE_INFO("Editor: Started with bland scene");
         }
 
-        ic_set_scene(m_ActiveScene);
+        ic_set_scene(m_ActiveScene, m_EditorCamera);
 
         // panel commands register
 }
 
 void EditorSystem::Update(float dt)
 {
-        /** TODO:
-         * viewport resize
-         * fix blitting
-         * camera and panel input.
-         */
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // m_ViewportHovered is set in Render() each frame — one frame behind, which is fine (~16ms at 60fps).
+        bool allowMouseInput        = m_ViewportHovered;
+        m_EditorCamera.inputEnabled = allowMouseInput;
+
+        if (allowMouseInput)
+        {
+                m_EditorCamera.OnUpdate(dt);
+        }
 
         if (m_ViewportSize.x > 0 && m_ViewportSize.y > 0)
                 m_fb->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
@@ -114,52 +119,109 @@ void EditorSystem::Update(float dt)
         m_fb->Bind();
         ic_clear_buffer_bit();
 
-        // Only drive editor camera when the viewport is hovered
-        if (m_ViewportHovered)
-        {
-                // TODO: editor camera input goes here
-        }
-
         // Resize
-        // if (FramebufferSpecification spec = m_Framebuffer->GetSpecification();
-        // 	m_ViewportSize.x > 0.0f && m_ViewportSize.y > 0.0f && // zero sized framebuffer is invalid
-        // 	(spec.Width != m_ViewportSize.x || spec.Height != m_ViewportSize.y))
-        // {
-        // 	m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-        // 	m_CameraController.OnResize(m_ViewportSize.x, m_ViewportSize.y);
-        // 	m_EditorCamera.SetViewportSize(m_ViewportSize.x, m_ViewportSize.y);
-        // }
-
-        // wantcapturesmouse too
-        // panel::CommandPanelhandleInput
+        if (FramebufferSpec spec = m_fb->GetSpec(); m_ViewportSize.x > 0.0f &&
+                                                    m_ViewportSize.y > 0.0f &&  // zero sized framebuffer is invalid
+                                                    (spec.width != m_ViewportSize.x || spec.height != m_ViewportSize.y))
+        {
+                m_fb->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+                // m_EditorCamera.onResize(m_ViewportSize.x, m_ViewportSize.y);
+                m_EditorCamera.SetViewPortSize(m_ViewportSize.x, m_ViewportSize.y);
+        }
 }
 
 void EditorSystem::Render()
 {
         m_fb->Unbind();
 
-        // --- ImGui frame ---
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        // dockspace
+        // dockspace — must be submitted before any window that docks into it
         {
-                ImGuiViewport *vp = ImGui::GetMainViewport();
+                ImGuiViewport   *vp        = ImGui::GetMainViewport();
+                ImGuiWindowFlags dockFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+                                             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                                             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                             ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
                 ImGui::SetNextWindowPos(vp->Pos);
                 ImGui::SetNextWindowSize(vp->Size);
                 ImGui::SetNextWindowViewport(vp->ID);
-                ImGuiWindowFlags dockFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
-                                             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-                                             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
-                                             ImGuiWindowFlags_NoNavFocus;
-                //        | ImGuiWindowFlags_MenuBar;
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
                 ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
                 ImGui::Begin("##DockspaceRoot", nullptr, dockFlags);
+
+                // --- Main menu bar ---
+                {
+                        static char s_OpenPath[512]   = "assets/scenes/";
+                        static char s_SaveAsPath[512] = "assets/scenes/";
+                        bool        doOpenPopup = false, doSaveAsPopup = false;
+
+                        if (ImGui::BeginMainMenuBar())
+                        {
+                                if (ImGui::BeginMenu("File"))
+                                {
+                                        if (ImGui::MenuItem("New Scene", "Ctrl+N"))
+                                                NewScene();
+                                        if (ImGui::MenuItem("Open Scene...", "Ctrl+O"))
+                                                doOpenPopup = true;
+                                        ImGui::Separator();
+                                        if (ImGui::MenuItem("Save", "Ctrl+S"))
+                                                SaveScene();
+                                        if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S"))
+                                                doSaveAsPopup = true;
+                                        ImGui::EndMenu();
+                                }
+                                ImGui::EndMainMenuBar();
+                        }
+
+                        // Defer OpenPopup calls until after EndMainMenuBar
+                        if (doOpenPopup)
+                                ImGui::OpenPopup("Open Scene");
+                        if (doSaveAsPopup)
+                        {
+                                if (m_ScenePath && m_ScenePath[0] != '\0')
+                                        snprintf(s_SaveAsPath, sizeof(s_SaveAsPath), "%s", m_ScenePath);
+                                ImGui::OpenPopup("Save Scene As");
+                        }
+
+                        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+
+                        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+                        if (ImGui::BeginPopupModal("Open Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+                        {
+                                ImGui::Text("Scene path:");
+                                ImGui::SetNextItemWidth(400.0f);
+                                ImGui::InputText("##openpath", s_OpenPath, sizeof(s_OpenPath));
+                                if (ImGui::Button("Open", ImVec2(120, 0)))
+                                {
+                                        OpenScene(s_OpenPath);
+                                        ImGui::CloseCurrentPopup();
+                                }
+                                ImGui::SameLine();
+                                if (ImGui::Button("Cancel", ImVec2(120, 0)))
+                                        ImGui::CloseCurrentPopup();
+                                ImGui::EndPopup();
+                        }
+
+                        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+                        if (ImGui::BeginPopupModal("Save Scene As", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+                        {
+                                ImGui::Text("Save path:");
+                                ImGui::SetNextItemWidth(400.0f);
+                                ImGui::InputText("##savepath", s_SaveAsPath, sizeof(s_SaveAsPath));
+                                if (ImGui::Button("Save", ImVec2(120, 0)))
+                                {
+                                        SaveSceneAs(s_SaveAsPath);
+                                        ImGui::CloseCurrentPopup();
+                                }
+                                ImGui::SameLine();
+                                if (ImGui::Button("Cancel", ImVec2(120, 0)))
+                                        ImGui::CloseCurrentPopup();
+                                ImGui::EndPopup();
+                        }
+                }
+
                 ImGui::PopStyleVar(3);
-                ImGui::DockSpace(ImGui::GetID("MainDockspace"), ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
+                ImGui::DockSpace(ImGui::GetID("MainDockspace"), ImVec2(0, 0), 0);
                 ImGui::End();
         }
 
@@ -169,7 +231,7 @@ void EditorSystem::Render()
         ImGui::Begin("Viewport");
         m_ViewportFocused = ImGui::IsWindowFocused();
         m_ViewportHovered = ImGui::IsWindowHovered();
-        ImVec2 size = ImGui::GetContentRegionAvail();
+        ImVec2 size       = ImGui::GetContentRegionAvail();
         if (size.x < 1.0f)
                 size.x = 1.0f;
         if (size.y < 1.0f)
@@ -184,77 +246,6 @@ void EditorSystem::Render()
 
         ImGui::End();
         ImGui::PopStyleVar();
-
-        // --- Main menu bar ---
-        {
-                static char s_OpenPath[512]  = "assets/scenes/";
-                static char s_SaveAsPath[512] = "assets/scenes/";
-                bool        doOpenPopup = false, doSaveAsPopup = false;
-
-                if (ImGui::BeginMainMenuBar())
-                {
-                        if (ImGui::BeginMenu("File"))
-                        {
-                                if (ImGui::MenuItem("New Scene", "Ctrl+N"))
-                                        NewScene();
-                                if (ImGui::MenuItem("Open Scene...", "Ctrl+O"))
-                                        doOpenPopup = true;
-                                ImGui::Separator();
-                                if (ImGui::MenuItem("Save", "Ctrl+S"))
-                                        SaveScene();
-                                if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S"))
-                                        doSaveAsPopup = true;
-                                ImGui::EndMenu();
-                        }
-                        ImGui::EndMainMenuBar();
-                }
-
-                // Defer OpenPopup calls until after EndMainMenuBar
-                if (doOpenPopup)
-                        ImGui::OpenPopup("Open Scene");
-                if (doSaveAsPopup)
-                {
-                        if (m_ScenePath && m_ScenePath[0] != '\0')
-                                snprintf(s_SaveAsPath, sizeof(s_SaveAsPath), "%s", m_ScenePath);
-                        ImGui::OpenPopup("Save Scene As");
-                }
-
-                ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-
-                ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-                if (ImGui::BeginPopupModal("Open Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-                {
-                        ImGui::Text("Scene path:");
-                        ImGui::SetNextItemWidth(400.0f);
-                        ImGui::InputText("##openpath", s_OpenPath, sizeof(s_OpenPath));
-                        if (ImGui::Button("Open", ImVec2(120, 0)))
-                        {
-                                OpenScene(s_OpenPath);
-                                ImGui::CloseCurrentPopup();
-                        }
-                        ImGui::SameLine();
-                        if (ImGui::Button("Cancel", ImVec2(120, 0)))
-                                ImGui::CloseCurrentPopup();
-                        ImGui::EndPopup();
-                }
-
-                ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-                if (ImGui::BeginPopupModal("Save Scene As", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-                {
-                        ImGui::Text("Save path:");
-                        ImGui::SetNextItemWidth(400.0f);
-                        ImGui::InputText("##savepath", s_SaveAsPath, sizeof(s_SaveAsPath));
-                        if (ImGui::Button("Save", ImVec2(120, 0)))
-                        {
-                                SaveSceneAs(s_SaveAsPath);
-                                ImGui::CloseCurrentPopup();
-                        }
-                        ImGui::SameLine();
-                        if (ImGui::Button("Cancel", ImVec2(120, 0)))
-                                ImGui::CloseCurrentPopup();
-                        ImGui::EndPopup();
-                }
-        }
 
         ImGui::ShowDemoWindow();
         ic::panels::heirarchy_draw(m_ActiveScene, m_SelectedEntity);
@@ -289,7 +280,7 @@ void EditorSystem::NewScene()
         m_ScenePath   = "";
 
         m_SelectedEntity = {};
-        ic_set_scene(m_ActiveScene);
+        ic_set_scene(m_ActiveScene, m_EditorCamera);
         IC_CORE_INFO("Editor: new scene created");
 }
 
@@ -329,7 +320,7 @@ void EditorSystem::OpenScene(const char *path)
         m_ScenePath      = path;
         m_SelectedEntity = {};
         SaveLastScenePath(path);
-        ic_set_scene(m_ActiveScene);
+        ic_set_scene(m_ActiveScene, m_EditorCamera);
         IC_CORE_INFO("Editor: opened scene {}", path);
 }
 
