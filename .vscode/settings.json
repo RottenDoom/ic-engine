@@ -1,7 +1,7 @@
 {
 	"window.commandCenter": false,
 	"breadcrumbs.enabled": false,
-	"workbench.colorTheme": "Jellybeans Theme",
+	"workbench.colorTheme": "VS Code Dark",
 	"workbench.activityBar.iconClickBehavior": "toggle",
 	"editor.detectIndentation": false,
 	"editor.fontFamily": "Liberation Mono",
