@@ -81,7 +81,7 @@ void GLModel::clearGPUMemory()
         m_model = nullptr;
 }
 
-void GLModel::draw(Shader *shader)
+void GLModel::draw(Shader *shader, const glm::mat4 &baseTransform)
 {
         if (!m_model)
                 return;
@@ -91,7 +91,11 @@ void GLModel::draw(Shader *shader)
                 return;
 
         for (Index rootIdx : scene->rootNodes)
-                drawNode(shader, rootIdx, glm::mat4(1.0f));
+                drawNode(shader, rootIdx, baseTransform);
+
+        // Restore default cull state after draw — inverted-hull materials may have changed it.
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
 }
 
 void GLModel::drawNode(Shader *shader, Index idx, const glm::mat4 &parentWorld)
@@ -115,15 +119,15 @@ void GLModel::drawNode(Shader *shader, Index idx, const glm::mat4 &parentWorld)
 
 void GLModel::drawMesh(Shader *shader, GLMesh *glMesh, const Mesh *mesh, const glm::mat4 &world)
 {
-        shader->setMat4("model", world);
+        shader->setMat4("u_Model", world);
 
         for (size_t i = 0; i < glMesh->primitives.size(); ++i)
         {
                 if (i >= mesh->primitives.size())
                         break;
 
-                GLPrimitive         glPrim = glMesh->primitives[i];
-                const MeshPrimitive prim   = mesh->primitives[i];
+                GLPrimitive         &glPrim = glMesh->primitives[i];
+                const MeshPrimitive &prim   = mesh->primitives[i];
 
                 if (prim.materialIndex != INVALID_INDEX)
                 {
@@ -233,9 +237,19 @@ void GLModel::bindMaterial(Shader *shader, const Material *mat, GLPrimitive * /*
         }
 
         if (mat->doubleSided)
+        {
                 glDisable(GL_CULL_FACE);
+        }
         else
+        {
                 glEnable(GL_CULL_FACE);
+                // Inverted-hull outline meshes have no textures and are not double-sided.
+                // They extrude vertices toward the camera, so their inner faces cover the
+                // body mesh. Culling the front face shows only the outer silhouette edge.
+                bool isInvertedHull = !mat->pbr.baseColorTexture.isValid()
+                                   && !mat->pbr.metallicRoughnessTexture.isValid();
+                glCullFace(isInvertedHull ? GL_FRONT : GL_BACK);
+        }
 }
 
 /** Bind a texture slot and apply its sampler state. */
