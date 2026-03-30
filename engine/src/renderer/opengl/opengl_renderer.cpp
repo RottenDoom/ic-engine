@@ -72,6 +72,14 @@ bool OpenGLRenderer::Init(Window *w)
         EnableFeatures();
         CreateShader();
 
+        m_lightUBO.Create();
+        m_lightSystem.Init(&m_lightUBO);
+
+        m_shader->use();
+        GLuint progID = m_shader->ID;
+        glUniformBlockBinding(progID, glGetUniformBlockIndex(progID, "PerFrameBlock"), 0);
+        glUniformBlockBinding(progID, glGetUniformBlockIndex(progID, "LightBlock"), 1);
+
         LoadAssets();
         SetupBuffers();
 
@@ -85,7 +93,7 @@ bool OpenGLRenderer::Init(Window *w)
 
 void OpenGLRenderer::SetScene(RenderScene *scene, Camera &editorCamera)
 {
-        m_scene        = scene;
+        m_scene         = scene;
         m_pEditorCamera = &editorCamera;
 
         // If the renderer is already initialized, load and upload the new scene.
@@ -110,7 +118,7 @@ void OpenGLRenderer::EnableFeatures()
 
 void OpenGLRenderer::CreateShader()
 {
-        m_shader = new Shader("shaders/opengl/modelShader.vs", "shaders/opengl/modelShader.fs");
+        m_shader = new Shader("shaders/opengl/pbr/pbr.vert", "shaders/opengl/pbr/pbr.frag");
 }
 
 void OpenGLRenderer::LoadAssets()
@@ -208,9 +216,12 @@ void OpenGLRenderer::Draw(float dt)
         if (m_isMinimized || !m_scene || !m_shader || !m_pEditorCamera)
                 return;
 
+        m_lightSystem.Update(m_scene, *m_pEditorCamera, glfwGetTime());
+        m_lightUBO.BindAll();
+
         m_shader->use();
-        m_shader->setMat4("u_projection", m_pEditorCamera->projection);
-        m_shader->setMat4("u_view", m_pEditorCamera->matrices.view);
+        // m_shader->setMat4("u_projection", m_pEditorCamera->projection);
+        // m_shader->setMat4("u_view", m_pEditorCamera->matrices.view);
 
         auto meshEntities = m_scene->GetEntitiesWith<MeshComponent, TransformComponent>();
 
@@ -223,8 +234,7 @@ void OpenGLRenderer::Draw(float dt)
                 if (!glModel)
                         continue;
 
-                m_shader->setMat4("u_model", transform.GetTransformMatrix());
-                glModel->draw(m_shader);
+                glModel->draw(m_shader, transform.GetTransformMatrix());
         }
 }
 
@@ -271,6 +281,7 @@ bool OpenGLRenderer::OnWindowResize(WindowResizedEvent &e)
 
 void OpenGLRenderer::CleanUp()
 {
+        m_lightUBO.Destroy();
         for (auto &it : m_gpuCache)
         {
                 it.second->clearGPUMemory();

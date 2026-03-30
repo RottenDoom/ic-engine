@@ -129,6 +129,21 @@ static void SerializeEntity(YAML::Emitter& out, ic::Entity e, ic::RenderScene* s
 		out << YAML::EndMap;
 	}
 
+	// LightComponent
+	if (e.HasComponent<LightComponent>())
+	{
+		auto& lc = e.GetComponent<LightComponent>();
+		out << YAML::Key << "LightComponent" << YAML::Value << YAML::BeginMap;
+		out << YAML::Key << "type"       << YAML::Value << static_cast<int>(lc.type);
+		out << YAML::Key << "color"      << YAML::Value << YAML::convert<glm::vec3>::encode(lc.color);
+		out << YAML::Key << "intensity"  << YAML::Value << lc.intensity;
+		out << YAML::Key << "range"      << YAML::Value << lc.range;
+		out << YAML::Key << "innerAngle" << YAML::Value << lc.innerAngle;
+		out << YAML::Key << "outerAngle" << YAML::Value << lc.outerAngle;
+		out << YAML::Key << "enabled"    << YAML::Value << lc.enabled;
+		out << YAML::EndMap;
+	}
+
 	out << YAML::EndMap;  // components
 	out << YAML::EndMap;  // entity
 }
@@ -205,8 +220,21 @@ ic::RenderScene* SceneSerializer::Deserialize(const char* path)
 			else
 				IC_CORE_WARN("SceneSerializer: model '{}' not found in registry", modelName);
 		}
+
+		// LightComponent
+		if (components["LightComponent"]) {
+			auto  lc_node = components["LightComponent"];
+			auto& lc      = e.AddComponent<ic::LightComponent>();
+			if (lc_node["type"])       lc.type       = static_cast<ic::LightType>(lc_node["type"].as<int>());
+			if (lc_node["color"])      lc.color       = lc_node["color"].as<glm::vec3>();
+			if (lc_node["intensity"])  lc.intensity   = lc_node["intensity"].as<float>();
+			if (lc_node["range"])      lc.range       = lc_node["range"].as<float>();
+			if (lc_node["innerAngle"]) lc.innerAngle  = lc_node["innerAngle"].as<float>();
+			if (lc_node["outerAngle"]) lc.outerAngle  = lc_node["outerAngle"].as<float>();
+			if (lc_node["enabled"])    lc.enabled     = lc_node["enabled"].as<bool>();
+		}
 	}
- 
+
     	return scene;
 }
 

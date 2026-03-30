@@ -2,7 +2,8 @@
 
 in vec3 v_Position;
 in vec3 v_Normal;
-in vec2 v_TexCoord;
+in vec2 v_TexCoord0;
+in vec4 v_Tangent;
 
 uniform sampler2D u_defaultMaterial;
 uniform bool u_usedefaultMaterial;
@@ -70,20 +71,33 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
         return ggx1 * ggx2;
 }
 
+vec3 CalcNormal(vec2 texCoord, vec3 vNormal, vec4 vTangent)
+{
+	vec3 N = normalize(vNormal);
+	vec3 T = normalize(vTangent.xyz);
+	T = normalize(T - dot(T, N) * N);
+	vec3 B = cross(N, T) * vTangent.w;
+
+	vec3 sampledN  = texture(u_NormalTexture, texCoord).xyz * 2.0 - 1.0;
+	sampledN.xy   *= u_NormalScale;
+	return normalize(mat3(T, B, N) * sampledN);
+}
+
+
 void main()
 {
         // Sample textures
         vec4 baseColor = u_BaseColorFactor;
         if (u_HasBaseColorTexture)
         {
-                baseColor *= texture(u_BaseColorTexture, v_TexCoord);
+                baseColor *= texture(u_BaseColorTexture, v_TexCoord0);
         }
         
         float metallic = u_MetallicFactor;
         float roughness = u_RoughnessFactor;
         if (u_HasMetallicRoughnessTexture)
         {
-                vec4 mr = texture(u_MetallicRoughnessTexture, v_TexCoord);
+                vec4 mr = texture(u_MetallicRoughnessTexture, v_TexCoord0);
                 metallic *= mr.b;
                 roughness *= mr.g;
         }
@@ -91,24 +105,20 @@ void main()
         vec3 N = normalize(v_Normal);
         if (u_HasNormalTexture)
         {
-                // Sample and apply normal map
-                vec3 tangentNormal = texture(u_NormalTexture, v_TexCoord).xyz * 2.0 - 1.0;
-                tangentNormal.xy *= u_NormalScale;
-                // TODO: Proper TBN matrix calculation
-                N = normalize(tangentNormal);
+                N = CalcNormal(v_TexCoord0, v_Normal, v_Tangent);
         }
         
         float ao = 1.0;
         if (u_HasOcclusionTexture)
         {
-                ao = texture(u_OcclusionTexture, v_TexCoord).r;
+                ao = texture(u_OcclusionTexture, v_TexCoord0).r;
                 ao = mix(1.0, ao, u_OcclusionStrength);
         }
         
         vec3 emissive = u_EmissiveFactor;
         if (u_HasEmissiveTexture)
         {
-                emissive *= texture(u_EmissiveTexture, v_TexCoord).rgb;
+                emissive *= texture(u_EmissiveTexture, v_TexCoord0).rgb;
         }
         
         // Simple PBR lighting (simplified - add proper lighting in production)

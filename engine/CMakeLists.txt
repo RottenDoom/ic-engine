@@ -28,15 +28,17 @@ set(RENDERER_SRC
     src/renderer/camera.cpp
     src/renderer/renderer_frontend.cpp
     src/renderer/scene.cpp
+    src/renderer/lighting_system.cpp
     src/renderer/scene_serializer.cpp
 )
 
 set(OPENGL_SRC
-    src/renderer/opengl/gl_material.cpp
-    src/renderer/opengl/gl_model.cpp
-    src/renderer/opengl/gl_shader.cpp
-    src/renderer/opengl/gl_framebuffer.cpp
-    src/renderer/opengl/opengl_renderer.cpp
+	src/renderer/opengl/gl_material.cpp
+	src/renderer/opengl/gl_model.cpp
+	src/renderer/opengl/gl_shader.cpp
+	src/renderer/opengl/light_ubo.cpp
+	src/renderer/opengl/gl_framebuffer.cpp
+	src/renderer/opengl/opengl_renderer.cpp
 )
 
 set(VULKAN_SRC

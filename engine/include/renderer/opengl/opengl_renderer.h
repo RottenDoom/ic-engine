@@ -7,6 +7,9 @@
 #include "renderer/camera.h"
 #include "renderer/opengl/gl_shader.h"
 #include "renderer/opengl/gl_model.h"
+#include "renderer/opengl/light_ubo.h"
+#include "renderer/lighting_system.h"  // maybe add this to opengl folder.
+
 #include "core/window.h"
 #include "core/events/event.h"
 #include "core/events/application_event.h"
@@ -125,8 +128,8 @@ private:
         // State
         // -----------------------------------------------------------------------
 private:
-        Window      *m_window      = nullptr;
-        RenderScene *m_scene       = nullptr;  // See into this and more of this
+        Window      *m_window        = nullptr;
+        RenderScene *m_scene         = nullptr;  // See into this and more of this
         bool         m_isMinimized   = false;
         Camera      *m_pEditorCamera = nullptr;
 
@@ -135,8 +138,8 @@ private:
 
         Shader *m_shader = nullptr;
 
-        // TODO: lighting system
-        // std::vector<PointLight> m_pointLights;
+        LightUBO    m_lightUBO;
+        LightSystem m_lightSystem;
 };
 
 }  // namespace ic

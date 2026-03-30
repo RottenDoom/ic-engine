@@ -88,6 +88,16 @@ void component_panel_draw(ic::Entity &selected)
                 }
         }
 
+        // ---- LightComponent ----
+        if (selected.HasComponent<ic::LightComponent>())
+        {
+                if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                        auto &lc = selected.GetComponent<ic::LightComponent>();
+                        light_panel_draw(lc);
+                }
+        }
+
         // ---- Add Component button ----
         ImGui::Separator();
         ImGui::SetNextItemWidth(-1);

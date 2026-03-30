@@ -3,6 +3,7 @@ set(EDITOR_SOURCES
     src/editor.cpp
     src/panels/component.cpp
     src/panels/heirarchy.cpp
+    src/panels/light.cpp
 )
 
 add_executable(editor ${EDITOR_SOURCES})

@@ -12,6 +12,8 @@ void heirarchy_draw(ic::RenderScene *scene, ic::Entity &selected);
 
 void component_panel_draw(ic::Entity &selected);
 
+void light_panel_draw(LightComponent &lc);
+
 // menu bar should be inside the editor itself instead of a panel
 // void menu_bar_draw();
 

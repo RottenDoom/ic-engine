@@ -122,7 +122,7 @@ struct GLModel
          * Draw the model's default scene using the given shader.
          * Shader must already be bound.
          */
-        void draw(Shader *shader);
+        void draw(Shader *shader, const glm::mat4 &baseTransform = glm::mat4(1.0f));
 
         /** Returns true if upload() has been called and clearGPUMemory() has not. */
         bool isUploaded() const { return m_model != nullptr; }
