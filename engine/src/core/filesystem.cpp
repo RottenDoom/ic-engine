@@ -11,7 +11,7 @@
 constexpr size_t FS_ALLOCATION_SIZE = 2 * 1024 * 1024;
 #define MAX_FILES_ENUMERATED 1000
 
-static ic::FS_Info *g_filesystem = nullptr;
+static ic::FS_Info *g_filesystem = NULL;
 
 static bool  is_valid_path(const char *norm_path);
 static void  normalize(char *path);
@@ -98,7 +98,7 @@ void fs_deinit(void)
         ic_free(g_filesystem->allocator);
         ic_free(g_filesystem);
 
-        g_filesystem = nullptr;
+        g_filesystem = NULL;
 }
 
 bool fs_mount(const char *virtual_path, const char *physical_path, MountType type, uint16_t priority)
@@ -329,12 +329,12 @@ char *fs_getParentPath(const char *path)
         size_t len = strlen(path);
 
         if (len == 0)
-                return nullptr;
+                return NULL;
 
         // copy path so we can operate safely
         char *buffer = (char *)ic_malloc(len + 1);
         if (!buffer)
-                return nullptr;
+                return NULL;
 
         strcpy(buffer, path);
 
@@ -354,7 +354,7 @@ char *fs_getParentPath(const char *path)
         if (!lastSep)
         {
                 ic_free(buffer);
-                return nullptr;
+                return NULL;
         }
 
         // if separator is first character → root directory
@@ -373,7 +373,7 @@ char *fs_getfullpath(const char *path)
 {
         char *full = (char *)ic_malloc(FS_MAX_PATH);
         if (!full)
-                return nullptr;
+                return NULL;
 
         // Terrible way of doing this but this works
         if (is_absolute_path(path))
@@ -381,7 +381,7 @@ char *fs_getfullpath(const char *path)
                 size_t len  = strlen(path) + 1;
                 char  *copy = (char *)ic_malloc(len);
                 if (!copy)
-                        return nullptr;
+                        return NULL;
 
                 memcpy(copy, path, len);
                 return copy;
@@ -407,13 +407,13 @@ char *fs_getfullpath(const char *path)
                 ic_free(candidate);
         }
 
-        return nullptr;
+        return NULL;
 }
 
 const char *fs_getExtension(const char *path)
 {
         // filepath assumes the extension contains .ext
-        // if no extension like linux executables this returns nullptr and an error (fix for panic later)
+        // if no extension like linux executables this returns NULL and an error (fix for panic later)
 
         if (!path)
                 return NULL;
@@ -477,7 +477,7 @@ bool fs_delete(const char *filename)
 char **fs_enumerateFiles(const char *dir)
 {
         if (!dir)
-                return nullptr;
+                return NULL;
 
         // allocator array for enumeration
         char **file_list = (char **)bump_allocate(g_filesystem->allocator,
@@ -486,14 +486,14 @@ char **fs_enumerateFiles(const char *dir)
                                                   IC_TAG_FILESYSTEM);
 
         if (!file_list)
-                return nullptr;
+                return NULL;
         size_t file_cnt = 0;
 
         PlatformDirIterator *iter = __platformOpenDir(dir);
         if (!iter)
         {
-                file_list[0] = nullptr;
-                return nullptr;
+                file_list[0] = NULL;
+                return NULL;
         }
 
         char entry_name[FS_MAX_PATH];
@@ -511,7 +511,7 @@ char **fs_enumerateFiles(const char *dir)
                 }
         }
         __platformCloseDir(iter);
-        file_list[file_cnt] = nullptr;
+        file_list[file_cnt] = NULL;
 
         IC_CORE_INFO("Directory '{}': ", dir);
         for (size_t i = 0; i < file_cnt; i++)
@@ -562,7 +562,7 @@ const char *fs_joinPath(const char *relPath, const char *fullpath)
         if (!relPath || !fullpath || !g_filesystem)
         {
                 IC_CORE_ERROR("Filesystem::Error Joining paths");
-                return nullptr;
+                return NULL;
         }
 
         const char *out = join_path(fullpath, relPath);
@@ -588,7 +588,7 @@ uint64_t fs_getLastModificationTime(const char *filename)
 File *fs_open(const char *filename, int flags)
 {
         if (!filename || !g_filesystem)
-                return nullptr;
+                return NULL;
 
         char physical[FS_MAX_PATH];
         if (!resolve(filename, physical, sizeof(physical)))
@@ -596,7 +596,7 @@ File *fs_open(const char *filename, int flags)
                 if (!(flags & FS_OPEN_CREATE))
                 {
                         IC_CORE_ERROR("Could not resolve path: {}", filename);
-                        return nullptr;
+                        return NULL;
                 }
 
                 bool found = false;
@@ -620,7 +620,7 @@ File *fs_open(const char *filename, int flags)
                 if (!found)
                 {
                         IC_CORE_ERROR("No writable mount for path: {}", filename);
-                        return nullptr;
+                        return NULL;
                 }
         }
 
@@ -869,7 +869,7 @@ bool fs_compress(File *handle)
 const char *ic_getfilename(const char *path)
 {
         if (!path)
-                return nullptr;
+                return NULL;
 
         const char *last_slash     = strrchr(path, '/');
         const char *last_backslash = strrchr(path, '\\');
@@ -894,18 +894,18 @@ FILE *ic_open(const char *path)
 char *ic_read(const char *path, size_t *out_size)
 {
         if (!path || !g_filesystem)
-                return nullptr;
+                return NULL;
 
         ic::File *file = ic::fs_open(path, 0);
         if (!file)
-                return nullptr;
+                return NULL;
 
         char *buffer = (char *)bump_allocate(g_filesystem->allocator, file->size + 1, 1, ic::IC_TAG_FILESYSTEM);
 
         if (!buffer)
         {
                 ic::fs_close(file);
-                return nullptr;
+                return NULL;
         }
 
         size_t bytes_read  = ic::fs_read(file, buffer, file->size);
@@ -967,7 +967,7 @@ const char *ic_getbasedir(void)
         if (!g_filesystem)
         {
                 IC_CORE_ERROR("Filesystem does not exist!");
-                return nullptr;
+                return NULL;
         }
         return g_filesystem->base_dir;
 }
@@ -977,7 +977,7 @@ const char *ic_getuserdir(void)
         if (!g_filesystem)
         {
                 IC_CORE_ERROR("Filesystem does not exist!");
-                return nullptr;
+                return NULL;
         }
         return g_filesystem->user_dir;
 }
@@ -1159,24 +1159,26 @@ static bool translate_mount_path(const char *virtual_path, char *out_buffer, siz
 
 static bool resolve(const char *virtual_path, char *out_path, size_t out_size)
 {
-        int best_priority = -1;
-	bool found = false;
+        int  best_priority = -1;
+        bool found         = false;
 
-	for (size_t i = 0; i < g_filesystem->mount_count; i++) {
-		ic::Mount* mnt = &g_filesystem->mounts[i];
-		size_t prefix_len = strlen(mnt->virtual_path);
-		if (strncmp(virtual_path, mnt->virtual_path, prefix_len) != 0)
-			continue;
+        for (size_t i = 0; i < g_filesystem->mount_count; i++)
+        {
+                ic::Mount *mnt        = &g_filesystem->mounts[i];
+                size_t     prefix_len = strlen(mnt->virtual_path);
+                if (strncmp(virtual_path, mnt->virtual_path, prefix_len) != 0)
+                        continue;
 
-		if (mnt->priority > best_priority) 
-		{
-			best_priority = mnt->priority;
-			const char* remainder = virtual_path + prefix_len;
-			if (*remainder == '/') remainder++;
-			snprintf(out_path, out_size, "%s/%s", mnt->physical_path, remainder);
-			normalize(out_path);
-			found = true;
-		}
-	}
-	return found;
+                if (mnt->priority > best_priority)
+                {
+                        best_priority         = mnt->priority;
+                        const char *remainder = virtual_path + prefix_len;
+                        if (*remainder == '/')
+                                remainder++;
+                        snprintf(out_path, out_size, "%s/%s", mnt->physical_path, remainder);
+                        normalize(out_path);
+                        found = true;
+                }
+        }
+        return found;
 }
