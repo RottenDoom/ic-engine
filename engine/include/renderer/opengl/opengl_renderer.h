@@ -6,54 +6,18 @@
 #include "renderer/scene.h"
 #include "renderer/camera.h"
 #include "renderer/opengl/gl_shader.h"
-#include "renderer/opengl/gl_model.h"
+#include "renderer/opengl/gpu_resource_cache.h"
+#include "renderer/opengl/render_command.h"
+#include "renderer/opengl/render_pass.h"
 #include "renderer/opengl/light_ubo.h"
-#include "renderer/lighting_system.h"  // maybe add this to opengl folder.
+#include "renderer/lighting_system.h"
 
 #include "core/window.h"
 #include "core/events/event.h"
 #include "core/events/application_event.h"
 
-#include <memory>
-#include <unordered_map>
-
-/**
- * opengl_renderer.h
- *
- * OpenGL backend implementation of IRenderer.
- *
- *
- * GPU upload policy:
- *   setupBuffers() is called once during init() and uploads all scene models.
- *   draw() never uploads -> if a model isn't in m_gpuCache it logs a warning
- *   and skips rather than stalling the render thread mid-frame.
- *
- * TODO: basic component window for tranforms.
- * TODO: Add more asset types and more models and fix the material system.
- * TODO: Big goal: Scene Graph.
- */
-
 namespace ic
 {
-
-// ---------------------------------------------------------------------------
-// PointLight -> kept here until a proper lighting system exists
-// ---------------------------------------------------------------------------
-
-struct PointLight
-{
-        glm::vec3 position  = glm::vec3(0.0f);
-        glm::vec3 ambient   = glm::vec3(0.1f);
-        glm::vec3 diffuse   = glm::vec3(1.0f);
-        glm::vec3 specular  = glm::vec3(1.0f);
-        float     constant  = 1.0f;
-        float     linear    = 0.09f;
-        float     quadratic = 0.032f;
-};
-
-// ---------------------------------------------------------------------------
-// OpenGLRenderer
-// ---------------------------------------------------------------------------
 
 class OpenGLRenderer : public IRenderer
 {
@@ -61,7 +25,6 @@ public:
         OpenGLRenderer();
         ~OpenGLRenderer() override;
 
-        // Non-copyable -> owns GPU resources
         OpenGLRenderer(const OpenGLRenderer &)            = delete;
         OpenGLRenderer &operator=(const OpenGLRenderer &) = delete;
 
@@ -70,42 +33,24 @@ public:
         // -----------------------------------------------------------------------
 
         bool Init(Window *w) override;
-
         void SetScene(RenderScene *scene, Camera &editorCamera);
-
         void RenderFrame(float dt) override;
-
         void OnEvent(event &e) override;
-
         void ClearColor() override;
-
         void CleanUp() override;
 
 private:
         // -----------------------------------------------------------------------
-        // Init helpers -> called once from init()
+        // Init helpers
         // -----------------------------------------------------------------------
 
-        /** Enable depth test, face culling, etc. */
         void EnableFeatures();
-
-        /** Compile and link the PBR model shader. */
         void CreateShader();
-
-        /**
-         * Load all model assets referenced by the current scene into AssetManager.
-         * Must be called before setupBuffers().
-         */
         void LoadAssets();
-
-        /**
-         * Upload all loaded scene models to the GPU.
-         * Populates m_gpuCache. Called once after loadAssets().
-         */
         void SetupBuffers();
 
         // -----------------------------------------------------------------------
-        // Per-frame helpers -> called from renderFrame()
+        // Per-frame
         // -----------------------------------------------------------------------
 
         void Update(float dt);
@@ -118,25 +63,21 @@ private:
         bool OnWindowResize(WindowResizedEvent &e);
 
         // -----------------------------------------------------------------------
-        // Internal: upload a single model to GPU and cache it
-        // Returns the cached GLModel or nullptr on failure.
-        // -----------------------------------------------------------------------
-        GLModel *UploadModel(IC_GUID id);
-        GLModel *GetOrUpload(IC_GUID id);
-
-        // -----------------------------------------------------------------------
         // State
         // -----------------------------------------------------------------------
-private:
+
         Window      *m_window        = nullptr;
-        RenderScene *m_scene         = nullptr;  // See into this and more of this
+        RenderScene *m_scene         = nullptr;
         bool         m_isMinimized   = false;
         Camera      *m_pEditorCamera = nullptr;
 
-        // GPU cache -> one GLModel per unique model IC_GUID..
-        std::unordered_map<IC_GUID, GLModel *> m_gpuCache;
-
         Shader *m_shader = nullptr;
+
+        GPUResourceCache m_cache;
+        RenderQueue      m_queue;
+        OpaquePass       m_opaquePass;
+        OutlinePass      m_outlinePass;
+        TransparentPass  m_transPass;
 
         LightUBO    m_lightUBO;
         LightSystem m_lightSystem;

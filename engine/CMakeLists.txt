@@ -39,6 +39,9 @@ set(OPENGL_SRC
 	src/renderer/opengl/light_ubo.cpp
 	src/renderer/opengl/gl_framebuffer.cpp
 	src/renderer/opengl/opengl_renderer.cpp
+	src/renderer/opengl/render_command.cpp
+	src/renderer/opengl/render_pass.cpp
+	src/renderer/opengl/gpu_resource_cache.cpp
 )
 
 set(VULKAN_SRC

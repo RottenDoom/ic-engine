@@ -1,0 +1,7 @@
+* text=auto
+*.cpp text eol=lf
+*.h text eol=lf
+*.bat text eol=crlf
+*.glb filter=lfs diff=lfs merge=lfs -text
+*.gltf filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text

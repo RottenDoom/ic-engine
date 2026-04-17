@@ -81,7 +81,8 @@ void component_panel_draw(ic::Entity &selected)
                 if (ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen))
                 {
                         auto       &m         = selected.GetComponent<ic::MeshComponent>();
-                        std::string modelName = AssetManager::Get().GetRegistry()->GetAssetName(m.modelID);
+                        std::string modelName = AssetManager::Get().GetRegistry()->GetAssetName(
+                            m.modelID);  // ISSUE: If the mesh id does not exist load it from some location.
                         ImGui::LabelText("Model", "%s", modelName.empty() ? "(none)" : modelName.c_str());
 
                         // TODO: drag-drop from asset browser to change model

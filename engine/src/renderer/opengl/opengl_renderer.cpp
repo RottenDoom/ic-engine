@@ -8,16 +8,7 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
-/**
- * opengl_renderer.cpp
- *
- * TODO:
- * 1. Fix the new refactored pipeline base renderer with the asset manager
- * 2. Lighting system with proper things inplace
- * 3. UI system both for Editor and Application
- *
- */
+#include <glm/glm.hpp>
 
 namespace ic
 {
@@ -30,19 +21,19 @@ OpenGLRenderer::OpenGLRenderer() : m_window(nullptr), m_scene(nullptr) {}
 
 OpenGLRenderer::~OpenGLRenderer()
 {
-        // cleanUp() should be called explicitly before destruction,
+        // CleanUp() should be called explicitly before destruction,
         // but guard here in case it wasn't.
-        if (!m_gpuCache.empty())
+        if (m_shader)
                 CleanUp();
 }
 
 // ---------------------------------------------------------------------------
-// IRenderer::init
+// IRenderer::Init
 // ---------------------------------------------------------------------------
 
 bool OpenGLRenderer::Init(Window *w)
 {
-        IC_CORE_ASSERT(w, "OpenGLRenderer::init -> null window");
+        IC_CORE_ASSERT(w, "OpenGLRenderer::Init -> null window");
         m_window = w;
 
         glfwMakeContextCurrent(m_window->GetNativeWindow());
@@ -88,7 +79,7 @@ bool OpenGLRenderer::Init(Window *w)
 }
 
 // ---------------------------------------------------------------------------
-// IRenderer::setScene
+// IRenderer::SetScene
 // ---------------------------------------------------------------------------
 
 void OpenGLRenderer::SetScene(RenderScene *scene, Camera &editorCamera)
@@ -96,7 +87,6 @@ void OpenGLRenderer::SetScene(RenderScene *scene, Camera &editorCamera)
         m_scene         = scene;
         m_pEditorCamera = &editorCamera;
 
-        // If the renderer is already initialized, load and upload the new scene.
         if (m_window)
         {
                 LoadAssets();
@@ -113,11 +103,11 @@ void OpenGLRenderer::EnableFeatures()
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-        // glFrontFace(GL_CCW);
 }
 
 void OpenGLRenderer::CreateShader()
 {
+        /** TODO: Make the shaders as assets instead of this. */
         m_shader = new Shader("shaders/opengl/pbr/pbr.vert", "shaders/opengl/pbr/pbr.frag");
 }
 
@@ -126,22 +116,12 @@ void OpenGLRenderer::LoadAssets()
         if (!m_scene)
                 return;
 
-        /** Just for the sake of making sure
-         * 1. m_scene get all the entities with meshcomponent
-         * 2. for each component load the model or material whatever from them
-         * 3. To keep this shit loaded
-         */
-
-        std::vector<Entity> mesh_entities = m_scene->GetEntitiesWith<MeshComponent>();
-        for (auto &e : mesh_entities)
+        for (auto &e : m_scene->GetEntitiesWith<MeshComponent>())
         {
                 MeshComponent &c     = e.GetComponent<MeshComponent>();
                 Model         *model = AssetManager::Get().LoadAs<Model>(c.modelID);
-
                 if (!model)
-                {
-                        IC_CORE_WARN("Failed loading model {}", c.modelID);
-                }
+                        IC_CORE_WARN("LoadAssets: failed to load model {}", c.modelID);
         }
 }
 
@@ -150,50 +130,11 @@ void OpenGLRenderer::SetupBuffers()
         if (!m_scene)
                 return;
 
-        std::vector<Entity> mesh_entities = m_scene->GetEntitiesWith<MeshComponent>();
-        for (auto &e : mesh_entities)
+        for (auto &e : m_scene->GetEntitiesWith<MeshComponent>())
         {
                 MeshComponent &c = e.GetComponent<MeshComponent>();
-                if (m_gpuCache.count(c.modelID))
-                        continue;
-                UploadModel(c.modelID);
+                m_cache.GetOrUpload(c.modelID, AssetManager::Get());
         }
-}
-
-GLModel *OpenGLRenderer::UploadModel(IC_GUID id)
-{
-        Model *model = AssetManager::Get().GetAsset<Model>(id);
-        if (!model)
-        {
-                IC_CORE_WARN("OpenGLRenderer::uploadModel -> model {} not in AssetManager", id);
-                return nullptr;
-        }
-
-        if (!model->isCPUReady())
-        {
-                IC_CORE_WARN("OpenGLRenderer::uploadModel -> model {} not CPUReady (state={})",
-                             id,
-                             static_cast<int>(model->getState()));
-                return nullptr;
-        }
-
-        auto glModel = new GLModel();
-        glModel->upload(*model);
-
-        m_gpuCache[id] = glModel;
-
-        IC_CORE_INFO("OpenGLRenderer: uploaded model {} to GPU", id);
-        return glModel;
-}
-
-GLModel *OpenGLRenderer::GetOrUpload(IC_GUID id)
-{
-        auto it = m_gpuCache.find(id);
-
-        if (it != m_gpuCache.end())
-                return it->second;
-
-        return UploadModel(id);
 }
 
 // ---------------------------------------------------------------------------
@@ -206,8 +147,10 @@ void OpenGLRenderer::RenderFrame(float dt)
         Draw(dt);
 }
 
-// Check if nothing in update function here.
-void OpenGLRenderer::Update(float dt) {}
+void OpenGLRenderer::Update(float dt)
+{
+        (void)dt;
+}
 
 void OpenGLRenderer::Draw(float dt)
 {
@@ -218,24 +161,42 @@ void OpenGLRenderer::Draw(float dt)
 
         m_lightSystem.Update(m_scene, *m_pEditorCamera, glfwGetTime());
         m_lightUBO.BindAll();
-
         m_shader->use();
-        // m_shader->setMat4("u_projection", m_pEditorCamera->projection);
-        // m_shader->setMat4("u_view", m_pEditorCamera->matrices.view);
 
-        auto meshEntities = m_scene->GetEntitiesWith<MeshComponent, TransformComponent>();
+        m_queue.Clear();
 
-        for (Entity &e : meshEntities)
+        const glm::vec3 camPos = m_pEditorCamera->position;
+
+        for (Entity &e : m_scene->GetEntitiesWith<MeshComponent, TransformComponent>())
         {
                 auto &mesh      = e.GetComponent<MeshComponent>();
                 auto &transform = e.GetComponent<TransformComponent>();
 
-                GLModel *glModel = GetOrUpload(mesh.modelID);
+                GLModel *glModel = m_cache.GetOrUpload(mesh.modelID, AssetManager::Get());
                 if (!glModel)
                         continue;
 
-                glModel->draw(m_shader, transform.GetTransformMatrix());
+                std::vector<GLModel::DrawItem> items;
+                glModel->CollectDrawItems(transform.GetTransformMatrix(), items);
+
+                for (auto &item : items)
+                {
+                        GLMaterial *mat = nullptr;
+                        if (item.materialIndex != INVALID_INDEX && glModel->Get())
+                                mat = m_cache.GetMaterial(mesh.modelID, item.materialIndex, *glModel->Get());
+
+                        const glm::vec3 center = glm::vec3(item.worldTransform[3]);
+                        const float     depth  = glm::length(center - camPos);
+
+                        m_queue.Submit({item.primitive, mat, glModel, item.worldTransform, depth});
+                }
         }
+
+        m_queue.Sort();
+
+        m_opaquePass.Execute(m_queue.OpaqueCommands(), m_shader);
+        m_outlinePass.Execute(m_queue.OutlineCommands(), m_shader);
+        m_transPass.Execute(m_queue.BlendCommands(), m_shader);
 }
 
 // ---------------------------------------------------------------------------
@@ -282,13 +243,7 @@ bool OpenGLRenderer::OnWindowResize(WindowResizedEvent &e)
 void OpenGLRenderer::CleanUp()
 {
         m_lightUBO.Destroy();
-        for (auto &it : m_gpuCache)
-        {
-                it.second->clearGPUMemory();
-                delete it.second;
-        }
-
-        m_gpuCache.clear();
+        m_cache.Clear();
         delete m_shader;
         m_shader = nullptr;
 }

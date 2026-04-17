@@ -8,6 +8,13 @@
 // make a toggle that works when I press c etc.
 // Editor camera and other cameras (Editor camera is the priority now.`)
 // New entity add more mesh does not work gives excpetion.
+static uint8_t count_lights(ic::RenderScene *scene)
+{
+        uint8_t count = 0;
+        scene->Each<ic::LightComponent>([&](auto) { count++; });
+        return count;
+}
+
 namespace ic::panels
 {
 
@@ -34,8 +41,8 @@ void heirarchy_draw(ic::RenderScene *scene, ic::Entity &selected)
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.70f, 0.20f, 0.20f, 1.0f));
                 if (ImGui::Button("Delete"))
                 {
-                        scene->DestroyEntity(
-                            selected);  // make sure this removes all the components of that entity as well.
+                        /** FIX: Delete entity does not kill the components from the screen */
+                        scene->DestroyEntity(selected);
                         selected = {};
                 }
                 ImGui::PopStyleColor(2);
@@ -110,9 +117,51 @@ void heirarchy_draw(ic::RenderScene *scene, ic::Entity &selected)
         {
                 if (ImGui::MenuItem("Create Empty Entity"))
                         scene->CreateEntityWithName("Entity");
+                uint8_t n = count_lights(scene);
+                if (ImGui::BeginMenu("Create Lighting"))
+                {
+                        if (ImGui::MenuItem("Point Light"))
+                        {
+                                std::string name   = "PointLight_" + std::to_string(n);
+                                auto        entity = scene->CreateEntityWithName(name);
+
+                                // Add components
+                                auto &lc     = entity.AddComponent<ic::LightComponent>();
+                                lc.type      = ic::LightType::Point;
+                                lc.color     = glm::vec3(1.0f, 1.0f, 1.0f);
+                                lc.intensity = 1.0f;
+                                lc.range     = 10.0f;
+                        }
+
+                        if (ImGui::MenuItem("Directional Light"))
+                        {
+                                std::string name   = "DirectionalLight_" + std::to_string(n);
+                                auto        entity = scene->CreateEntityWithName(name);
+
+                                auto &lc     = entity.AddComponent<ic::LightComponent>();
+                                lc.type      = ic::LightType::Directional;
+                                lc.color     = glm::vec3(1.0f, 0.95f, 0.85f);  // warm sunlight default
+                                lc.intensity = 1.0f;
+                        }
+
+                        if (ImGui::MenuItem("Spot Light"))
+                        {
+                                std::string name   = "SpotLight_" + std::to_string(n);
+                                auto        entity = scene->CreateEntityWithName(name);
+
+                                auto &lc      = entity.AddComponent<ic::LightComponent>();
+                                lc.type       = ic::LightType::Spot;
+                                lc.color      = glm::vec3(1.0f);
+                                lc.intensity  = 1.0f;
+                                lc.range      = 20.0f;
+                                lc.innerAngle = 12.5f;
+                                lc.outerAngle = 25.0f;
+                        }
+
+                        ImGui::EndMenu();
+                }
                 ImGui::EndPopup();
         }
-
         ImGui::End();
 }
 

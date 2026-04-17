@@ -79,6 +79,7 @@ void EditorSystem::Init()
 
         m_fb = new Framebuffer(fbSpec);
 
+        /** TODO: Load default scene if last scene does not exist. */
         ic::SceneSerializer serializer;
         string              lastScene = LoadLastScenePath();
         if (!lastScene.empty() && ic_exists(lastScene.c_str()))
@@ -90,7 +91,7 @@ void EditorSystem::Init()
         else
         {
                 m_ActiveScene = new ic::RenderScene();
-                IC_CORE_INFO("Editor: Started with bland scene");
+                IC_CORE_INFO("Editor: Started with empty scene");
         }
 
         ic_set_scene(m_ActiveScene, m_EditorCamera);
@@ -329,9 +330,13 @@ void EditorSystem::OpenScene(const char *path)
 string EditorSystem::LoadLastScenePath()
 {
         if (!ic_exists(m_EditorConfig))
+        {
+                IC_CORE_CRITICAL("Editor config does not exist cannot open editor!");
                 return "";
+        }
         try
         {
+                // use my own filesystem here.
                 std::ifstream f(m_EditorConfig);
                 string        line;
                 while (getline(f, line))
@@ -354,6 +359,7 @@ string EditorSystem::LoadLastScenePath()
                 return "";
         }
 
+        // return default scene if last scene does not exist
         return m_DefaultScene;
 }
 
@@ -362,6 +368,7 @@ void EditorSystem::SaveLastScenePath(const char *path)
         const char *parent = fs_getParentPath(path);
         if (!fs_mkdir(parent))
         {
+                /** FIX: THIS part needs fixiing. */
                 IC_CORE_WARN("EditorSystem: cannot create parent path");
         }
         std::ofstream f(m_EditorConfig);
