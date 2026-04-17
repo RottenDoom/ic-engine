@@ -151,6 +151,7 @@ bool GLTFLoader::load(const char *path, ModelImportData *out)
                 return false;
         }
 
+        /** FIX: Remove std::filesystem from here */
         const char *parentPath    = fs_getParentPath(fullpath);
         auto        expectedAsset = parser.loadGltf(gltfFile.get(), std::filesystem::path(parentPath), kOptions);
 

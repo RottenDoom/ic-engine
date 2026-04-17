@@ -155,6 +155,14 @@ set_target_properties(engine PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
 )
 
+add_custom_command(TARGET engine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets
+    COMMENT "Copying engine assets..."
+    VERBATIM
+)
+
 # ─────────────────────────────────────────────
 #  INSTALL
 # ─────────────────────────────────────────────
