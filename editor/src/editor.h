@@ -14,8 +14,8 @@ public:
 
         void NewScene();
         void SaveScene();
-        void SaveSceneAs(const char *path);
-        void OpenScene(const char *path);
+        void SaveSceneAs(string &path);
+        void OpenScene(string &path);
 
 private:
         Framebuffer *m_fb = nullptr;
@@ -23,7 +23,7 @@ private:
 
         // Refs to the scene
         const char      *m_EditorConfig;
-        const char      *m_ScenePath;
+        string           m_ScenePath;
         const char      *m_DefaultScene;
         ic::RenderScene *m_ActiveScene;
         ic::RenderScene *m_EditorScene;
@@ -31,6 +31,7 @@ private:
         bool      m_ViewportFocused = false, m_ViewportHovered = false;
         glm::vec2 m_ViewportSize = {0.0f, 0.0f};
         glm::vec2 m_ViewportBounds[2];
+        uint16_t  m_SavedSceneCount = 0;
 
         enum class SceneState
         {

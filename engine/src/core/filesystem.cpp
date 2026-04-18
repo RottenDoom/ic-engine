@@ -439,28 +439,36 @@ const char *fs_getExtension(const char *path)
         return last_dot + 1;
 }
 
-// imp
+// first priority for making the directory should be in executable path unless specified
 bool fs_mkdir(const char *dirName)
 {
 
         if (is_absolute_path(dirName) || dirName[0] == '.')
-                return ic::fs_mkdir(dirName);
+                return __platformMkDir(dirName);
         else
         {
                 char resolved[FS_MAX_PATH];
 
                 if (resolve(dirName, resolved, sizeof(resolved)))
                 {
-                        if (!__platformIsDirectory(resolved))
-                        {
-                                IC_CORE_ASSERT(!ic::fs_mkdir(resolved), "Could not create directory");
+                        if (__platformIsDirectory(resolved))
                                 return true;
-                        }
+
+                        if (__platformMkDir(resolved))
+                                return true;
                 }
-                char *resolvedPath = join_path(g_filesystem->write_dir, dirName);
-                memcpy(resolved, resolvedPath, sizeof(resolvedPath));
-                ic_free(resolvedPath);
-                return __platformMkDir(resolved);
+                else
+                {
+                        // fall back to system write dir
+                        char *joined = join_path(g_filesystem->write_dir, dirName);
+                        if (!joined)
+                                return false;
+
+                        snprintf(resolved, sizeof(resolved), "%s", joined);
+                        ic_free(joined);
+
+                        return __platformMkDir(resolved); /** FIX: This outputs mangled names */
+                }
         }
 }
 
@@ -992,7 +1000,7 @@ bool ic_exists(const char *filename)
 
         if (!ic::fs_exists(filename))
         {
-                IC_CORE_WARN("File does not exist in the search paths.");
+                IC_CORE_WARN("File/Directory does not exist in the search paths.");
                 return false;
         }
 

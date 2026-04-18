@@ -166,7 +166,7 @@ void EditorSystem::Render()
                                                 doOpenPopup = true;
                                         ImGui::Separator();
                                         if (ImGui::MenuItem("Save", "Ctrl+S"))
-                                                SaveScene();
+                                                SaveSceneAs(m_ScenePath);
                                         if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S"))
                                                 doSaveAsPopup = true;
                                         ImGui::EndMenu();
@@ -179,7 +179,7 @@ void EditorSystem::Render()
                                 ImGui::OpenPopup("Open Scene");
                         if (doSaveAsPopup)
                         {
-                                if (m_ScenePath && m_ScenePath[0] != '\0')
+                                if (!m_ScenePath.empty())
                                         snprintf(s_SaveAsPath, sizeof(s_SaveAsPath), "%s", m_ScenePath);
                                 ImGui::OpenPopup("Save Scene As");
                         }
@@ -194,7 +194,7 @@ void EditorSystem::Render()
                                 ImGui::InputText("##openpath", s_OpenPath, sizeof(s_OpenPath));
                                 if (ImGui::Button("Open", ImVec2(120, 0)))
                                 {
-                                        OpenScene(s_OpenPath);
+                                        OpenScene((string &)s_OpenPath);
                                         ImGui::CloseCurrentPopup();
                                 }
                                 ImGui::SameLine();
@@ -211,7 +211,7 @@ void EditorSystem::Render()
                                 ImGui::InputText("##savepath", s_SaveAsPath, sizeof(s_SaveAsPath));
                                 if (ImGui::Button("Save", ImVec2(120, 0)))
                                 {
-                                        SaveSceneAs(s_SaveAsPath);
+                                        SaveSceneAs((string &)s_SaveAsPath);
                                         ImGui::CloseCurrentPopup();
                                 }
                                 ImGui::SameLine();
@@ -278,49 +278,54 @@ void EditorSystem::NewScene()
 {
         delete m_ActiveScene;
         m_ActiveScene = new ic::RenderScene();
-        m_ScenePath   = "";
+
+        // new scene makes an untitled scene
+        char buffer[128];
+        m_SavedSceneCount++;
+        snprintf(buffer, sizeof(buffer), "assets/scenes/untitled_%d.scene", m_SavedSceneCount);
+        m_ScenePath = buffer;
 
         m_SelectedEntity = {};
         ic_set_scene(m_ActiveScene, m_EditorCamera);
-        IC_CORE_INFO("Editor: new scene created");
+        IC_INFO("Editor: new scene created");
 }
 
 void EditorSystem::SaveScene()
 {
-        if (!m_ScenePath)
-        {
-                SaveSceneAs("assets/scenes/untitled.scene");
-                return;
-        }
-
-        char *parent = fs_getParentPath(m_ScenePath);
-        fs_mkdir(parent);
-
+        /** ISSUE: If ctrl s is pressed an option to save scene must also exist */
         ic::SceneSerializer serializer;
-        serializer.Serialize(m_ScenePath, m_ActiveScene);
-        SaveLastScenePath(m_ScenePath);
-        IC_CORE_INFO("Editor: saved scene to {}", m_ScenePath);
+        serializer.Serialize(m_ScenePath.c_str(), m_ActiveScene);
+        SaveLastScenePath(m_ScenePath.c_str());
+        IC_INFO("Editor: saved scene to {}", m_ScenePath);
 }
 
-void EditorSystem::SaveSceneAs(const char *path)
+void EditorSystem::SaveSceneAs(string &path)
 {
+        char *parent = fs_getParentPath(path.c_str());
+        IC_CORE_ASSERT(parent, "Parent path does not exist!");
+        if (!ic_exists(parent))
+        {
+                IC_INFO("Creating directory: {}", parent);
+                ic_mkdir(parent);
+        }
+
         m_ScenePath = path;
         SaveScene();
 }
 
-void EditorSystem::OpenScene(const char *path)
+void EditorSystem::OpenScene(string &path)
 {
-        if (!ic_exists(path))
+        if (!ic_exists(path.c_str()))
         {
                 IC_CORE_WARN("Editor: scene not found: {}", path);
                 return;
         }
         ic::SceneSerializer serializer;
         delete m_ActiveScene;
-        m_ActiveScene    = serializer.Deserialize(path);
+        m_ActiveScene    = serializer.Deserialize(path.c_str());
         m_ScenePath      = path;
         m_SelectedEntity = {};
-        SaveLastScenePath(path);
+        SaveLastScenePath(path.c_str());
         ic_set_scene(m_ActiveScene, m_EditorCamera);
         IC_CORE_INFO("Editor: opened scene {}", path);
 }
