@@ -194,7 +194,7 @@ void EditorSystem::Render()
                                 ImGui::InputText("##openpath", s_OpenPath, sizeof(s_OpenPath));
                                 if (ImGui::Button("Open", ImVec2(120, 0)))
                                 {
-                                        OpenScene((string &)s_OpenPath);
+                                        OpenScene(string(s_OpenPath));
                                         ImGui::CloseCurrentPopup();
                                 }
                                 ImGui::SameLine();
@@ -313,7 +313,7 @@ void EditorSystem::SaveSceneAs(string &path)
         SaveScene();
 }
 
-void EditorSystem::OpenScene(string &path)
+void EditorSystem::OpenScene(const string &path)
 {
         if (!ic_exists(path.c_str()))
         {

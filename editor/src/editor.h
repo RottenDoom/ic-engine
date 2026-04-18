@@ -15,7 +15,7 @@ public:
         void NewScene();
         void SaveScene();
         void SaveSceneAs(string &path);
-        void OpenScene(string &path);
+        void OpenScene(const string &path);
 
 private:
         Framebuffer *m_fb = nullptr;
