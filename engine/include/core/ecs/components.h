@@ -35,7 +35,7 @@ struct TagComponent
 
         TagComponent()                     = default;
         TagComponent(const TagComponent &) = default;
-        TagComponent(const std::string &tag) : Tag(tag) {}
+        void SetName(const string &tag) { Tag = tag; }
 };
 
 struct HierarchyComponent

@@ -249,8 +249,8 @@ void EditorSystem::Render()
         ImGui::PopStyleVar();
 
         ImGui::ShowDemoWindow();
-        ic::panels::heirarchy_draw(m_ActiveScene, m_SelectedEntity);
-        ic::panels::component_panel_draw(m_SelectedEntity);
+        ic::panels::heirarchy_draw(m_ActiveScene, m_State);
+        ic::panels::component_panel_draw(m_State.selected);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -285,7 +285,7 @@ void EditorSystem::NewScene()
         snprintf(buffer, sizeof(buffer), "assets/scenes/untitled_%d.scene", m_SavedSceneCount);
         m_ScenePath = buffer;
 
-        m_SelectedEntity = {};
+        m_State.selected = {};
         ic_set_scene(m_ActiveScene, m_EditorCamera);
         IC_INFO("Editor: new scene created");
 }
@@ -324,7 +324,7 @@ void EditorSystem::OpenScene(const string &path)
         delete m_ActiveScene;
         m_ActiveScene    = serializer.Deserialize(path.c_str());
         m_ScenePath      = path;
-        m_SelectedEntity = {};
+        m_State.selected = {};
         SaveLastScenePath(path.c_str());
         ic_set_scene(m_ActiveScene, m_EditorCamera);
         IC_CORE_INFO("Editor: opened scene {}", path);

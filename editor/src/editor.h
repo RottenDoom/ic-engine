@@ -1,8 +1,20 @@
+#ifndef EDITOR_H
+#define EDITOR_H
+
 #include <ic_engine.h>
 #include <renderer/opengl/gl_framebuffer.h>  // we are going to use gl_framebuffer for now.
 
 namespace ic
 {
+
+struct EditorState
+{
+        Entity selected;
+
+        Entity renameTarget;
+        char   renameBuffer[256];
+        bool   isFocused;
+};
 
 class EditorSystem
 {
@@ -42,7 +54,7 @@ private:
         };
 
         // Panels
-        ic::Entity m_SelectedEntity;
+        EditorState m_State;
 
         // Editor Resources
 
@@ -52,3 +64,5 @@ private:
 };
 
 }  // namespace ic
+
+#endif  // EDITOR_H

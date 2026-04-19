@@ -1,4 +1,5 @@
 #include "panels.h"
+#include "editor.h"
 #include <imgui.h>
 
 // I don't know if I should connect this with the rendergraph ds
@@ -18,7 +19,7 @@ static uint8_t count_lights(ic::RenderScene *scene)
 namespace ic::panels
 {
 
-void heirarchy_draw(ic::RenderScene *scene, ic::Entity &selected)
+void heirarchy_draw(ic::RenderScene *scene, ic::EditorState &state)
 {
         ImGui::Begin("Hierarchy");
 
@@ -34,7 +35,7 @@ void heirarchy_draw(ic::RenderScene *scene, ic::Entity &selected)
                 scene->CreateEntityWithName("New Entity");
         }
 
-        if (selected && selected.IsValid())
+        if (state.selected && state.selected.IsValid())
         {
                 ImGui::SameLine();
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.55f, 0.15f, 0.15f, 1.0f));
@@ -42,73 +43,119 @@ void heirarchy_draw(ic::RenderScene *scene, ic::Entity &selected)
                 if (ImGui::Button("Delete"))
                 {
                         /** FIX: Delete entity does not kill the components from the screen */
-                        scene->DestroyEntity(selected);
-                        selected = {};
+                        scene->DestroyEntity(state.selected);
+                        state.selected = {};
                 }
                 ImGui::PopStyleColor(2);
         }
 
         ImGui::Separator();
 
-        // ---- Entity list ----
-        std::vector<ic::Entity> entities = scene->GetAllEntities();
+        bool sceneOpen = ImGui::TreeNodeEx("SceneRoot", ImGuiTreeNodeFlags_DefaultOpen, "%s", scene->GetName().c_str());
 
-        for (auto &e : entities)
+        if (sceneOpen)
         {
-                if (!e.IsValid())
-                        continue;
+                std::vector<ic::Entity> entities = scene->GetAllEntities();
 
-                std::string label = e.GetName();
-                if (label.empty())
-                        label = "(unnamed)";
-
-                bool isSelected = (selected && selected == e);
-
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
-                                           ImGuiTreeNodeFlags_NoTreePushOnOpen |
-                                           (isSelected ? ImGuiTreeNodeFlags_Selected : 0);
-
-                ImGui::TreeNodeEx((void *)(uint64_t)(uint32_t)e, flags, "%s", label.c_str());
-
-                if (ImGui::IsItemClicked())
+                for (auto &e : entities)
                 {
-                        selected = e;
-                }
+                        if (!e.IsValid())
+                                continue;
 
-                // Right-click context menu per entity
-                if (ImGui::BeginPopupContextItem())
-                {
-                        if (ImGui::MenuItem("Rename"))
+                        std::string label = e.GetName();
+                        if (label.empty())
+                                label = "(unnamed)";
+
+                        bool isSelected = (state.selected && state.selected == e);
+
+                        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanFullWidth |
+                                                   (isSelected ? ImGuiTreeNodeFlags_Selected : 0);
+
+                        ImGui::PushID((int)e.GetUUID());
+                        bool opened = ImGui::TreeNodeEx("##node", flags, "");
+
+                        // Right-click context menu per entity
+                        if (ImGui::BeginPopupContextItem("##ctx"))
                         {
-                                // TODO: inline rename with InputText
-                        }
-                        if (ImGui::MenuItem("Duplicate"))
-                        {
-                                ic::Entity dup = scene->CreateEntityWithName(e.GetName() + "_copy");
-                                if (e.HasComponent<ic::TransformComponent>())
+                                if (ImGui::MenuItem("Rename"))
                                 {
-                                        auto &src = e.GetComponent<ic::TransformComponent>();
-                                        auto &dst = dup.GetComponent<ic::TransformComponent>();
-                                        dst.SetPosition(src.position);
-                                        dst.SetRotation(src.rotation);
-                                        dst.SetScale(src.scale);
+                                        state.renameTarget = e;
+
+                                        strncpy(state.renameBuffer, e.GetName().c_str(), sizeof(state.renameBuffer));
+
+                                        state.renameBuffer[sizeof(state.renameBuffer) - 1] = '\0';
+                                        state.isFocused                                    = true;
                                 }
-                                if (e.HasComponent<ic::MeshComponent>())
+
+                                if (ImGui::MenuItem("Duplicate"))
                                 {
-                                        auto &src = e.GetComponent<ic::MeshComponent>();
-                                        dup.AddComponent<ic::MeshComponent>().SetMesh(src.modelID);
+                                        ic::Entity dup = scene->CreateEntityWithName(e.GetName() + "_copy");
+                                        if (e.HasComponent<ic::TransformComponent>())
+                                        {
+                                                auto &src = e.GetComponent<ic::TransformComponent>();
+                                                auto &dst = dup.GetComponent<ic::TransformComponent>();
+                                                dst.SetPosition(src.position);
+                                                dst.SetRotation(src.rotation);
+                                                dst.SetScale(src.scale);
+                                        }
+                                        if (e.HasComponent<ic::MeshComponent>())
+                                        {
+                                                auto &src = e.GetComponent<ic::MeshComponent>();
+                                                dup.AddComponent<ic::MeshComponent>().SetMesh(src.modelID);
+                                        }
+                                        state.selected = dup;
                                 }
-                                selected = dup;
+                                ImGui::Separator();
+                                if (ImGui::MenuItem("Delete"))
+                                {
+                                        scene->DestroyEntity(e);
+                                        if (state.selected && state.selected == e)
+                                                state.selected = {};
+                                }
+                                ImGui::EndPopup();
                         }
-                        ImGui::Separator();
-                        if (ImGui::MenuItem("Delete"))
+
+                        ImGui::SameLine();
+
+                        if (state.renameTarget == e)
                         {
-                                scene->DestroyEntity(e);
-                                if (selected && selected == e)
-                                        selected = {};
+                                if (state.isFocused)
+                                {
+                                        ImGui::SetKeyboardFocusHere();
+                                        state.isFocused = false;
+                                }
+
+                                ImGui::SetNextItemWidth(160.0f);  // give it a reasonable width
+                                if (ImGui::InputText("##rename",
+                                                     state.renameBuffer,
+                                                     sizeof(state.renameBuffer),
+                                                     ImGuiInputTextFlags_AutoSelectAll |
+                                                         ImGuiInputTextFlags_EnterReturnsTrue))
+                                {
+                                        e.SetName(state.renameBuffer);
+                                        state.renameTarget = {};
+                                }
+
+                                // Commit on click away
+                                if (!ImGui::IsItemActive() && ImGui::IsMouseClicked(0))
+                                {
+                                        e.SetName(state.renameBuffer);
+                                        state.renameTarget = {};
+                                }
                         }
-                        ImGui::EndPopup();
+                        else
+                        {
+                                ImGui::TextUnformatted(label.c_str());
+                                // Selection click on the label text itself
+                                if (ImGui::IsItemClicked())
+                                        state.selected = e;
+                        }
+                        if (opened)
+                                ImGui::TreePop();
+
+                        ImGui::PopID();
                 }
+                ImGui::TreePop();
         }
 
         // Right-click on empty space to create entity

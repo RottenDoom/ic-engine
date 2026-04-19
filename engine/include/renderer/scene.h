@@ -22,12 +22,15 @@ public:
         RenderScene();
         ~RenderScene();
 
+        RenderScene(string &name) : m_Name(name) {}
+
         Entity CreateEntityWithName(const string &name = string());
         Entity CreateEntity(UUID id, const string &name = string());
         void   DestroyEntity(Entity entity);
         bool   SetParent(Entity child, Entity parent);
         bool   ClearParent(Entity child);
 
+        string             &GetName() { return m_Name; }
         Entity              GetParent(Entity e);
         std::vector<Entity> GetChildren(Entity e);
         std::vector<Entity> GetRoots();
@@ -98,6 +101,7 @@ private:
         bool                                   m_IsRunning      = false;
         bool                                   m_IsPaused       = false;
         std::unordered_map<UUID, entt::entity> m_EntityMap;
+        string                                 m_Name;
 };
 
 template <>

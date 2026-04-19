@@ -3,12 +3,17 @@
 
 #include <ic_engine.h>
 
+namespace ic
+{
+struct EditorState;
+}
+
 namespace ic::panels
 {
 // Command pallete commands registration
 // void register_commands();
 
-void heirarchy_draw(ic::RenderScene *scene, ic::Entity &selected);
+void heirarchy_draw(ic::RenderScene *scene, ic::EditorState &state);
 
 void component_panel_draw(ic::Entity &selected);
 

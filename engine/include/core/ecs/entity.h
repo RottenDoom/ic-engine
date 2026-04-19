@@ -34,6 +34,7 @@ public:
 
         UUID               GetUUID() { return GetComponent<IDComponent>().ID; }
         const std::string &GetName() { return GetComponent<TagComponent>().Tag; }
+        void               SetName(const string &name) { AddOrReplaceComponent<TagComponent>().SetName(name); }
 
         bool IsValid() const { return handle != entt::null && scene != nullptr; }
 
