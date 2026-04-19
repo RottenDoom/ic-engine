@@ -13,6 +13,7 @@ struct EditorState
 
         Entity renameTarget;
         char   renameBuffer[256];
+        bool   renamingScene;
         bool   isFocused;
 };
 

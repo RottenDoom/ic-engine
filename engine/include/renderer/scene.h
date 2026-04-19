@@ -19,10 +19,8 @@ class IC_API RenderScene
 public:
         friend class Entity;
 
-        RenderScene();
+        RenderScene(const string &name);
         ~RenderScene();
-
-        RenderScene(string &name) : m_Name(name) {}
 
         Entity CreateEntityWithName(const string &name = string());
         Entity CreateEntity(UUID id, const string &name = string());
@@ -42,6 +40,8 @@ public:
         bool   HasEntity(UUID uuid) const;
         Entity FindEntityByName(std::string_view name);
         Entity GetEntityByUUID(UUID uuid);
+
+        void SetName(const string &name) { m_Name = name; }
 
         bool IsRunning() const { return m_IsRunning; }
         bool IsPaused() const { return m_IsPaused; }

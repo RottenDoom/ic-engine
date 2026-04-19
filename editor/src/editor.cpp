@@ -90,7 +90,7 @@ void EditorSystem::Init()
         }
         else
         {
-                m_ActiveScene = new ic::RenderScene();
+                m_ActiveScene = new ic::RenderScene("New Scene");
                 IC_CORE_INFO("Editor: Started with empty scene");
         }
 
@@ -277,7 +277,7 @@ void EditorSystem::Shutdown()
 void EditorSystem::NewScene()
 {
         delete m_ActiveScene;
-        m_ActiveScene = new ic::RenderScene();
+        m_ActiveScene = new ic::RenderScene("New Scene");
 
         // new scene makes an untitled scene
         char buffer[128];

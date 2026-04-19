@@ -9,8 +9,8 @@ struct ApplicationState
 struct GameState
 {
         std::vector<IC_GUID> models;
-        ic::RenderScene defaultScene;  // TODO Probably gonna make a World class later instead of directly using scene
-                                       // here.
+        ic::RenderScene      defaultScene{"Scene"};  // TODO Probably gonna make a World class later instead of directly
+                                                // using scene here.
 };
 
 GameState g_state;
