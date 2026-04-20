@@ -308,7 +308,7 @@ void EditorSystem::SaveSceneAs(string &path)
                 IC_INFO("Creating directory: {}", parent);
                 ic_mkdir(parent);
         }
-
+        ic_free(parent);
         m_ScenePath = path;
         SaveScene();
 }
@@ -376,6 +376,7 @@ void EditorSystem::SaveLastScenePath(const char *path)
                 /** FIX: THIS part needs fixiing. */
                 IC_CORE_WARN("EditorSystem: cannot create parent path");
         }
+        ic_free(parent);
         std::ofstream f(m_EditorConfig);
         f << "last_scene: \"" << path << "\"\n";
 }
