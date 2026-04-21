@@ -7,7 +7,9 @@
 namespace ic::panels
 {
 
-static bool openChooseFilePopup = false;
+static bool   openChooseFilePopup = false;
+static bool   showAssetBrowser    = false;
+static Entity targetSelectedModel = {};
 
 // Helper: draw a labeled vec3 drag — cleaner than raw DragFloat3
 static bool draw_vec3(const char *label, glm::vec3 &v, float speed = 0.1f, const char *fmt = "%.3f")
@@ -24,7 +26,48 @@ static bool draw_vec3(const char *label, glm::vec3 &v, float speed = 0.1f, const
         return changed;
 }
 
-void component_panel_draw(ic::Entity &selected)
+static void draw_asset_browser(AssetRegistry &registry, ic::Entity &selected)
+{
+        ImGui::Begin("Asset Browser");
+
+        static char search[128] = "";
+        ImGui::InputText("Search", search, sizeof(search));
+
+        ImGui::Separator();
+
+        for (const auto &[id, meta] : registry.GetAllAssets())
+        {
+                // --- filter only mesh assets ---
+                if (meta.type != AssetType::ASSET_TYPE_MODEL)
+                        continue;
+
+                const char *name = registry.GetAssetName(id);
+
+                if (strlen(search) > 0 && strstr(name, search) == nullptr)
+                        continue;
+
+                if (ImGui::Selectable(name))
+                {
+                        ic::Entity entity = targetSelectedModel;
+
+                        if (!entity.HasComponent<ic::MeshComponent>())
+                                entity.AddComponent<ic::MeshComponent>();
+
+                        auto &mesh   = entity.GetComponent<ic::MeshComponent>();
+                        mesh.modelID = id;
+
+                        showAssetBrowser = false;
+                }
+
+                if (ImGui::IsItemHovered())
+                {
+                        ImGui::SetTooltip("%s", registry.GetFilePath(id));
+                }
+        }
+        ImGui::End();
+}
+
+void component_panel_draw(Entity &selected)
 {
         ImGui::Begin("Components");
 
@@ -138,7 +181,8 @@ void component_panel_draw(ic::Entity &selected)
 
                 if (ImGui::MenuItem("AssetBrowser"))
                 {
-                        ImGui::SetTooltip("Asset Browser in development");
+                        showAssetBrowser    = true;
+                        targetSelectedModel = selected;
                 }
 
                 if (ImGui::MenuItem("Choose File"))
@@ -150,6 +194,11 @@ void component_panel_draw(ic::Entity &selected)
                         // selected.AddComponent<ic::MeshComponent>();
                 }
                 ImGui::EndPopup();
+        }
+
+        if (showAssetBrowser)
+        {
+                draw_asset_browser(*AssetManager::Get().GetRegistry(), selected);
         }
 
         // display

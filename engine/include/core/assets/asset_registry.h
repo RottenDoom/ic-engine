@@ -27,7 +27,7 @@ public:
 
         // Save the registry file in yaml format
         bool Save(const char *assets_registry_file);
-	bool IsUnsaved() { return m_registry_unsaved; }
+        bool IsUnsaved() { return m_registry_unsaved; }
 
         // Check if an asset is in the registry
         bool Contains(IC_GUID id) const;
@@ -44,23 +44,24 @@ public:
         const char *GetCachePath(IC_GUID id) const;
 
         const char *GetAssetName(IC_GUID id) const;
-	void SetAssetName(IC_GUID id, const string& name);
+        void        SetAssetName(IC_GUID id, const string &name);
 
         // Register filepath into the asset registy.
         IC_GUID RegisterAsset(IC_GUID id, const char *file_path, AssetType type);
-        void RegisterDependency(IC_GUID id, IC_GUID dependency_id);
+        void    RegisterDependency(IC_GUID id, IC_GUID dependency_id);
 
-        const std::unordered_set<IC_GUID> *GetDependencies(IC_GUID id) const;
+        const std::unordered_set<IC_GUID>            *GetDependencies(IC_GUID id) const;
+        const std::unordered_map<IC_GUID, AssetMeta> &GetAllAssets() const { return m_assets; }
 
         void Unregister(IC_GUID id);
 
 private:
         // common asset folder
         string m_asset_folder;
-	bool m_registry_unsaved = false;
+        bool   m_registry_unsaved = false;
 
-        std::unordered_map<IC_GUID, AssetMeta>                m_assets;
-        std::unordered_map<string, IC_GUID>                   m_ids;
+        std::unordered_map<IC_GUID, AssetMeta>                   m_assets;
+        std::unordered_map<string, IC_GUID>                      m_ids;
         std::unordered_map<IC_GUID, std::unordered_set<IC_GUID>> m_dependencies;
 
         void             ParseAssetEntry(const YAML::Node &node);
