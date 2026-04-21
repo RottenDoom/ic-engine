@@ -2,9 +2,12 @@
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <extern/ImGuiFileDialog.h>
 
 namespace ic::panels
 {
+
+static bool openChooseFilePopup = false;
 
 // Helper: draw a labeled vec3 drag — cleaner than raw DragFloat3
 static bool draw_vec3(const char *label, glm::vec3 &v, float speed = 0.1f, const char *fmt = "%.3f")
@@ -112,10 +115,7 @@ void component_panel_draw(ic::Entity &selected)
                 if (!selected.HasComponent<ic::MeshComponent>())
                 {
                         if (ImGui::MenuItem("Mesh Component"))
-                        {
-
-                                selected.AddComponent<ic::MeshComponent>();
-                        }
+                                openChooseFilePopup = true;
                 }
                 if (!selected.HasComponent<ic::LightComponent>())
                 {
@@ -125,6 +125,45 @@ void component_panel_draw(ic::Entity &selected)
                         }
                 }
                 ImGui::EndPopup();
+        }
+
+        if (openChooseFilePopup)
+        {
+                ImGui::OpenPopup("##ChooseFile");
+                openChooseFilePopup = false;
+        }
+
+        if (ImGui::BeginPopup("##ChooseFile"))
+        {
+
+                if (ImGui::MenuItem("AssetBrowser"))
+                {
+                        ImGui::SetTooltip("Asset Browser in development");
+                }
+
+                if (ImGui::MenuItem("Choose File"))
+                {
+                        IGFD::FileDialogConfig config;
+                        config.path = ic_getbasedir();
+                        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf", config);
+
+                        // selected.AddComponent<ic::MeshComponent>();
+                }
+                ImGui::EndPopup();
+        }
+
+        // display
+        if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+        {
+                if (ImGuiFileDialog::Instance()->IsOk())
+                {
+                        std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                        std::string filePath     = ImGuiFileDialog::Instance()->GetCurrentPath();
+                        // action
+                }
+
+                // close
+                ImGuiFileDialog::Instance()->Close();
         }
 
         ImGui::End();

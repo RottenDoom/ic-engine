@@ -4,7 +4,7 @@ set(EDITOR_SOURCES
     src/panels/component.cpp
     src/panels/heirarchy.cpp
     src/panels/light.cpp
-    src/extern/ImGuiFileDailog.cpp
+    src/extern/ImGuiFileDialog.cpp
 )
 
 add_executable(editor ${EDITOR_SOURCES})
