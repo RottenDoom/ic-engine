@@ -26,6 +26,7 @@ static bool draw_vec3(const char *label, glm::vec3 &v, float speed = 0.1f, const
         return changed;
 }
 
+// Helper: draw asset browser for loading (only models for now)
 static void draw_asset_browser(AssetRegistry &registry, ic::Entity &selected)
 {
         ImGui::Begin("Asset Browser");
@@ -185,10 +186,11 @@ void component_panel_draw(Entity &selected)
                         targetSelectedModel = selected;
                 }
 
-                if (ImGui::MenuItem("Choose File"))
+                if (ImGui::MenuItem("Choose File") || ImGui::IsItemHovered())
                 {
                         IGFD::FileDialogConfig config;
                         config.path = ic_getbasedir();
+                        ImGui::SetTooltip("File Choosing in development");
                         ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf", config);
 
                         // selected.AddComponent<ic::MeshComponent>();

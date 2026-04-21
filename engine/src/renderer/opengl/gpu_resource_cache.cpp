@@ -21,6 +21,7 @@ GLModel *GPUResourceCache::GetOrUpload(IC_GUID id, AssetManager &mgr)
         if (it != m_models.end())
                 return it->second.get();
 
+        // ISSUE: Multiple loads increasing the refcounts
         Model *model = mgr.LoadAs<Model>(id);
         if (!model)
         {

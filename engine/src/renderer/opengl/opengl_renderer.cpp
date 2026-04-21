@@ -116,6 +116,7 @@ void OpenGLRenderer::LoadAssets()
         if (!m_scene)
                 return;
 
+        // ISSUE: multiple refcounts
         for (auto &e : m_scene->GetEntitiesWith<MeshComponent>())
         {
                 MeshComponent &c     = e.GetComponent<MeshComponent>();
@@ -214,7 +215,7 @@ void OpenGLRenderer::OnEvent(event &e)
 
 void OpenGLRenderer::ClearColor()
 {
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 

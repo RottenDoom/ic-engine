@@ -45,6 +45,7 @@ enum AssetType : uint8_t
         ASSET_TYPE_SHADER,
         ASSET_TYPE_TEXTURE,
         ASSET_TYPE_MATERIAL,
+        // ASSET_TYPE_SKYBOX,
         // ASSET_TYPE_GFX_IMAGE,
         // ASSET_TYPE_SCRIPT,
         // ASSET_TYPE_UI_LAYOUT,
@@ -57,7 +58,7 @@ enum AssetType : uint8_t
 
 struct AssetMeta
 {
-        IC_GUID      id;
+        IC_GUID   id;
         string    name;
         string    filepath;
         string    cachePath;
@@ -95,7 +96,7 @@ public:
         virtual bool isLoaded() const { return loaded; }
 
         // Identifiable
-        IC_GUID        getID() { return _id; }
+        IC_GUID     getID() { return _id; }
         void        setName(char *name) { m_name = name; };
         const char *getName() { return m_name; }
 
@@ -107,8 +108,8 @@ private:
         bool loaded = false;
 
         // Identifiable
-        IC_GUID  _id    = INVALID_ID;
-        char *m_name = nullptr;
+        IC_GUID _id    = INVALID_ID;
+        char   *m_name = nullptr;
 
         // Refcountable - Not every object is refcountable so maybe add refcountable object but we are not worried right
         // now until we get an asset like that. Probably Shader would be like that.
