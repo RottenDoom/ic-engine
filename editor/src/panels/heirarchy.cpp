@@ -2,8 +2,6 @@
 #include "editor.h"
 #include <imgui.h>
 
-// I don't know if I should connect this with the rendergraph ds
-
 // TODO:
 // Fix the camera component so that when hovering over the panels the scene does not get updated. Also in the camera
 // make a toggle that works when I press c etc.

@@ -113,6 +113,7 @@ void component_panel_draw(ic::Entity &selected)
                 {
                         if (ImGui::MenuItem("Mesh Component"))
                         {
+
                                 selected.AddComponent<ic::MeshComponent>();
                         }
                 }
