@@ -104,10 +104,10 @@ private:
         void DestroyAsset(IAsset *asset);
 
         static AssetManager *s_instance;
-	
-	string m_AssetRegistryPath;
+
+        string                                m_AssetRegistryPath;
         std::unordered_map<IC_GUID, IAsset *> m_assets;
-        AssetRegistry                      m_registry;
+        AssetRegistry                         m_registry;
 };
 
 }  // namespace ic
@@ -129,11 +129,11 @@ extern "C"
          * @brief Loads a model using model name. Returns false if no model of that name found.
          elID modelID from a registry file.
          */
-        IC_API IC_GUID ic_load_model(const char* name);
+        IC_API IC_GUID ic_load_model(const char *name);
 
-	// TODO: load model without registry and then save it into the file.
+        // TODO: load model without registry and then save it into the file.
 
-	IC_API void ic_name_model(IC_GUID id, const char* name);
+        IC_API void ic_name_model(IC_GUID id, const char *name);
 
         IC_API const char *ic_get_model_path(IC_GUID modelID);
 

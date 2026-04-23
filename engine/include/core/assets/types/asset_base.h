@@ -45,7 +45,7 @@ enum AssetType : uint8_t
         ASSET_TYPE_SHADER,
         ASSET_TYPE_TEXTURE,
         ASSET_TYPE_MATERIAL,
-        // ASSET_TYPE_SKYBOX,
+        ASSET_TYPE_SKYBOX,
         // ASSET_TYPE_GFX_IMAGE,
         // ASSET_TYPE_SCRIPT,
         // ASSET_TYPE_UI_LAYOUT,
@@ -88,21 +88,21 @@ public:
         virtual string      toString() const { return getName(); }
 
         // Implementation details to be implemented
-        virtual bool load(const char *filepath) { return false; };
-        virtual bool serializedLoad(ic::Serializer *serializer)       = 0;
-        virtual bool serializedSave(ic::Serializer *serializer) const = 0;
-        virtual bool release() { return false; }
+        virtual bool Load(const char *filepath) { return false; };
+        virtual bool SerializedLoad(ic::Serializer *serializer)       = 0;
+        virtual bool SerializedSave(ic::Serializer *serializer) const = 0;
+        virtual bool Release() { return false; }
 
-        virtual bool isLoaded() const { return loaded; }
+        virtual bool IsLoaded() const { return loaded; }
 
         // Identifiable
-        IC_GUID     getID() { return _id; }
-        void        setName(char *name) { m_name = name; };
-        const char *getName() { return m_name; }
+        IC_GUID     GetID() { return _id; }
+        void        SetName(char *name) { m_name = name; };
+        const char *GetName() { return m_name; }
 
         // RefCountable
-        void    addRef() { _ref_count++; }
-        int32_t getRefNum() { return _ref_count; }
+        void    AddRef() { _ref_count++; }
+        int32_t GetRefNum() { return _ref_count; }
 
 private:
         bool loaded = false;
