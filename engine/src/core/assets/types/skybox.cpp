@@ -2,8 +2,14 @@
 #include "core/assets/asset_serializer.h"
 #include "core/filesystem.h"
 
+// Toggle: by default we use stb however sometimes ktx is used as I hate the dds format and works fine with vulkan
+// formats.
+#define IC_SKYBOX_USE_STB
+
 #include <ktx.h>
 #include <glad/glad.h>
+
+#include <stb_image.h>
 
 static void MapVkToGL(CubemapFormat &fmt, uint32_t vkFormat)
 {
@@ -43,7 +49,7 @@ static void MapVkToGL(CubemapFormat &fmt, uint32_t vkFormat)
         }
 }
 
-bool Skybox::LoadFace(const std::string &path, CubemapFace *outFace)
+bool Skybox::LoadFaceKTX(const std::string &path, CubemapFace *outFace)
 {
         ktxTexture2   *texture  = nullptr;
         const char    *filepath = ic::fs_getfullpath(path.c_str());
@@ -115,6 +121,41 @@ bool Skybox::LoadFace(const std::string &path, CubemapFace *outFace)
         return true;
 }
 
+bool Skybox::LoadFaceSTB(const std::string &path, CubemapFace *outFace)
+{
+        const char *filepath = ic::fs_getfullpath(path.c_str());
+        int         w, h, channels;
+        uint8_t    *data = stbi_load(filepath, &w, &h, &channels, 4);
+        ic_free(filepath);
+
+        if (!data)
+        {
+                IC_CORE_ERROR("Skybox::LoadFaceSTB -> failed to load '{}': {}", path, stbi_failure_reason());
+                return false;
+        }
+
+        if (m_baseWidth == 0)
+        {
+                m_baseWidth             = static_cast<uint32_t>(w);
+                m_baseHeight            = static_cast<uint32_t>(h);
+                m_mipLevels             = 1;
+                m_format.internalFormat = 0x8058;  // GL_RGBA8
+                m_format.externalFormat = 0x1908;  // GL_RGBA
+                m_format.type           = 0x1401;  // GL_UNSIGNED_BYTE
+                m_format.compressed     = false;
+        }
+
+        outFace->mips.resize(1);
+        outFace->mips[0].width  = static_cast<uint32_t>(w);
+        outFace->mips[0].height = static_cast<uint32_t>(h);
+        size_t imageSize        = static_cast<size_t>(w) * h * 4;
+        outFace->mips[0].data.resize(imageSize);
+        std::memcpy(outFace->mips[0].data.data(), data, imageSize);
+
+        stbi_image_free(data);
+        return true;
+}
+
 bool Skybox::Release()
 {
         for (auto &face : m_faces)
@@ -141,10 +182,20 @@ bool Skybox::Load(const char *filepath)
         if (!dir.empty() && dir.back() != '/')
                 dir += '/';
 
+#ifdef IC_SKYBOX_USE_STB
+        const auto &faceNames = k_faceNamesPNG;
+#else
+        const auto &faceNames = k_faceNamesKTX;
+#endif
+
         for (int i = 0; i < 6; i++)
         {
-                std::string path = dir + k_faceNames[i];
-                if (!LoadFace(path, &m_faces[i]))
+                std::string path = dir + faceNames[i];
+#ifdef IC_SKYBOX_USE_STB
+                if (!LoadFaceSTB(path, &m_faces[i]))
+#else
+                if (!LoadFaceKTX(path, &m_faces[i]))
+#endif
                 {
                         m_state = State::Failed;
                         return false;

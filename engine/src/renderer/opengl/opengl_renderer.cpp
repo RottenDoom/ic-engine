@@ -179,7 +179,7 @@ void OpenGLRenderer::RenderCubeMap(Shader *cubeMapShader, GLSkybox *skybox)
 
         GLint boundCubemap = 0;
         glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &boundCubemap);
-        IC_CORE_INFO("RenderCubeMap -> bound cubemap on unit 0: {}", boundCubemap);
+        // IC_CORE_INFO("RenderCubeMap -> bound cubemap on unit 0: {}", boundCubemap);
 
         glBindVertexArray(skybox->GetVAO());
         glDrawArrays(GL_TRIANGLES, 0, 36);

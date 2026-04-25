@@ -61,12 +61,13 @@ public:
         bool                              IsLoaded() const override { return m_state == State::Ready; }
 
 private:
-        bool LoadFace(const string &path, CubemapFace *outFace);
+        bool LoadFaceKTX(const string &path, CubemapFace *outFace);
+        bool LoadFaceSTB(const string &path, CubemapFace *outFace);
 
-        // we are loading ktx2 files only herer
-        /** TODO: make an exception that throws if file names do not match */
-        static constexpr std::array<const char *, 6> k_faceNames = {
+        static constexpr std::array<const char *, 6> k_faceNamesKTX = {
             "right.ktx2", "left.ktx2", "top.ktx2", "bottom.ktx2", "front.ktx2", "back.ktx2"};
+        static constexpr std::array<const char *, 6> k_faceNamesPNG = {
+            "right.png", "left.png", "top.png", "bottom.png", "front.png", "back.png"};
 
         std::array<CubemapFace, 6> m_faces;
         CubemapFormat              m_format     = {};

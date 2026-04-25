@@ -8,8 +8,13 @@ assets:
     type: model
 
   - id: 0x1000000000000006
-    name: default_cubemap
-    filepath: cubemaps/
+    name: cloudy_cubemap
+    filepath: cubemaps/cloudy
+    type: skybox
+
+  - id: 0x1000000000000007
+    name: landscape_cubemap
+    filepath: cubemaps/landscape
     type: skybox
 
   - id: 0x1000000000000005

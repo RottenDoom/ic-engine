@@ -207,7 +207,9 @@ ic::RenderScene *SceneSerializer::Deserialize(const char *path)
         string sceneName = metaNode["name"] ? metaNode["name"].as<std::string>() : "Scene";
 
         auto *scene = new ic::RenderScene(sceneName);
-        scene->SetSkybox("default_cubemap", true);  // this is just a hack gonna fix this later.
+
+        string skyboxName = metaNode["skybox"] ? metaNode["skybox"].as<std::string>() : "landscape_cubemap";
+        scene->SetSkybox(skyboxName, true);
 
         auto entitiesNode = root["entities"];
         if (!entitiesNode)
