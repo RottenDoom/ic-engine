@@ -62,7 +62,7 @@ include(cmake/dependencies.cmake)
 add_subdirectory(engine)
 
 # Samples and test app
-option(IC_BUILD_SAMPLES "Build IC engine samples" ON)
+option(IC_BUILD_SAMPLES "Build IC engine samples" OFF)
 
 if(IC_BUILD_SAMPLES)
     message(STATUS "Building samples")

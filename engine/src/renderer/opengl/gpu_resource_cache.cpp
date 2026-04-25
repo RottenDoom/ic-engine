@@ -55,7 +55,7 @@ GLMaterial *GPUResourceCache::GetMaterial(IC_GUID modelId, Index materialIdx, co
         if (it != m_materials.end())
                 return &it->second;
 
-        const Material *mat = model.getMaterial(materialIdx);
+        const Material *mat = model.GetMaterial(materialIdx);
         if (!mat)
         {
                 IC_CORE_WARN("GPUResourceCache::getMaterial -> material {} not found in model {}",

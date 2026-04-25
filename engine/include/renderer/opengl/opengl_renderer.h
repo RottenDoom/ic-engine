@@ -6,6 +6,7 @@
 #include "renderer/scene.h"
 #include "renderer/camera.h"
 #include "renderer/opengl/gl_shader.h"
+#include "renderer/opengl/gl_skybox.h"
 #include "renderer/opengl/gpu_resource_cache.h"
 #include "renderer/opengl/render_command.h"
 #include "renderer/opengl/render_pass.h"
@@ -56,6 +57,8 @@ private:
         void Update(float dt);
         void Draw(float dt);
 
+        void RenderCubeMap(Shader *cubeMapShader, GLSkybox *skybox);
+
         // -----------------------------------------------------------------------
         // Event handlers
         // -----------------------------------------------------------------------
@@ -71,7 +74,8 @@ private:
         bool         m_isMinimized   = false;
         Camera      *m_pEditorCamera = nullptr;
 
-        Shader *m_shader = nullptr;
+        Shader *m_shader        = nullptr;
+        Shader *m_cubemapShader = nullptr;
 
         GPUResourceCache m_cache;
         RenderQueue      m_queue;
@@ -81,6 +85,8 @@ private:
 
         LightUBO    m_lightUBO;
         LightSystem m_lightSystem;
+
+        GLSkybox m_Skybox;
 };
 
 }  // namespace ic

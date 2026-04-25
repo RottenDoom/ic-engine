@@ -1,7 +1,7 @@
 #default_scene/default.scene
 scene:
   name: "Default Scene"
-  # skybox: "assets/cubemap/sky_01"
+  skybox: "default_cubemap"
 
 entities:
   - id: 2

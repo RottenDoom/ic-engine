@@ -4,8 +4,10 @@
 #include "defines.h"
 #include "camera.h"
 #include "core/uuid.h"
+#include "core/assets/types/skybox.h"
 #include "core/ecs/entity.h"
 #include "core/ecs/components.h"
+
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 
@@ -33,6 +35,8 @@ public:
         std::vector<Entity> GetChildren(Entity e);
         std::vector<Entity> GetRoots();
         std::vector<Entity> GetAllEntities();
+        void                SetSkybox(const string &name, bool isSkybox = true);
+        Skybox             *GetSkybox();
 
         // walks the parent chain multiplying transforms
         glm::mat4 GetWorldTransform(Entity e);
@@ -102,6 +106,8 @@ private:
         bool                                   m_IsPaused       = false;
         std::unordered_map<UUID, entt::entity> m_EntityMap;
         string                                 m_Name;
+        bool                                   m_IsSkybox = true;  // by default all scenes have a skybox
+        Skybox *m_Skybox;  // every scene will have default skybox but can be toggled and can be removed as well.
 };
 
 template <>

@@ -14,6 +14,7 @@ set(CORE_SRC
     src/core/allocator.cpp
 
     src/core/assets/types/model.cpp
+    src/core/assets/types/skybox.cpp
     src/core/assets/types/material.cpp
     src/core/assets/asset_cache.cpp
     src/core/assets/asset_manager.cpp
@@ -35,6 +36,7 @@ set(RENDERER_SRC
 set(OPENGL_SRC
 	src/renderer/opengl/gl_material.cpp
 	src/renderer/opengl/gl_model.cpp
+	src/renderer/opengl/gl_skybox.cpp
 	src/renderer/opengl/gl_shader.cpp
 	src/renderer/opengl/light_ubo.cpp
 	src/renderer/opengl/gl_framebuffer.cpp

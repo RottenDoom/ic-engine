@@ -86,7 +86,7 @@ void GLModel::CollectDrawItems(const glm::mat4 &baseTransform, std::vector<DrawI
         if (!m_model)
                 return;
 
-        const Scene *scene = m_model->getDefaultScene();
+        const Scene *scene = m_model->GetDefaultScene();
         if (!scene)
                 return;
 
@@ -96,7 +96,7 @@ void GLModel::CollectDrawItems(const glm::mat4 &baseTransform, std::vector<DrawI
 
 void GLModel::CollectNode(Index nodeIdx, const glm::mat4 &parentWorld, std::vector<DrawItem> &out) const
 {
-        const Node *node = m_model->getNode(nodeIdx);
+        const Node *node = m_model->GetNode(nodeIdx);
         if (!node)
                 return;
 
@@ -104,7 +104,7 @@ void GLModel::CollectNode(Index nodeIdx, const glm::mat4 &parentWorld, std::vect
 
         if (node->meshIndex != INVALID_INDEX && node->meshIndex < m_meshes.size())
         {
-                const Mesh   *mesh   = m_model->getMesh(node->meshIndex);
+                const Mesh   *mesh   = m_model->GetMesh(node->meshIndex);
                 const GLMesh &glMesh = m_meshes[node->meshIndex];
 
                 if (mesh)

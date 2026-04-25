@@ -57,7 +57,7 @@ public:
         template <typename T>
         T *LoadAs(IC_GUID id, const char *path)
         {
-                IAsset *asset = load(id, path, T::getStaticType());
+                IAsset *asset = Load(id, path, T::getStaticType());
                 if (!asset)
                         return nullptr;
                 if (asset->getAssetType() != T::getStaticType())

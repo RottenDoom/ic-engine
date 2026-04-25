@@ -30,7 +30,7 @@ constexpr Index INVALID_INDEX = ~0u;
         {                                                                                                              \
                 return getStaticType();                                                                                \
         }                                                                                                              \
-        virtual const char *getName() const override                                                                   \
+        virtual const char *getAssetName() const override                                                                   \
         {                                                                                                              \
                 return #type;                                                                                          \
         }
@@ -84,8 +84,8 @@ public:
 
         // Type Signatures Load this using ASSET_CLASS_TYPE(type)
         virtual AssetType   getAssetType() const = 0;
-        virtual const char *getName() const      = 0;
-        virtual string      toString() const { return getName(); }
+        virtual const char *getAssetName() const = 0;
+        virtual string      toString() const { return getAssetName(); }
 
         // Implementation details to be implemented
         virtual bool Load(const char *filepath) { return false; };

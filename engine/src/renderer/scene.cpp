@@ -2,6 +2,8 @@
 #include "core/ecs/entity.h"
 #include "core/ecs/entity_impl.h"
 
+#include "core/assets/asset_manager.h"
+
 #include <entt/entt.hpp>
 
 namespace ic
@@ -122,6 +124,34 @@ Entity RenderScene::GetParent(Entity e)
         auto &h = e.HasComponent<HierarchyComponent>() ? e.GetComponent<HierarchyComponent>()
                                                        : e.AddComponent<HierarchyComponent>();
         return {h.parent, this};
+}
+
+void RenderScene::SetSkybox(const string &name, bool isSkybox)
+{
+        m_IsSkybox = isSkybox;
+        if (m_IsSkybox)
+        {
+                AssetRegistry *registry = AssetManager::Get().GetRegistry();
+                IC_GUID        skyboxID = registry->GetAssetId(name.c_str());
+
+                if (skyboxID == INVALID_ID)
+                {
+                        IC_CORE_ERROR("Scene::SetSkybox -> skybox named '{}' not found in registry", name);
+                        return;
+                }
+
+                m_Skybox = AssetManager::Get().LoadAs<Skybox>(skyboxID);
+        }
+}
+
+Skybox *RenderScene::GetSkybox()
+{
+        if (m_IsSkybox && m_Skybox)
+        {
+                return m_Skybox;
+        }
+        IC_CORE_WARN("ic::RenderScene::GetSkybox -> Skybox does not exist");
+        return nullptr;
 }
 
 std::vector<Entity> RenderScene::GetChildren(Entity e)

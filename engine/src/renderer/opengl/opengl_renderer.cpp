@@ -13,10 +13,6 @@
 namespace ic
 {
 
-// ---------------------------------------------------------------------------
-// Constructor / Destructor
-// ---------------------------------------------------------------------------
-
 OpenGLRenderer::OpenGLRenderer() : m_window(nullptr), m_scene(nullptr) {}
 
 OpenGLRenderer::~OpenGLRenderer()
@@ -26,10 +22,6 @@ OpenGLRenderer::~OpenGLRenderer()
         if (m_shader)
                 CleanUp();
 }
-
-// ---------------------------------------------------------------------------
-// IRenderer::Init
-// ---------------------------------------------------------------------------
 
 bool OpenGLRenderer::Init(Window *w)
 {
@@ -71,16 +63,13 @@ bool OpenGLRenderer::Init(Window *w)
         glUniformBlockBinding(progID, glGetUniformBlockIndex(progID, "PerFrameBlock"), 0);
         glUniformBlockBinding(progID, glGetUniformBlockIndex(progID, "LightBlock"), 1);
 
-        LoadAssets();
-        SetupBuffers();
+        m_cubemapShader->use();
+        GLuint skyboxProgID = m_cubemapShader->ID;
+        glUniformBlockBinding(skyboxProgID, glGetUniformBlockIndex(skyboxProgID, "PerFrameBlock"), 0);
 
         IC_CORE_INFO("OpenGLRenderer: initialized");
         return true;
 }
-
-// ---------------------------------------------------------------------------
-// IRenderer::SetScene
-// ---------------------------------------------------------------------------
 
 void OpenGLRenderer::SetScene(RenderScene *scene, Camera &editorCamera)
 {
@@ -94,10 +83,6 @@ void OpenGLRenderer::SetScene(RenderScene *scene, Camera &editorCamera)
         }
 }
 
-// ---------------------------------------------------------------------------
-// Init helpers
-// ---------------------------------------------------------------------------
-
 void OpenGLRenderer::EnableFeatures()
 {
         glEnable(GL_DEPTH_TEST);
@@ -108,7 +93,8 @@ void OpenGLRenderer::EnableFeatures()
 void OpenGLRenderer::CreateShader()
 {
         /** TODO: Make the shaders as assets instead of this. */
-        m_shader = new Shader("shaders/opengl/pbr/pbr.vert", "shaders/opengl/pbr/pbr.frag");
+        m_shader        = new Shader("shaders/opengl/pbr/pbr.vert", "shaders/opengl/pbr/pbr.frag");
+        m_cubemapShader = new Shader("shaders/opengl/skybox.vert", "shaders/opengl/skybox.frag");
 }
 
 void OpenGLRenderer::LoadAssets()
@@ -136,6 +122,28 @@ void OpenGLRenderer::SetupBuffers()
                 MeshComponent &c = e.GetComponent<MeshComponent>();
                 m_cache.GetOrUpload(c.modelID, AssetManager::Get());
         }
+
+        Skybox *skyboxAsset = m_scene->GetSkybox();
+        if (!skyboxAsset || !skyboxAsset->IsLoaded())
+        {
+                IC_CORE_WARN("Skybox asset is not loaded!");
+                return;
+        }
+        m_Skybox.Destroy();
+        bool uploaded = m_Skybox.Upload(*skyboxAsset);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, m_Skybox.GetCubemapID());
+        GLint width = 0, height = 0, internalFmt = 0;
+        glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_WIDTH, &width);
+        glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_HEIGHT, &height);
+        glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFmt);
+        IC_CORE_INFO("Cubemap face +X: {}x{} internalFormat: 0x{:X}", width, height, internalFmt);
+
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        if (!uploaded)
+        {
+                IC_CORE_WARN("Skybox asset was not uploaded to the GPU");
+        }
+        skyboxAsset->Release();
 }
 
 // ---------------------------------------------------------------------------
@@ -153,12 +161,50 @@ void OpenGLRenderer::Update(float dt)
         (void)dt;
 }
 
+void OpenGLRenderer::RenderCubeMap(Shader *cubeMapShader, GLSkybox *skybox)
+{
+        glDepthFunc(GL_LEQUAL);
+        glDisable(GL_CULL_FACE);
+
+        cubeMapShader->use();
+
+        GLint skyboxLoc = glGetUniformLocation(cubeMapShader->ID, "u_Skybox");
+        glUniform1i(skyboxLoc, 0);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);        // unbind any 2D texture on unit 0
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);  // unbind any cubemap on unit 0
+
+        skybox->Bind(0);
+
+        GLint boundCubemap = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &boundCubemap);
+        IC_CORE_INFO("RenderCubeMap -> bound cubemap on unit 0: {}", boundCubemap);
+
+        glBindVertexArray(skybox->GetVAO());
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glDepthFunc(GL_LESS);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+}
+
 void OpenGLRenderer::Draw(float dt)
 {
         (void)dt;
 
         if (m_isMinimized || !m_scene || !m_shader || !m_pEditorCamera)
                 return;
+
+        ClearColor();
+
+        // upload perframe data
+        PerFrameData perFrame{};
+        perFrame.view       = m_pEditorCamera->matrices.view;
+        perFrame.projection = m_pEditorCamera->projection;
+        perFrame.cameraPos  = glm::vec4(m_pEditorCamera->position, 0.0f);
+        perFrame.time       = static_cast<float>(glfwGetTime());
+        m_lightUBO.UploadPerFrame(perFrame);
 
         m_lightSystem.Update(m_scene, *m_pEditorCamera, glfwGetTime());
         m_lightUBO.BindAll();
@@ -198,11 +244,10 @@ void OpenGLRenderer::Draw(float dt)
         m_opaquePass.Execute(m_queue.OpaqueCommands(), m_shader);
         m_outlinePass.Execute(m_queue.OutlineCommands(), m_shader);
         m_transPass.Execute(m_queue.BlendCommands(), m_shader);
-}
 
-// ---------------------------------------------------------------------------
-// Events
-// ---------------------------------------------------------------------------
+        if (m_Skybox.IsReady())
+                RenderCubeMap(m_cubemapShader, &m_Skybox);
+}
 
 void OpenGLRenderer::OnEvent(event &e)
 {
@@ -237,15 +282,13 @@ bool OpenGLRenderer::OnWindowResize(WindowResizedEvent &e)
         return false;
 }
 
-// ---------------------------------------------------------------------------
-// Cleanup
-// ---------------------------------------------------------------------------
-
 void OpenGLRenderer::CleanUp()
 {
         m_lightUBO.Destroy();
         m_cache.Clear();
+        m_Skybox.Destroy();
         delete m_shader;
+        delete m_cubemapShader;
         m_shader = nullptr;
 }
 

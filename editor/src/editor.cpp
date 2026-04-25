@@ -15,6 +15,7 @@ void EditorSystem::Init()
         m_EditorConfig = "assets/config.yaml";
         m_DefaultScene = "assets/default.scene";
 
+        // this is the editor camera
         m_EditorCamera = createCamera(Camera::CameraType::firstperson, glm::vec3(0.0f, 0.0f, -5.0f));
 
         IMGUI_CHECKVERSION();
