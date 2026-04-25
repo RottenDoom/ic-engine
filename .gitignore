@@ -8,7 +8,6 @@ build-ninja/
 /gen
 /out
 compile_shader.bat
-TODO.md
 dummy/
 todo
 /resources
