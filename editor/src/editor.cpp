@@ -249,8 +249,8 @@ void EditorSystem::Render()
         ImGui::End();
         ImGui::PopStyleVar();
 
-        ImGui::ShowDemoWindow();
-        ic::panels::heirarchy_draw(m_ActiveScene, m_State);
+        // ImGui::ShowDemoWindow(); // https://pthom.github.io/imgui_explorer/
+        DrawSceneHeirarchy();
         ic::panels::component_panel_draw(m_State.selected);
 
         ImGui::Render();

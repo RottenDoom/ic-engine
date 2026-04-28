@@ -28,6 +28,7 @@
 ### ISSUES
 - [ ] [CURR] Multiple ref counts for just loaded models
 - [ ] [CURR] Loading multiple scenes causes to ref count to increase does not unloads the model.
+- [ ] When save as just example.scene we get an error.
 - [ ] Exception handling.
 - [ ] Finding bugs everywhere needs testing.
 - [ ] Fix the infinite mkdir exception or handle it better came from the part where I was not checking if a file was a directory and only checking it was a file path.

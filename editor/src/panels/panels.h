@@ -10,14 +10,17 @@ struct EditorState;
 
 namespace ic::panels
 {
+// helper functions
+bool draw_vec3(const char *label, glm::vec3 &v, float speed = 0.1f, const char *fmt = "%.3f");
+
 // Command pallete commands registration
 // void register_commands();
-
-void heirarchy_draw(ic::RenderScene *scene, ic::EditorState &state);
 
 void component_panel_draw(ic::Entity &selected);
 
 void light_panel_draw(LightComponent &lc);
+
+void camera_panel_draw(Camera &editorCamera);
 
 // menu bar should be inside the editor itself instead of a panel
 // void menu_bar_draw();

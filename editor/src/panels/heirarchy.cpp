@@ -14,214 +14,238 @@ static uint8_t count_lights(ic::RenderScene *scene)
         return count;
 }
 
-namespace ic::panels
+namespace ic
 {
 
-/** TODO: make this function not so big */
-void heirarchy_draw(ic::RenderScene *scene, ic::EditorState &state)
+void EditorSystem::DrawSceneHeirarchy()
 {
         ImGui::Begin("Hierarchy");
 
-        if (!scene)
+        float availHeight     = ImGui::GetContentRegionAvail().y;
+        float hierarchyHeight = availHeight - m_State.lastCameraPanelHeight;
+        if (hierarchyHeight < 0.0f)
+                hierarchyHeight = 0.0f;
+
+        ImGui::BeginChild("SceneHierarchyRegion", ImVec2(0, hierarchyHeight), false);
+
+        if (m_ActiveScene)
         {
-                ImGui::End();
-                return;
-        }
 
-        ImGui::PushID("SceneRoot");
+                ImGui::PushID("SceneRoot");
 
-        ImGuiTreeNodeFlags rootFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth |
-                                       ImGuiTreeNodeFlags_OpenOnArrow;
-        bool sceneOpen;
+                ImGuiTreeNodeFlags rootFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth |
+                                               ImGuiTreeNodeFlags_OpenOnArrow;
+                bool sceneOpen;
 
-        if (state.renamingScene)
-        {
-                sceneOpen = ImGui::TreeNodeEx("##scenenode", rootFlags | ImGuiTreeNodeFlags_Leaf, "");
-                ImGui::SameLine();
-                if (state.isFocused)
+                if (m_State.renamingScene)
                 {
-                        ImGui::SetKeyboardFocusHere();
-                        state.isFocused = false;
-                }
-
-                ImGui::SetNextItemWidth(160.0f);
-                if (ImGui::InputText("##scenerename",
-                                     state.renameBuffer,
-                                     sizeof(state.renameBuffer),
-                                     ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue))
-                {
-                        scene->SetName(state.renameBuffer);
-                        state.renamingScene = false;
-                }
-
-                if (!ImGui::IsItemActive() && ImGui::IsMouseClicked(0))
-                {
-                        scene->SetName(state.renameBuffer);
-                        state.renamingScene = false;
-                }
-        }
-        else
-        {
-                sceneOpen = ImGui::TreeNodeEx("##scenenode", rootFlags, "%s", scene->GetName().c_str());
-                if (ImGui::BeginPopupContextItem("##scenectx"))
-                {
-                        if (ImGui::MenuItem("Rename"))
+                        sceneOpen = ImGui::TreeNodeEx("##scenenode", rootFlags | ImGuiTreeNodeFlags_Leaf, "");
+                        ImGui::SameLine();
+                        if (m_State.isFocused)
                         {
-                                state.renamingScene = true;
-                                strncpy(state.renameBuffer, scene->GetName().c_str(), sizeof(state.renameBuffer));
-                                state.renameBuffer[sizeof(state.renameBuffer) - 1] = '\0';
-                                state.isFocused                                    = true;
+                                ImGui::SetKeyboardFocusHere();
+                                m_State.isFocused = false;
                         }
-                        if (ImGui::MenuItem("Create Empty Entity"))
-                                scene->CreateEntityWithName("Entity");
 
-                        uint8_t n = count_lights(scene);
-                        if (ImGui::BeginMenu("Create Lighting"))
+                        ImGui::SetNextItemWidth(160.0f);
+                        if (ImGui::InputText("##scenerename",
+                                             m_State.renameBuffer,
+                                             sizeof(m_State.renameBuffer),
+                                             ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue))
                         {
-                                if (ImGui::MenuItem("Point Light"))
-                                {
-                                        auto  entity = scene->CreateEntityWithName("PointLight_" + std::to_string(n));
-                                        auto &lc     = entity.AddComponent<ic::LightComponent>();
-                                        lc.type      = ic::LightType::Point;
-                                        lc.color     = glm::vec3(1.0f);
-                                        lc.intensity = 1.0f;
-                                        lc.range     = 10.0f;
-                                }
-                                if (ImGui::MenuItem("Directional Light"))
-                                {
-                                        auto  entity = scene->CreateEntityWithName("DirectionalLight_" +
-                                                                                  std::to_string(n));
-                                        auto &lc     = entity.AddComponent<ic::LightComponent>();
-                                        lc.type      = ic::LightType::Directional;
-                                        lc.color     = glm::vec3(1.0f, 0.95f, 0.85f);
-                                        lc.intensity = 1.0f;
-                                }
-                                if (ImGui::MenuItem("Spot Light"))
-                                {
-                                        auto  entity  = scene->CreateEntityWithName("SpotLight_" + std::to_string(n));
-                                        auto &lc      = entity.AddComponent<ic::LightComponent>();
-                                        lc.type       = ic::LightType::Spot;
-                                        lc.color      = glm::vec3(1.0f);
-                                        lc.intensity  = 1.0f;
-                                        lc.range      = 20.0f;
-                                        lc.innerAngle = 12.5f;
-                                        lc.outerAngle = 25.0f;
-                                }
-                                ImGui::EndMenu();
+                                m_ActiveScene->SetName(m_State.renameBuffer);
+                                m_State.renamingScene = false;
                         }
-                        ImGui::EndPopup();
+
+                        if (!ImGui::IsItemActive() && ImGui::IsMouseClicked(0))
+                        {
+                                m_ActiveScene->SetName(m_State.renameBuffer);
+                                m_State.renamingScene = false;
+                        }
                 }
-        }
-
-        if (sceneOpen)
-        {
-                std::vector<ic::Entity> entities = scene->GetAllEntities();
-
-                for (auto &e : entities)
+                else
                 {
-                        if (!e.IsValid())
-                                continue;
-
-                        std::string label = e.GetName();
-                        if (label.empty())
-                                label = "(unnamed)";
-
-                        bool isSelected = (state.selected && state.selected == e);
-
-                        ImGui::PushID((int)e.GetUUID());
-
-                        if (state.renameTarget == e)
+                        sceneOpen = ImGui::TreeNodeEx("##scenenode", rootFlags, "%s", m_ActiveScene->GetName().c_str());
+                        if (ImGui::BeginPopupContextItem("##scenectx"))
                         {
-                                // Render a leaf node with empty label then put input beside it
-                                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
-                                                           ImGuiTreeNodeFlags_Selected;
-                                ImGui::TreeNodeEx("##node", flags, "");
-                                ImGui::TreePop();
-
-                                ImGui::SameLine();
-
-                                if (state.isFocused)
+                                if (ImGui::MenuItem("Rename"))
                                 {
-                                        ImGui::SetKeyboardFocusHere();
-                                        state.isFocused = false;
+                                        m_State.renamingScene = true;
+                                        strncpy(m_State.renameBuffer,
+                                                m_ActiveScene->GetName().c_str(),
+                                                sizeof(m_State.renameBuffer));
+                                        m_State.renameBuffer[sizeof(m_State.renameBuffer) - 1] = '\0';
+                                        m_State.isFocused                                      = true;
                                 }
-                                ImGui::SetNextItemWidth(160.0f);
-                                if (ImGui::InputText("##rename",
-                                                     state.renameBuffer,
-                                                     sizeof(state.renameBuffer),
-                                                     ImGuiInputTextFlags_AutoSelectAll |
-                                                         ImGuiInputTextFlags_EnterReturnsTrue))
-                                {
-                                        e.SetName(state.renameBuffer);
-                                        state.renameTarget = {};
-                                }
-                                if (!ImGui::IsItemActive() && ImGui::IsMouseClicked(0))
-                                {
-                                        e.SetName(state.renameBuffer);
-                                        state.renameTarget = {};
-                                }
-                        }
-                        else
-                        {
-                                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
-                                                           ImGuiTreeNodeFlags_OpenOnArrow |
-                                                           (isSelected ? ImGuiTreeNodeFlags_Selected : 0);
+                                if (ImGui::MenuItem("Create Empty Entity"))
+                                        m_ActiveScene->CreateEntityWithName("Entity");
 
-                                ImGui::TreeNodeEx(label.c_str(), flags);
-                                ImGui::TreePop();
-
-                                if (ImGui::IsItemClicked())
-                                        state.selected = e;
-
-                                if (ImGui::BeginPopupContextItem("##ctx"))
+                                uint8_t n = count_lights(m_ActiveScene);
+                                if (ImGui::BeginMenu("Create Lighting"))
                                 {
-                                        if (ImGui::MenuItem("Rename"))
+                                        if (ImGui::MenuItem("Point Light"))
                                         {
-                                                state.renameTarget = e;
-                                                strncpy(state.renameBuffer,
-                                                        e.GetName().c_str(),
-                                                        sizeof(state.renameBuffer));
-                                                state.renameBuffer[sizeof(state.renameBuffer) - 1] = '\0';
-                                                state.isFocused                                    = true;
+                                                auto  entity = m_ActiveScene->CreateEntityWithName("PointLight_" +
+                                                                                                  std::to_string(n));
+                                                auto &lc     = entity.AddComponent<ic::LightComponent>();
+                                                lc.type      = ic::LightType::Point;
+                                                lc.color     = glm::vec3(1.0f);
+                                                lc.intensity = 1.0f;
+                                                lc.range     = 10.0f;
                                         }
-                                        if (ImGui::MenuItem("Duplicate"))
+                                        if (ImGui::MenuItem("Directional Light"))
                                         {
-                                                ic::Entity dup = scene->CreateEntityWithName(e.GetName() + "_copy");
-                                                if (e.HasComponent<ic::TransformComponent>())
+                                                auto  entity = m_ActiveScene->CreateEntityWithName("DirectionalLight_" +
+                                                                                                  std::to_string(n));
+                                                auto &lc     = entity.AddComponent<ic::LightComponent>();
+                                                lc.type      = ic::LightType::Directional;
+                                                lc.color     = glm::vec3(1.0f, 0.95f, 0.85f);
+                                                lc.intensity = 1.0f;
+                                        }
+                                        if (ImGui::MenuItem("Spot Light"))
+                                        {
+                                                auto  entity  = m_ActiveScene->CreateEntityWithName("SpotLight_" +
+                                                                                                  std::to_string(n));
+                                                auto &lc      = entity.AddComponent<ic::LightComponent>();
+                                                lc.type       = ic::LightType::Spot;
+                                                lc.color      = glm::vec3(1.0f);
+                                                lc.intensity  = 1.0f;
+                                                lc.range      = 20.0f;
+                                                lc.innerAngle = 12.5f;
+                                                lc.outerAngle = 25.0f;
+                                        }
+                                        ImGui::EndMenu();
+                                }
+                                ImGui::EndPopup();
+                        }
+                }
+
+                if (sceneOpen)
+                {
+                        std::vector<ic::Entity> entities = m_ActiveScene->GetAllEntities();
+
+                        for (auto &e : entities)
+                        {
+                                if (!e.IsValid())
+                                        continue;
+
+                                std::string label = e.GetName();
+                                if (label.empty())
+                                        label = "(unnamed)";
+
+                                bool isSelected = (m_State.selected && m_State.selected == e);
+
+                                ImGui::PushID((int)e.GetUUID());
+
+                                if (m_State.renameTarget == e)
+                                {
+                                        // Render a leaf node with empty label then put input beside it
+                                        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |
+                                                                   ImGuiTreeNodeFlags_SpanFullWidth |
+                                                                   ImGuiTreeNodeFlags_Selected;
+                                        ImGui::TreeNodeEx("##node", flags, "");
+                                        ImGui::TreePop();
+
+                                        ImGui::SameLine();
+
+                                        if (m_State.isFocused)
+                                        {
+                                                ImGui::SetKeyboardFocusHere();
+                                                m_State.isFocused = false;
+                                        }
+                                        ImGui::SetNextItemWidth(160.0f);
+                                        if (ImGui::InputText("##rename",
+                                                             m_State.renameBuffer,
+                                                             sizeof(m_State.renameBuffer),
+                                                             ImGuiInputTextFlags_AutoSelectAll |
+                                                                 ImGuiInputTextFlags_EnterReturnsTrue))
+                                        {
+                                                e.SetName(m_State.renameBuffer);
+                                                m_State.renameTarget = {};
+                                        }
+                                        if (!ImGui::IsItemActive() && ImGui::IsMouseClicked(0))
+                                        {
+                                                e.SetName(m_State.renameBuffer);
+                                                m_State.renameTarget = {};
+                                        }
+                                }
+                                else
+                                {
+                                        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |
+                                                                   ImGuiTreeNodeFlags_SpanFullWidth |
+                                                                   ImGuiTreeNodeFlags_OpenOnArrow |
+                                                                   (isSelected ? ImGuiTreeNodeFlags_Selected : 0);
+
+                                        ImGui::TreeNodeEx(label.c_str(), flags);
+                                        ImGui::TreePop();
+
+                                        if (ImGui::IsItemClicked())
+                                                m_State.selected = e;
+
+                                        if (ImGui::BeginPopupContextItem("##ctx"))
+                                        {
+                                                if (ImGui::MenuItem("Rename"))
                                                 {
-                                                        auto &src = e.GetComponent<ic::TransformComponent>();
-                                                        auto &dst = dup.GetComponent<ic::TransformComponent>();
-                                                        dst.SetPosition(src.position);
-                                                        dst.SetRotation(src.rotation);
-                                                        dst.SetScale(src.scale);
+                                                        m_State.renameTarget = e;
+                                                        strncpy(m_State.renameBuffer,
+                                                                e.GetName().c_str(),
+                                                                sizeof(m_State.renameBuffer));
+                                                        m_State.renameBuffer[sizeof(m_State.renameBuffer) - 1] = '\0';
+                                                        m_State.isFocused                                      = true;
                                                 }
-                                                if (e.HasComponent<ic::MeshComponent>())
+                                                if (ImGui::MenuItem("Duplicate"))
                                                 {
-                                                        auto &src = e.GetComponent<ic::MeshComponent>();
-                                                        dup.AddComponent<ic::MeshComponent>().SetMesh(src.modelID);
+                                                        ic::Entity dup = m_ActiveScene->CreateEntityWithName(
+                                                            e.GetName() + "_copy");
+                                                        if (e.HasComponent<ic::TransformComponent>())
+                                                        {
+                                                                auto &src = e.GetComponent<ic::TransformComponent>();
+                                                                auto &dst = dup.GetComponent<ic::TransformComponent>();
+                                                                dst.SetPosition(src.position);
+                                                                dst.SetRotation(src.rotation);
+                                                                dst.SetScale(src.scale);
+                                                        }
+                                                        if (e.HasComponent<ic::MeshComponent>())
+                                                        {
+                                                                auto &src = e.GetComponent<ic::MeshComponent>();
+                                                                dup.AddComponent<ic::MeshComponent>().SetMesh(
+                                                                    src.modelID);
+                                                        }
+                                                        m_State.selected = dup;
                                                 }
-                                                state.selected = dup;
+                                                ImGui::Separator();
+                                                if (ImGui::MenuItem("Delete"))
+                                                {
+                                                        m_ActiveScene->DestroyEntity(e);
+                                                        if (m_State.selected && m_State.selected == e)
+                                                                m_State.selected = {};
+                                                }
+                                                ImGui::EndPopup();
                                         }
-                                        ImGui::Separator();
-                                        if (ImGui::MenuItem("Delete"))
-                                        {
-                                                scene->DestroyEntity(e);
-                                                if (state.selected && state.selected == e)
-                                                        state.selected = {};
-                                        }
-                                        ImGui::EndPopup();
                                 }
+
+                                ImGui::PopID();
                         }
 
-                        ImGui::PopID();
+                        ImGui::TreePop();
                 }
 
-                ImGui::TreePop();
+                ImGui::PopID();  // SceneRoot
         }
 
-        ImGui::PopID();  // SceneRoot
+        ImGui::EndChild();
+
+        // really cool trick i guess
+        float cameraStartY = ImGui::GetCursorPosY();
+
+        ImGui::Separator();
+
+        ic::panels::camera_panel_draw(m_EditorCamera);
+        float cameraEndY = ImGui::GetCursorPosY();
+
+        m_State.lastCameraPanelHeight = cameraEndY - cameraStartY;
 
         ImGui::End();
 }
 
-}  // namespace ic::panels
+}  // namespace ic

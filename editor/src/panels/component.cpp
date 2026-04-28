@@ -11,8 +11,8 @@ static bool   openChooseFilePopup = false;
 static bool   showAssetBrowser    = false;
 static Entity targetSelectedModel = {};
 
-// Helper: draw a labeled vec3 drag — cleaner than raw DragFloat3
-static bool draw_vec3(const char *label, glm::vec3 &v, float speed = 0.1f, const char *fmt = "%.3f")
+// Helper: draw a labeled vec3 drag cleaner than raw DragFloat3
+bool draw_vec3(const char *label, glm::vec3 &v, float speed, const char *fmt)
 {
         ImGui::PushID(label);
         ImGui::Columns(2, nullptr, false);

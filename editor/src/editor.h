@@ -15,6 +15,8 @@ struct EditorState
         char   renameBuffer[256];
         bool   renamingScene;
         bool   isFocused;
+
+        float lastCameraPanelHeight = 0.0f;
 };
 
 class EditorSystem
@@ -56,6 +58,7 @@ private:
 
         // Panels
         EditorState m_State;
+        void        DrawSceneHeirarchy();
 
         // Editor Resources
 
