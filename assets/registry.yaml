@@ -3,7 +3,7 @@ assets_folder: "/assets"
 assets:
   - id: 0x1000000000000001
     name: cube_model
-    filepath: cube/shape.gltf
+    filepath: models/cube.glb
     cache: cube/shape.icmodel
     type: model
 
@@ -18,9 +18,15 @@ assets:
     type: skybox
 
   - id: 0x1000000000000005
-    name: light_model
-    filepath: models/light.gltf
-    cache: models/light.gltf
+    name: point_model
+    filepath: models/sphere.glb
+    cache: models/light.icmodel
+    type: model
+
+  - id: 0x1000000000000008
+    name: spot_model
+    filepath: models/cone.glb
+    cache: models/cone.icmodel
     type: model
 
   - id: 0x1000000000000004

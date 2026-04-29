@@ -21,6 +21,22 @@ void light_panel_draw(LightComponent &lc)
         ImGui::ColorEdit3("Color", glm::value_ptr(lc.color));
         ImGui::DragFloat("Intensity", &lc.intensity, 0.05f, 0.0f, 100.0f);
 
+#ifndef NDEBUG
+
+        // TODO: connect these to the lgith transform components
+        if (lc.type == LightType::Point && !lc.visible)
+        {
+                lc.modelID = AssetManager::Get().GetRegistry()->GetAssetId("point_model");
+                lc.visible = true;
+        }
+
+        if (lc.type == LightType::Spot && !lc.visible)
+        {
+                lc.modelID = AssetManager::Get().GetRegistry()->GetAssetId("spot_model");
+                lc.visible = true;
+        }
+#endif
+
         // Range (point and spot only)
         if (lc.type == LightType::Point || lc.type == LightType::Spot)
         {

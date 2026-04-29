@@ -4,6 +4,7 @@
 #include "defines.h"
 #include "renderer/camera.h"
 #include "core/assets/types/asset_base.h"
+#include "core/assets/types/model.h"
 #include "core/uuid.h"
 #include "renderer/light_types.h"
 
@@ -109,6 +110,11 @@ struct LightComponent
 {
         LightType type = LightType::Point;
 
+#ifndef NDEBUG
+        IC_GUID modelID;
+        bool    visible = false;
+#endif
+
         glm::vec3 color     = glm::vec3(1.0f);
         float     intensity = 1.0f;
 
@@ -119,7 +125,8 @@ struct LightComponent
         float innerAngle = 12.5f;
         float outerAngle = 17.5f;
 
-        bool castShadows = false;  // placeholder for later
+        // Shared
+        bool castShadows = false;
         bool enabled     = true;
 };
 

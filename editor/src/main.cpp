@@ -19,8 +19,8 @@ int main()
         ic::window_props props("IC Engine v0.3");
         ic_create_application(&props);
 
-        ic_mount("assets", "assets", 1); /** TODO: Make paths for different asset types */
-        ic_load_registry("assets/registry.yaml");
+        ic_mount("/assets", "assets", 1); /** TODO: Make paths for different asset types */
+        ic_load_registry("/assets/registry.yaml");
 
         // Editor initialization
         editor.Init();

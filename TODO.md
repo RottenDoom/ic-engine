@@ -6,7 +6,7 @@
 ### CURRENT OBJECTIVES:
 - [x] Scene saving and renaming entities. (Better serialization) (Make tests I guess)
 - [x] Skybox
-- [ ] Light mesh
+- [x] Light mesh (Now add material to it)
 - [ ] Material Edit panel and skybox + shadow mapping.
 - [ ] Camera panels. (#PROBABLY: Collections like blender for entities)
 - [ ] Scene testing and sponza [Secondary: Add file compression in asset deserialization]
@@ -14,6 +14,7 @@
 
 ### TODO:
 - [x] Skybox and HDR and scene plane and RenderBox (or whatever you call it)
+- [ ] Issue with multiple materials the unwrapped UVs get attached to other items.
 - [ ] Search files using paths
 - [ ] #include support (for reuse across many shaders), you need to implement it on the C++ side — read the file, string-replace #include "x" with the content of x, then pass the final concatenated string to glShaderSource. That's how engines like Godot and Unity handle it.
 - [ ] Add camera properties in view i guess.

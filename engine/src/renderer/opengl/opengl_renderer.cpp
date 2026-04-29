@@ -101,15 +101,6 @@ void OpenGLRenderer::LoadAssets()
 {
         if (!m_scene)
                 return;
-
-        // ISSUE: multiple refcounts
-        for (auto &e : m_scene->GetEntitiesWith<MeshComponent>())
-        {
-                MeshComponent &c     = e.GetComponent<MeshComponent>();
-                Model         *model = AssetManager::Get().LoadAs<Model>(c.modelID);
-                if (!model)
-                        IC_CORE_WARN("LoadAssets: failed to load model {}", c.modelID);
-        }
 }
 
 void OpenGLRenderer::SetupBuffers()
@@ -123,6 +114,16 @@ void OpenGLRenderer::SetupBuffers()
                 m_cache.GetOrUpload(c.modelID, AssetManager::Get());
         }
 
+        // Light volumes pass?
+        for (auto &e : m_scene->GetEntitiesWith<LightComponent>())
+        {
+                LightComponent &lc = e.GetComponent<LightComponent>();
+                if (lc.type == LightType::Point || lc.type == LightType::Spot)
+                {
+                        m_cache.GetOrUpload(lc.modelID, AssetManager::Get());
+                }
+        }
+
         Skybox *skyboxAsset = m_scene->GetSkybox();
         if (!skyboxAsset || !skyboxAsset->IsLoaded())
         {
@@ -131,14 +132,6 @@ void OpenGLRenderer::SetupBuffers()
         }
         m_Skybox.Destroy();
         bool uploaded = m_Skybox.Upload(*skyboxAsset);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, m_Skybox.GetCubemapID());
-        GLint width = 0, height = 0, internalFmt = 0;
-        glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_WIDTH, &width);
-        glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_HEIGHT, &height);
-        glGetTexLevelParameteriv(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFmt);
-        IC_CORE_INFO("Cubemap face +X: {}x{} internalFormat: 0x{:X}", width, height, internalFmt);
-
-        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
         if (!uploaded)
         {
                 IC_CORE_WARN("Skybox asset was not uploaded to the GPU");
@@ -236,6 +229,32 @@ void OpenGLRenderer::Draw(float dt)
                         const float     depth  = glm::length(center - camPos);
 
                         m_queue.Submit({item.primitive, mat, glModel, item.worldTransform, depth});
+                }
+        }
+
+        for (Entity &e : m_scene->GetEntitiesWith<LightComponent, TransformComponent>())
+        {
+                LightComponent     &lc        = e.GetComponent<LightComponent>();
+                TransformComponent &transform = e.GetComponent<TransformComponent>();
+                if (lc.visible)
+                {
+                        GLModel *glModel = m_cache.GetOrUpload(lc.modelID, AssetManager::Get());
+                        if (!glModel)
+                                continue;
+                        std::vector<GLModel::DrawItem> items;
+                        glModel->CollectDrawItems(transform.GetTransformMatrix(), items);
+
+                        for (auto &item : items)
+                        {
+                                GLMaterial *mat = nullptr;
+                                if (item.materialIndex != INVALID_INDEX && glModel->Get())
+                                        mat = m_cache.GetMaterial(lc.modelID, item.materialIndex, *glModel->Get());
+
+                                const glm::vec3 center = glm::vec3(item.worldTransform[3]);
+                                const float     depth  = glm::length(center - camPos);
+
+                                m_queue.Submit({item.primitive, mat, glModel, item.worldTransform, depth});
+                        }
                 }
         }
 

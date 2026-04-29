@@ -47,7 +47,7 @@ public:
                         return nullptr;
                 if (asset->getAssetType() != T::getStaticType())
                 {
-                        IC_CORE_ERROR("AssetManager::loadAs - type mismatch for {}", id);
+                        IC_CORE_ERROR("AssetManager::LoadAs - type mismatch for {}", id);
                         Unload(id);  // undo the addRef from load()
                         return nullptr;
                 }
@@ -62,11 +62,36 @@ public:
                         return nullptr;
                 if (asset->getAssetType() != T::getStaticType())
                 {
-                        IC_CORE_ERROR("AssetManager::loadAs - type mismatch for {}", id);
+                        IC_CORE_ERROR("AssetManager::LoadAs - type mismatch for {}", id);
                         Unload(id);
                         return nullptr;
                 }
                 return static_cast<T *>(asset);
+        }
+
+        template <typename T>
+        T *LoadAs(const char *name)
+        {
+                IC_GUID     id   = m_registry.GetAssetId(name);
+                const char *path = m_registry.GetFilePath(id);
+                if (id != INVALID_ID && path)
+                {
+                        IAsset *asset = Load(id, path, T::getStaticType());
+                        if (!asset)
+                                return nullptr;
+                        if (asset->getAssetType() != T::getStaticType())
+                        {
+                                IC_CORE_ERROR("AssetManager::LoadAs - type mismatch for {}", id);
+                                Unload(id);
+                                return nullptr;
+                        }
+                        return static_cast<T *>(asset);
+                }
+                else
+                {
+                        IC_CORE_ERROR("AssetManager::LoadAs - Asset ID or path does not exist in registry!");
+                        return nullptr;
+                }
         }
 
         IAsset *GetAsset(IC_GUID id);
