@@ -16,7 +16,7 @@ static void editor_render()
 int main()
 {
         // Application Init
-        ic::window_props props("IC Engine v0.3");
+        ic::window_props props("IC Engine v0.4");
         ic_create_application(&props);
 
         ic_mount("/assets", "assets", 1); /** TODO: Make paths for different asset types */
