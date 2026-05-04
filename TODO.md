@@ -7,6 +7,8 @@
 - [x] Scene saving and renaming entities. (Better serialization) (Make tests I guess)
 - [x] Skybox
 - [x] Light mesh (Now add material to it)
+- [ ] Texture and material assets + samplers
+- [ ] use gluniformiv for editing through editor.
 - [ ] Material Edit panel and skybox + shadow mapping.
 - [ ] Camera panels. (#PROBABLY: Collections like blender for entities)
 - [ ] Scene testing and sponza [Secondary: Add file compression in asset deserialization]
