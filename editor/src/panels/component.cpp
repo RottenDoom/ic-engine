@@ -2,12 +2,17 @@
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <extern/ImGuiFileDialog.h>
 
 namespace ic::panels
 {
 
-// Helper: draw a labeled vec3 drag — cleaner than raw DragFloat3
-static bool draw_vec3(const char *label, glm::vec3 &v, float speed = 0.1f, const char *fmt = "%.3f")
+static bool   openChooseFilePopup = false;
+static bool   showAssetBrowser    = false;
+static Entity targetSelectedModel = {};
+
+// Helper: draw a labeled vec3 drag cleaner than raw DragFloat3
+bool draw_vec3(const char *label, glm::vec3 &v, float speed, const char *fmt)
 {
         ImGui::PushID(label);
         ImGui::Columns(2, nullptr, false);
@@ -21,7 +26,49 @@ static bool draw_vec3(const char *label, glm::vec3 &v, float speed = 0.1f, const
         return changed;
 }
 
-void component_panel_draw(ic::Entity &selected)
+// Helper: draw asset browser for loading (only models for now)
+static void draw_asset_browser(AssetRegistry &registry, ic::Entity &selected)
+{
+        ImGui::Begin("Asset Browser");
+
+        static char search[128] = "";
+        ImGui::InputText("Search", search, sizeof(search));
+
+        ImGui::Separator();
+
+        for (const auto &[id, meta] : registry.GetAllAssets())
+        {
+                // --- filter only mesh assets ---
+                if (meta.type != AssetType::ASSET_TYPE_MODEL)
+                        continue;
+
+                const char *name = registry.GetAssetName(id);
+
+                if (strlen(search) > 0 && strstr(name, search) == nullptr)
+                        continue;
+
+                if (ImGui::Selectable(name))
+                {
+                        ic::Entity entity = targetSelectedModel;
+
+                        if (!entity.HasComponent<ic::MeshComponent>())
+                                entity.AddComponent<ic::MeshComponent>();
+
+                        auto &mesh   = entity.GetComponent<ic::MeshComponent>();
+                        mesh.modelID = id;
+
+                        showAssetBrowser = false;
+                }
+
+                if (ImGui::IsItemHovered())
+                {
+                        ImGui::SetTooltip("%s", registry.GetFilePath(id));
+                }
+        }
+        ImGui::End();
+}
+
+void component_panel_draw(Entity &selected)
 {
         ImGui::Begin("Components");
 
@@ -81,10 +128,21 @@ void component_panel_draw(ic::Entity &selected)
                 if (ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen))
                 {
                         auto       &m         = selected.GetComponent<ic::MeshComponent>();
-                        std::string modelName = AssetManager::Get().GetRegistry()->GetAssetName(m.modelID);
+                        std::string modelName = AssetManager::Get().GetRegistry()->GetAssetName(
+                            m.modelID);  // ISSUE: If the mesh id does not exist load it from some location.
                         ImGui::LabelText("Model", "%s", modelName.empty() ? "(none)" : modelName.c_str());
 
                         // TODO: drag-drop from asset browser to change model
+                }
+        }
+
+        // ---- LightComponent ----
+        if (selected.HasComponent<ic::LightComponent>())
+        {
+                if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                        auto &lc = selected.GetComponent<ic::LightComponent>();
+                        light_panel_draw(lc);
                 }
         }
 
@@ -101,9 +159,7 @@ void component_panel_draw(ic::Entity &selected)
                 if (!selected.HasComponent<ic::MeshComponent>())
                 {
                         if (ImGui::MenuItem("Mesh Component"))
-                        {
-                                selected.AddComponent<ic::MeshComponent>();
-                        }
+                                openChooseFilePopup = true;
                 }
                 if (!selected.HasComponent<ic::LightComponent>())
                 {
@@ -113,6 +169,52 @@ void component_panel_draw(ic::Entity &selected)
                         }
                 }
                 ImGui::EndPopup();
+        }
+
+        if (openChooseFilePopup)
+        {
+                ImGui::OpenPopup("##ChooseFile");
+                openChooseFilePopup = false;
+        }
+
+        if (ImGui::BeginPopup("##ChooseFile"))
+        {
+
+                if (ImGui::MenuItem("AssetBrowser"))
+                {
+                        showAssetBrowser    = true;
+                        targetSelectedModel = selected;
+                }
+
+                if (ImGui::MenuItem("Choose File") || ImGui::IsItemHovered())
+                {
+                        IGFD::FileDialogConfig config;
+                        config.path = ic_getbasedir();
+                        ImGui::SetTooltip("File Choosing in development");
+                        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".gltf", config);
+
+                        // selected.AddComponent<ic::MeshComponent>();
+                }
+                ImGui::EndPopup();
+        }
+
+        if (showAssetBrowser)
+        {
+                draw_asset_browser(*AssetManager::Get().GetRegistry(), selected);
+        }
+
+        // display
+        if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+        {
+                if (ImGuiFileDialog::Instance()->IsOk())
+                {
+                        std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                        std::string filePath     = ImGuiFileDialog::Instance()->GetCurrentPath();
+                        // action
+                }
+
+                // close
+                ImGuiFileDialog::Instance()->Close();
         }
 
         ImGui::End();

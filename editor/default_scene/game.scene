@@ -1,10 +1,10 @@
 #default_scene/default.scene
 scene:
-  name: "Default Scene"
+  name: "Game Scene"
   # skybox: "assets/cubemap/sky_01"
 
 entities:
-  - id: 1829374650
+  - id: 1
     name: "Player"
     components:
       TransformComponent:
@@ -13,7 +13,7 @@ entities:
         scale:    [1.0, 1.0, 1.0]
       MeshComponent:
         model: "player_model" # asset registry nam
-  - id: 9273648102
+  - id: 2
     name: "Cube"
     components:
       TransformComponent:
@@ -22,3 +22,12 @@ entities:
         scale:    [1.0, 1.0, 1.0]
       MeshComponent:
         model: "cube_model"
+  - id: 3
+    name: "Tree"
+    components:
+      TransformComponent:
+        position: [50.0, 50.0, 0.0]
+        rotation: [1.0, 0.0, 0.0, 0.0]
+        scale:    [1.0, 1.0, 1.0]
+      MeshComponent:
+        model: "tree_house_model"

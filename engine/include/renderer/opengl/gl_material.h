@@ -6,56 +6,83 @@
 #include "core/assets/types/material.h"
 
 #include <glad/glad.h>
-
-/**
- * gl_material.h -> GPU-side texture management.
- *
- * GLTexture is the only type here. Material state (uniforms, blend mode, cull face) is applied
- * per draw call in GLModel::bindMaterial(), which has direct access to
- * the shader and GL state machine. A GLMaterial wrapper would just be
- * an indirection around setUniform calls with no GPU object to own.
- *
- * later move to a bindless or UBO-based material system, a
- * GLMaterial owning a UBO handle would make sense. Not now.
- *
- * Ownership:
- *   GLTexture owns one GL texture object (textureHandle).
- *   Call destroy() before discarding or reassigning.
- *   GLModel::m_textures[] is the authoritative owner -> indexed by
- *   Model::images() index, not the GLTF texture-list index.
- */
+#include <vector>
 
 namespace ic
 {
+
+class Shader;
+
+// ---------------------------------------------------------------------------
+// GLTexture -> one OpenGL texture object (owns the GL handle)
+//
+// Ownership: GLModel::m_textures[]
+// Indexed by Model::images() index, NOT the GLTF texture-list index.
+// ---------------------------------------------------------------------------
 
 struct GLTexture
 {
         GLuint textureHandle = 0;
 
-        /**
-         * Allocate and upload a GL_TEXTURE_2D from a runtime Image.
-         * Image must be RGBA8 (always true after buildModel).
-         * Generates mipmaps. Applies default linear filtering.
-         * Safe to call on an already-uploaded texture -> destroys the
-         * previous handle first.
-         */
-        void upload(const Image &img);
+        void Upload(const Image &img);
+        void ApplySampler(const Sampler *sampler) const;  // const: modifies GL state only
+        void Destroy();
+
+        bool IsValid() const { return textureHandle != 0; }
+};
+
+/** @brief Baked per draw material state. */
+struct GLMaterial
+{
+        // Scalar uniforms
+        glm::vec4 baseColorFactor   = glm::vec4(1.0f);
+        float     metallicFactor    = 0.0f;
+        float     roughnessFactor   = 1.0f;
+        float     normalScale       = 1.0f;
+        float     occlusionStrength = 1.0f;
+        glm::vec3 emissiveFactor    = glm::vec3(0.0f);
+        float     alphaCutoff       = 0.5f;
+
+        // Texture slots: image indices into GLModel::m_textures[]
+        int baseColorIdx     = -1;
+        int metallicRoughIdx = -1;
+        int normalIdx        = -1;
+        int occlusionIdx     = -1;
+        int emissiveIdx      = -1;
+
+        // Sampler indices into Model::samplers()
+        Index baseColorSampler     = INVALID_INDEX;
+        Index metallicRoughSampler = INVALID_INDEX;
+        Index normalSampler        = INVALID_INDEX;
+        Index occlusionSampler     = INVALID_INDEX;
+        Index emissiveSampler      = INVALID_INDEX;
+
+        // Render state flags
+        Material::AlphaMode alphaMode   = Material::AlphaMode::Opaque;
+        bool                doubleSided = false;
+
+        // True when the material has no base-color or metallic-roughness
+        // textures and is single-sided — signature of an inverted-hull outline mesh.
+        bool isInvertedHull = false;
 
         /**
-         * Apply sampler filter and wrap state to this texture.
-         * Call after upload(). Can be called again if the sampler changes.
-         * No-op if textureHandle == 0.
+         * Bake all scalar fields and texture slot indices from a CPU Material.
+         * Does not touch any GL objects.
          */
-        void applySampler(const Sampler *sampler);
+        void Build(const Material &mat);
 
         /**
-         * Delete the GL texture object. Sets textureHandle to 0.
-         * Safe to call if upload() was never called or destroy() was
-         * already called.
+         * Set all shader uniforms and bind texture units.
+         * textures[] must be the owning GLModel's m_textures array.
+         * samplers[] must be the source Model's samplers() array.
          */
-        void destroy();
+        void Bind(Shader *shader, const std::vector<GLTexture> &textures, const std::vector<Sampler> &samplers) const;
 
-        bool isValid() const { return textureHandle != 0; }
+        /**
+         * Apply blend and cull-face GL state for this material.
+         * The calling pass is responsible for restoring state afterwards.
+         */
+        void ApplyRenderState() const;
 };
 
 }  // namespace ic

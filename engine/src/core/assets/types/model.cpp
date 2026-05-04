@@ -9,7 +9,7 @@
 /**
  * model_builder.cpp
  *
- * ic::buildModel() -> the single translation point from ModelImportData → Model.
+ * ic::build_model() -> the single translation point from ModelImportData → Model.
  *
  * This is the ONLY place in the codebase that writes into Model's private
  * members. It is a free function in namespace ic, not a class, so it grants
@@ -32,7 +32,7 @@ namespace ic
 // ---------------------------------------------------------------------------
 
 /** Compute interleaved vertex stride and attribute flags from import data. */
-static void computeVertexLayout(const MeshPrimitiveImportData *src, uint32_t &outFlags, uint32_t &outStride)
+static void compute_vertex_layout(const MeshPrimitiveImportData *src, uint32_t &outFlags, uint32_t &outStride)
 {
         outFlags  = ATTRIB_POSITION;  // position is always present
         outStride = sizeof(glm::vec3);
@@ -48,7 +48,7 @@ static void computeVertexLayout(const MeshPrimitiveImportData *src, uint32_t &ou
         //         return;
         // }
 
-        // We inspect the import data's primitives to decide -> but buildModel receives
+        // We inspect the import data's primitives to decide -> but build_model receives
         // MeshPrimitiveImportData directly, so we just check non-zero values in
         // vertices[0] as the loader already does. The correct approach is to use
         // the TempPrimitiveData flags, but those are gone by the time we get here.
@@ -106,7 +106,7 @@ static void computeVertexLayout(const MeshPrimitiveImportData *src, uint32_t &ou
  * based on the provided attributeFlags and stride.
  * Attribute order must match GLPrimitive::setupVertexAttributes().
  */
-static std::vector<uint8_t> packVertices(const std::vector<Vertex> &vertices, uint32_t flags, uint32_t stride)
+static std::vector<uint8_t> pack_vertices(const std::vector<Vertex> &vertices, uint32_t flags, uint32_t stride)
 {
         const size_t         count = vertices.size();
         std::vector<uint8_t> buf(count * stride, 0);
@@ -151,7 +151,7 @@ static std::vector<uint8_t> packVertices(const std::vector<Vertex> &vertices, ui
 // Fills parent indices and computes worldTransform for every node.
 // ---------------------------------------------------------------------------
 
-static void buildHierarchy(std::vector<Node> &nodes, Index nodeIdx, const glm::mat4 &parentWorld)
+static void build_hierarchy(std::vector<Node> &nodes, Index nodeIdx, const glm::mat4 &parentWorld)
 {
         if (nodeIdx >= nodes.size())
                 return;
@@ -163,7 +163,7 @@ static void buildHierarchy(std::vector<Node> &nodes, Index nodeIdx, const glm::m
                 if (childIdx < nodes.size())
                 {
                         nodes[childIdx].parent = nodeIdx;
-                        buildHierarchy(nodes, childIdx, node.worldTransform);
+                        build_hierarchy(nodes, childIdx, node.worldTransform);
                 }
         }
 }
@@ -172,7 +172,7 @@ static void buildHierarchy(std::vector<Node> &nodes, Index nodeIdx, const glm::m
 // Primitive builder
 // ---------------------------------------------------------------------------
 
-static MeshPrimitive buildPrimitive(MeshPrimitiveImportData *src)
+static MeshPrimitive build_primitive(MeshPrimitiveImportData *src)
 {
         MeshPrimitive prim;
         prim.mode          = static_cast<MeshPrimitive::Mode>(src->mode);
@@ -183,12 +183,12 @@ static MeshPrimitive buildPrimitive(MeshPrimitiveImportData *src)
 
         uint32_t flags  = ATTRIB_NONE;
         uint32_t stride = 0;
-        computeVertexLayout(src, flags, stride);
+        compute_vertex_layout(src, flags, stride);
 
         prim.attributeFlags = flags;
         prim.vertexStride   = stride;
         prim.vertexCount    = static_cast<uint32_t>(src->vertices.size());
-        prim.vertexData     = packVertices(src->vertices, flags, stride);
+        prim.vertexData     = pack_vertices(src->vertices, flags, stride);
         prim.indices        = std::move(src->indices);
 
         return prim;
@@ -202,7 +202,7 @@ static MeshPrimitive buildPrimitive(MeshPrimitiveImportData *src)
 // We pre-resolve image+sampler here so the renderer never touches textures[].
 // ---------------------------------------------------------------------------
 
-static TextureRef resolveTextureRef(const TextureRefImportData &ref, const std::vector<TextureImportData> &textures)
+static TextureRef resolve_texture_ref(const TextureRefImportData &ref, const std::vector<TextureImportData> &textures)
 {
         TextureRef out;
         if (ref.idx == INVALID_INDEX)
@@ -217,7 +217,7 @@ static TextureRef resolveTextureRef(const TextureRefImportData &ref, const std::
         return out;
 }
 
-static Material buildMaterial(const MaterialImportData &src, const std::vector<TextureImportData> &textures)
+static Material build_material(const MaterialImportData &src, const std::vector<TextureImportData> &textures)
 {
         Material mat;
         mat.name = src.name;
@@ -226,19 +226,19 @@ static Material buildMaterial(const MaterialImportData &src, const std::vector<T
         mat.pbr.baseColorFactor          = src.pbr.baseColorFactor;
         mat.pbr.metallicFactor           = src.pbr.metallicFactor;
         mat.pbr.roughnessFactor          = src.pbr.roughnessFactor;
-        mat.pbr.baseColorTexture         = resolveTextureRef(src.pbr.baseColorTexture, textures);
-        mat.pbr.metallicRoughnessTexture = resolveTextureRef(src.pbr.metallicRoughnessTexture, textures);
+        mat.pbr.baseColorTexture         = resolve_texture_ref(src.pbr.baseColorTexture, textures);
+        mat.pbr.metallicRoughnessTexture = resolve_texture_ref(src.pbr.metallicRoughnessTexture, textures);
 
         // Normal
-        mat.normalTexture.ref   = resolveTextureRef(src.normalTexture.ref, textures);
+        mat.normalTexture.ref   = resolve_texture_ref(src.normalTexture.ref, textures);
         mat.normalTexture.scale = src.normalTexture.scale;
 
         // Occlusion
-        mat.occlusionTexture.ref      = resolveTextureRef(src.occlusionTexture.ref, textures);
+        mat.occlusionTexture.ref      = resolve_texture_ref(src.occlusionTexture.ref, textures);
         mat.occlusionTexture.strength = src.occlusionTexture.strength;
 
         // Emissive
-        mat.emissiveTexture  = resolveTextureRef(src.emissiveTexture, textures);
+        mat.emissiveTexture  = resolve_texture_ref(src.emissiveTexture, textures);
         mat.emissiveFactor   = src.emissiveFactor;
         mat.emissiveStrength = 1.0f;  // KHR_materials_emissive_strength not yet in import data
 
@@ -253,10 +253,10 @@ static Material buildMaterial(const MaterialImportData &src, const std::vector<T
 }
 
 // ---------------------------------------------------------------------------
-// ic::buildModel -> the single entry point
+// ic::build_model -> the single entry point
 // ---------------------------------------------------------------------------
 
-Model buildModel(ModelImportData *data, IC_GUID id)
+Model build_model(ModelImportData *data, IC_GUID id)
 {
         Model model(id);
 
@@ -291,7 +291,7 @@ Model buildModel(ModelImportData *data, IC_GUID id)
         // --- Materials (resolve texture refs against import texture list) ---
         model.m_materials.reserve(data->materials.size());
         for (const auto &mat : data->materials)
-                model.m_materials.push_back(buildMaterial(mat, data->textures));
+                model.m_materials.push_back(build_material(mat, data->textures));
 
         // Note: data.textures is NOT stored on Model.
         // All texture references are now resolved to (image, sampler) index pairs.
@@ -396,14 +396,14 @@ Model buildModel(ModelImportData *data, IC_GUID id)
         {
                 const Scene &defaultScene = model.m_scenes[model.m_defaultScene];
                 for (Index rootIdx : defaultScene.rootNodes)
-                        buildHierarchy(model.m_nodes, rootIdx, glm::mat4(1.0f));
+                        build_hierarchy(model.m_nodes, rootIdx, glm::mat4(1.0f));
         }
         else
         {
                 // No valid default scene -> walk all scenes
                 for (const auto &scene : model.m_scenes)
                         for (Index rootIdx : scene.rootNodes)
-                                buildHierarchy(model.m_nodes, rootIdx, glm::mat4(1.0f));
+                                build_hierarchy(model.m_nodes, rootIdx, glm::mat4(1.0f));
         }
 
         // --- Meshes (pack geometry, compute AABBs) ---
@@ -417,7 +417,7 @@ Model buildModel(ModelImportData *data, IC_GUID id)
 
                 mesh.primitives.reserve(importMesh.primitives.size());
                 for (auto &importPrim : importMesh.primitives)
-                        mesh.primitives.push_back(buildPrimitive(&importPrim));  // see if this fixes things
+                        mesh.primitives.push_back(build_primitive(&importPrim));  // see if this fixes things
 
                 model.m_meshes.push_back(std::move(mesh));
         }
@@ -447,17 +447,17 @@ Model buildModel(ModelImportData *data, IC_GUID id)
                     glm::vec3(W * glm::vec4(mesh.bounds.max.x, mesh.bounds.max.y, mesh.bounds.max.z, 1.f)),
                 };
                 for (const auto &c : corners)
-                        model.m_worldBounds.expand(c);
+                        model.m_worldBounds.Expand(c);
         }
 
         // State is set by Model::load() after this function returns.
-        // buildModel() produces a logically CPUReady model but does not
+        // build_model() produces a logically CPUReady model but does not
         // touch m_state -> that's the caller's responsibility.
 
         return model;
 }
 
-bool Model::load(const char *filepath)
+bool Model::Load(const char *filepath)
 {
         IC_CORE_ASSERT(filepath, "Model::load -> null filepath");
 
@@ -474,11 +474,11 @@ bool Model::load(const char *filepath)
         // -----------------------------------------------------------------------
         // Try cache first
         // -----------------------------------------------------------------------
-        const char *cachePath = AssetManager::Get().GetRegistry()->GetCachePath(getID());
+        const char *cachePath = AssetManager::Get().GetRegistry()->GetCachePath(GetID());
         if (cachePath && fs_exists(cachePath))
         {
                 uint64_t srcTime   = fs_getLastModificationTime(filepath);
-                uint64_t cacheTime = AssetCache::GetAssetTimeStamp(AssetType::ASSET_TYPE_MODEL, getID());
+                uint64_t cacheTime = AssetCache::GetAssetTimeStamp(AssetType::ASSET_TYPE_MODEL, GetID());
 
                 if (cacheTime >= srcTime)
                 {
@@ -487,7 +487,7 @@ bool Model::load(const char *filepath)
 #ifndef NDEBUG
                         auto start = std::chrono::high_resolution_clock::now();
 #endif
-                        if (s.openForRead(cachePath) && serializedLoad(&s))
+                        if (s.openForRead(cachePath) && SerializedLoad(&s))
                         {
                                 s.close();
                                 IC_CORE_INFO("Model::load -> loaded from cache '{}'", cachePath);
@@ -536,13 +536,13 @@ bool Model::load(const char *filepath)
         IC_CORE_INFO("Model::load -> parsed '{}' in {:.2f} ms", filepath, us / 1000.0);
 #endif
 
-        *this   = buildModel(&importData, getID());
+        *this   = build_model(&importData, GetID());
         m_state = State::CPUReady;
 
         // -----------------------------------------------------------------------
         // Write cache for next time
         // -----------------------------------------------------------------------
-        if (!AssetCache::CacheAsset(AssetType::ASSET_TYPE_MODEL, getID(), this))
+        if (!AssetCache::CacheAsset(AssetType::ASSET_TYPE_MODEL, GetID(), this))
                 IC_CORE_WARN("Model::load -> failed to write cache for '{}'", filepath);
 
         IC_CORE_INFO("Model::load -> '{}' ready ({} meshes, {} materials, {} nodes)",
@@ -553,7 +553,7 @@ bool Model::load(const char *filepath)
         return true;
 }
 
-bool Model::release()
+bool Model::Release()
 {
         // Free CPU geometry
         for (auto &mesh : m_meshes)
@@ -584,14 +584,14 @@ bool Model::release()
         m_animations.clear();
         m_scenes.clear();
 
-        m_worldBounds  = AABB::makeInvalid();
+        m_worldBounds  = AABB::MakeInvalid();
         m_defaultScene = INVALID_INDEX;
         m_state        = State::Unloaded;
 
         return true;
 }
 
-void Model::freeCPU()
+void Model::FreeCPU()
 {
         // Called after successful GPU upload.
         // Releases vertex data and pixel data -> keeps everything else
@@ -617,7 +617,7 @@ void Model::freeCPU()
         // State stays GPUReady -> the data is on the GPU, not gone.
 }
 
-bool Model::serializedSave(ic::Serializer *s) const
+bool Model::SerializedSave(ic::Serializer *s) const
 {
         IC_CORE_ASSERT(s && s->isWriting(), "serializedSave: serializer not open for write");
 
@@ -953,7 +953,7 @@ bool Model::serializedSave(ic::Serializer *s) const
 
 // =============================================================================
 
-bool Model::serializedLoad(ic::Serializer *s)
+bool Model::SerializedLoad(ic::Serializer *s)
 {
         IC_CORE_ASSERT(s && s->isReading(), "serializedLoad: serializer not open for read");
 

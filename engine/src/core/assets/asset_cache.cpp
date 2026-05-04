@@ -42,7 +42,7 @@ bool CacheAsset(AssetType type, const IC_GUID id, IAsset *asset)
                 ic_free(full_path);
                 return false;
         }
-        if (!asset->serializedSave(&serializer))
+        if (!asset->SerializedSave(&serializer))
         {
                 IC_CORE_ERROR("Could not save file {}", full_path);
                 serializer.close();

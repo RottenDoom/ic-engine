@@ -9,8 +9,7 @@
 #include <GLFW/glfw3.h>
 
 // TODO: add a linux build with wayland to start building with valgrind memory checks
-// TODO: maybe write a memory effecient class for checking how much memory is being used. I suspect that memory of
-// Validation layers of vilkan engine is being leaked
+// TODO: scene saving fix and generalize and fix the workflow of my rendering pipeline.
 
 namespace ic
 {
@@ -51,30 +50,30 @@ Application::~Application()
 
 bool Application::Run()
 {
-	/** TODO: Replace glfw dependencies with my own. */
+        /** TODO: Replace glfw dependencies with my own. */
         while (isRunning)
         {
                 float time      = glfwGetTime();
                 float delta     = time - m_lastFrameTime;
                 m_lastFrameTime = time;
 
-		glfwPollEvents();
+                glfwPollEvents();
 
-		// user update
+                // user update
                 if (user_update)
                 {
                         user_update(delta);
                 }
 
-		// engine render
-		m_renderer->RenderFrame(delta);
+                // engine render
+                m_renderer->RenderFrame(delta);
 
-		// UI + user render
+                // UI + user render
                 if (user_render)
                 {
                         user_render();
                 }
-		glfwSwapBuffers(m_Window->GetNativeWindow());
+                glfwSwapBuffers(m_Window->GetNativeWindow());  // TODO: This dependency should not be here.
         }
 
         return true;
@@ -107,14 +106,13 @@ static ic::Application *s_app = nullptr;
 
 void ic_clear_color(void)
 {
-	ic::Application::Get().GetRenderer()->ClearColor();
+        ic::Application::Get().GetRenderer()->ClearColor();
 }
 
 void ic_clear_buffer_bit(void)
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
-
 
 void ic_create_application(ic::window_props *windowProperties)
 {

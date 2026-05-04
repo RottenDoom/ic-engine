@@ -47,7 +47,7 @@ public:
                         return nullptr;
                 if (asset->getAssetType() != T::getStaticType())
                 {
-                        IC_CORE_ERROR("AssetManager::loadAs - type mismatch for {}", id);
+                        IC_CORE_ERROR("AssetManager::LoadAs - type mismatch for {}", id);
                         Unload(id);  // undo the addRef from load()
                         return nullptr;
                 }
@@ -57,16 +57,41 @@ public:
         template <typename T>
         T *LoadAs(IC_GUID id, const char *path)
         {
-                IAsset *asset = load(id, path, T::getStaticType());
+                IAsset *asset = Load(id, path, T::getStaticType());
                 if (!asset)
                         return nullptr;
                 if (asset->getAssetType() != T::getStaticType())
                 {
-                        IC_CORE_ERROR("AssetManager::loadAs - type mismatch for {}", id);
+                        IC_CORE_ERROR("AssetManager::LoadAs - type mismatch for {}", id);
                         Unload(id);
                         return nullptr;
                 }
                 return static_cast<T *>(asset);
+        }
+
+        template <typename T>
+        T *LoadAs(const char *name)
+        {
+                IC_GUID     id   = m_registry.GetAssetId(name);
+                const char *path = m_registry.GetFilePath(id);
+                if (id != INVALID_ID && path)
+                {
+                        IAsset *asset = Load(id, path, T::getStaticType());
+                        if (!asset)
+                                return nullptr;
+                        if (asset->getAssetType() != T::getStaticType())
+                        {
+                                IC_CORE_ERROR("AssetManager::LoadAs - type mismatch for {}", id);
+                                Unload(id);
+                                return nullptr;
+                        }
+                        return static_cast<T *>(asset);
+                }
+                else
+                {
+                        IC_CORE_ERROR("AssetManager::LoadAs - Asset ID or path does not exist in registry!");
+                        return nullptr;
+                }
         }
 
         IAsset *GetAsset(IC_GUID id);
@@ -104,10 +129,10 @@ private:
         void DestroyAsset(IAsset *asset);
 
         static AssetManager *s_instance;
-	
-	string m_AssetRegistryPath;
+
+        string                                m_AssetRegistryPath;
         std::unordered_map<IC_GUID, IAsset *> m_assets;
-        AssetRegistry                      m_registry;
+        AssetRegistry                         m_registry;
 };
 
 }  // namespace ic
@@ -129,11 +154,11 @@ extern "C"
          * @brief Loads a model using model name. Returns false if no model of that name found.
          elID modelID from a registry file.
          */
-        IC_API IC_GUID ic_load_model(const char* name);
+        IC_API IC_GUID ic_load_model(const char *name);
 
-	// TODO: load model without registry and then save it into the file.
+        // TODO: load model without registry and then save it into the file.
 
-	IC_API void ic_name_model(IC_GUID id, const char* name);
+        IC_API void ic_name_model(IC_GUID id, const char *name);
 
         IC_API const char *ic_get_model_path(IC_GUID modelID);
 

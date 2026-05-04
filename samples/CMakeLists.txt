@@ -7,12 +7,12 @@ function(add_sample TARGET_NAME SOURCE_FILE)
     )
     
     # I just prefer all the executables even samples in the build dir
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/samples/assets                    # Source
-            ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets      # Destination
-        COMMENT "Copying assets for ${TARGET_NAME}..."
-    )
+#     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+#         COMMAND ${CMAKE_COMMAND} -E copy_directory
+#             ${CMAKE_SOURCE_DIR}/samples/assets                    # Source
+#             ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets      # Destination
+#         COMMENT "Copying assets for ${TARGET_NAME}..."
+#     )
     
     if (WINDOWS)
         target_dxc_copy(${TARGET_NAME})

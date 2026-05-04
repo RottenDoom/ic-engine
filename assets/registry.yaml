@@ -1,0 +1,66 @@
+assets_folder: "/assets"
+
+assets:
+        - id: 0x1000000000000001
+          name: cube_model
+          filepath: models/cube.glb
+          cache: cube/shape.icmodel
+          type: model
+
+        - id: 0x1000000000000010
+          name: test_model
+          filepath: models/test/testcube.gltf
+          cache: models/test/testcube.icmodel
+          type: model
+
+        - id: 0x1000000000000011
+          name: plane_model
+          filepath: models/plane/plane.gltf
+          cache: models/plane/plane.icmodel
+          type: model
+
+        - id: 0x1000000000000006
+          name: cloudy_cubemap
+          filepath: cubemaps/cloudy
+          type: skybox
+
+        - id: 0x1000000000000007
+          name: landscape_cubemap
+          filepath: cubemaps/landscape
+          type: skybox
+
+        - id: 0x1000000000000009
+          name: dusk_cubemap
+          filepath: cubemaps/dusk
+          type: skybox
+
+        - id: 0x1000000000000005
+          name: point_model
+          filepath: models/sphere.glb
+          cache: models/light.icmodel
+          type: model
+
+        - id: 0x1000000000000008
+          name: spot_model
+          filepath: models/cone.glb
+          cache: models/cone.icmodel
+          type: model
+
+        - id: 0x1000000000000004
+          name: player_model
+          filepath: shibahu/scene.gltf
+          cache: shibahu/scene.icmodel
+          type: model
+
+        - id: 0x1000000000000002
+          name: tree_house_model
+          filepath: tree_house/scene.gltf
+          cache: tree_house/scene.icmodel
+          type: model
+          dependencies:
+                  - 0x1000000000000003
+
+        - id: 0x1000000000000003
+          name: tree_house_texture
+          filepath: tree_house/textures/Envi_baseColor.png
+          type: texture

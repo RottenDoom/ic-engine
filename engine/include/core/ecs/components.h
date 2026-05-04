@@ -4,7 +4,9 @@
 #include "defines.h"
 #include "renderer/camera.h"
 #include "core/assets/types/asset_base.h"
+#include "core/assets/types/model.h"
 #include "core/uuid.h"
+#include "renderer/light_types.h"
 
 #include <entt/entt.hpp>
 
@@ -34,14 +36,14 @@ struct TagComponent
 
         TagComponent()                     = default;
         TagComponent(const TagComponent &) = default;
-        TagComponent(const std::string &tag) : Tag(tag) {}
+        void SetName(const string &tag) { Tag = tag; }
 };
 
 struct HierarchyComponent
 {
-	entt::entity            parent   = entt::null;
-	std::vector<entt::entity> children = {};
-	uint32_t                 depth    = 0;  // root = 0, child = 1, etc.
+        entt::entity              parent   = entt::null;
+        std::vector<entt::entity> children = {};
+        uint32_t                  depth    = 0;  // root = 0, child = 1, etc.
 };
 
 struct TransformComponent
@@ -104,11 +106,28 @@ struct CameraComponent
         Camera camera;
 };
 
-// TODO this maybe.
 struct LightComponent
 {
-        glm::vec3 color{1};
+        LightType type = LightType::Point;
+
+#ifndef NDEBUG
+        IC_GUID modelID;
+        bool    visible = false;
+#endif
+
+        glm::vec3 color     = glm::vec3(1.0f);
         float     intensity = 1.0f;
+
+        // Point / Spot
+        float range = 10.0f;
+
+        // Spot only (degrees, converted to cos on upload)
+        float innerAngle = 12.5f;
+        float outerAngle = 17.5f;
+
+        // Shared
+        bool castShadows = false;
+        bool enabled     = true;
 };
 
 }  // namespace ic

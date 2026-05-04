@@ -8,41 +8,24 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
-/**
- * opengl_renderer.cpp
- *
- * TODO:
- * 1. Fix the new refactored pipeline base renderer with the asset manager
- * 2. Lighting system with proper things inplace
- * 3. UI system both for Editor and Application
- *
- */
+#include <glm/glm.hpp>
 
 namespace ic
 {
-
-// ---------------------------------------------------------------------------
-// Constructor / Destructor
-// ---------------------------------------------------------------------------
 
 OpenGLRenderer::OpenGLRenderer() : m_window(nullptr), m_scene(nullptr) {}
 
 OpenGLRenderer::~OpenGLRenderer()
 {
-        // cleanUp() should be called explicitly before destruction,
+        // CleanUp() should be called explicitly before destruction,
         // but guard here in case it wasn't.
-        if (!m_gpuCache.empty())
+        if (m_shader)
                 CleanUp();
 }
 
-// ---------------------------------------------------------------------------
-// IRenderer::init
-// ---------------------------------------------------------------------------
-
 bool OpenGLRenderer::Init(Window *w)
 {
-        IC_CORE_ASSERT(w, "OpenGLRenderer::init -> null window");
+        IC_CORE_ASSERT(w, "OpenGLRenderer::Init -> null window");
         m_window = w;
 
         glfwMakeContextCurrent(m_window->GetNativeWindow());
@@ -72,23 +55,27 @@ bool OpenGLRenderer::Init(Window *w)
         EnableFeatures();
         CreateShader();
 
-        LoadAssets();
-        SetupBuffers();
+        m_lightUBO.Create();
+        m_lightSystem.Init(&m_lightUBO);
+
+        m_shader->use();
+        GLuint progID = m_shader->ID;
+        glUniformBlockBinding(progID, glGetUniformBlockIndex(progID, "PerFrameBlock"), 0);
+        glUniformBlockBinding(progID, glGetUniformBlockIndex(progID, "LightBlock"), 1);
+
+        m_cubemapShader->use();
+        GLuint skyboxProgID = m_cubemapShader->ID;
+        glUniformBlockBinding(skyboxProgID, glGetUniformBlockIndex(skyboxProgID, "PerFrameBlock"), 0);
 
         IC_CORE_INFO("OpenGLRenderer: initialized");
         return true;
 }
 
-// ---------------------------------------------------------------------------
-// IRenderer::setScene
-// ---------------------------------------------------------------------------
-
 void OpenGLRenderer::SetScene(RenderScene *scene, Camera &editorCamera)
 {
-        m_scene        = scene;
+        m_scene         = scene;
         m_pEditorCamera = &editorCamera;
 
-        // If the renderer is already initialized, load and upload the new scene.
         if (m_window)
         {
                 LoadAssets();
@@ -96,45 +83,24 @@ void OpenGLRenderer::SetScene(RenderScene *scene, Camera &editorCamera)
         }
 }
 
-// ---------------------------------------------------------------------------
-// Init helpers
-// ---------------------------------------------------------------------------
-
 void OpenGLRenderer::EnableFeatures()
 {
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-        // glFrontFace(GL_CCW);
 }
 
 void OpenGLRenderer::CreateShader()
 {
-        m_shader = new Shader("shaders/opengl/modelShader.vs", "shaders/opengl/modelShader.fs");
+        /** TODO: Make the shaders as assets instead of this. */
+        m_shader        = new Shader("shaders/opengl/pbr/pbr.vert", "shaders/opengl/pbr/pbr.frag");
+        m_cubemapShader = new Shader("shaders/opengl/skybox.vert", "shaders/opengl/skybox.frag");
 }
 
 void OpenGLRenderer::LoadAssets()
 {
         if (!m_scene)
                 return;
-
-        /** Just for the sake of making sure
-         * 1. m_scene get all the entities with meshcomponent
-         * 2. for each component load the model or material whatever from them
-         * 3. To keep this shit loaded
-         */
-
-        std::vector<Entity> mesh_entities = m_scene->GetEntitiesWith<MeshComponent>();
-        for (auto &e : mesh_entities)
-        {
-                MeshComponent &c     = e.GetComponent<MeshComponent>();
-                Model         *model = AssetManager::Get().LoadAs<Model>(c.modelID);
-
-                if (!model)
-                {
-                        IC_CORE_WARN("Failed loading model {}", c.modelID);
-                }
-        }
 }
 
 void OpenGLRenderer::SetupBuffers()
@@ -142,50 +108,35 @@ void OpenGLRenderer::SetupBuffers()
         if (!m_scene)
                 return;
 
-        std::vector<Entity> mesh_entities = m_scene->GetEntitiesWith<MeshComponent>();
-        for (auto &e : mesh_entities)
+        for (auto &e : m_scene->GetEntitiesWith<MeshComponent>())
         {
                 MeshComponent &c = e.GetComponent<MeshComponent>();
-                if (m_gpuCache.count(c.modelID))
-                        continue;
-                UploadModel(c.modelID);
+                m_cache.GetOrUpload(c.modelID, AssetManager::Get());
         }
-}
 
-GLModel *OpenGLRenderer::UploadModel(IC_GUID id)
-{
-        Model *model = AssetManager::Get().GetAsset<Model>(id);
-        if (!model)
+        // Light volumes pass?
+        for (auto &e : m_scene->GetEntitiesWith<LightComponent>())
         {
-                IC_CORE_WARN("OpenGLRenderer::uploadModel -> model {} not in AssetManager", id);
-                return nullptr;
+                LightComponent &lc = e.GetComponent<LightComponent>();
+                if (lc.type == LightType::Point || lc.type == LightType::Spot)
+                {
+                        m_cache.GetOrUpload(lc.modelID, AssetManager::Get());
+                }
         }
 
-        if (!model->isCPUReady())
+        Skybox *skyboxAsset = m_scene->GetSkybox();
+        if (!skyboxAsset || !skyboxAsset->IsLoaded())
         {
-                IC_CORE_WARN("OpenGLRenderer::uploadModel -> model {} not CPUReady (state={})",
-                             id,
-                             static_cast<int>(model->getState()));
-                return nullptr;
+                IC_CORE_WARN("Skybox asset is not loaded!");
+                return;
         }
-
-        auto glModel = new GLModel();
-        glModel->upload(*model);
-
-        m_gpuCache[id] = glModel;
-
-        IC_CORE_INFO("OpenGLRenderer: uploaded model {} to GPU", id);
-        return glModel;
-}
-
-GLModel *OpenGLRenderer::GetOrUpload(IC_GUID id)
-{
-        auto it = m_gpuCache.find(id);
-
-        if (it != m_gpuCache.end())
-                return it->second;
-
-        return UploadModel(id);
+        m_Skybox.Destroy();
+        bool uploaded = m_Skybox.Upload(*skyboxAsset);
+        if (!uploaded)
+        {
+                IC_CORE_WARN("Skybox asset was not uploaded to the GPU");
+        }
+        skyboxAsset->Release();
 }
 
 // ---------------------------------------------------------------------------
@@ -198,8 +149,38 @@ void OpenGLRenderer::RenderFrame(float dt)
         Draw(dt);
 }
 
-// Check if nothing in update function here.
-void OpenGLRenderer::Update(float dt) {}
+void OpenGLRenderer::Update(float dt)
+{
+        (void)dt;
+}
+
+void OpenGLRenderer::RenderCubeMap(Shader *cubeMapShader, GLSkybox *skybox)
+{
+        glDepthFunc(GL_LEQUAL);
+        glDisable(GL_CULL_FACE);
+
+        cubeMapShader->use();
+
+        GLint skyboxLoc = glGetUniformLocation(cubeMapShader->ID, "u_Skybox");
+        glUniform1i(skyboxLoc, 0);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);        // unbind any 2D texture on unit 0
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);  // unbind any cubemap on unit 0
+
+        skybox->Bind(0);
+
+        GLint boundCubemap = 0;
+        glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &boundCubemap);
+        // IC_CORE_INFO("RenderCubeMap -> bound cubemap on unit 0: {}", boundCubemap);
+
+        glBindVertexArray(skybox->GetVAO());
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glDepthFunc(GL_LESS);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+}
 
 void OpenGLRenderer::Draw(float dt)
 {
@@ -208,29 +189,84 @@ void OpenGLRenderer::Draw(float dt)
         if (m_isMinimized || !m_scene || !m_shader || !m_pEditorCamera)
                 return;
 
+        ClearColor();
+
+        // upload perframe data
+        PerFrameData perFrame{};
+        perFrame.view       = m_pEditorCamera->matrices.view;
+        perFrame.projection = m_pEditorCamera->projection;
+        perFrame.cameraPos  = glm::vec4(m_pEditorCamera->position, 0.0f);
+        perFrame.time       = static_cast<float>(glfwGetTime());
+        m_lightUBO.UploadPerFrame(perFrame);
+
+        m_lightSystem.Update(m_scene, *m_pEditorCamera, glfwGetTime());
+        m_lightUBO.BindAll();
         m_shader->use();
-        m_shader->setMat4("u_projection", m_pEditorCamera->projection);
-        m_shader->setMat4("u_view", m_pEditorCamera->matrices.view);
 
-        auto meshEntities = m_scene->GetEntitiesWith<MeshComponent, TransformComponent>();
+        m_queue.Clear();
 
-        for (Entity &e : meshEntities)
+        const glm::vec3 camPos = m_pEditorCamera->position;
+
+        for (Entity &e : m_scene->GetEntitiesWith<MeshComponent, TransformComponent>())
         {
                 auto &mesh      = e.GetComponent<MeshComponent>();
                 auto &transform = e.GetComponent<TransformComponent>();
 
-                GLModel *glModel = GetOrUpload(mesh.modelID);
+                GLModel *glModel = m_cache.GetOrUpload(mesh.modelID, AssetManager::Get());
                 if (!glModel)
                         continue;
 
-                m_shader->setMat4("u_model", transform.GetTransformMatrix());
-                glModel->draw(m_shader);
-        }
-}
+                std::vector<GLModel::DrawItem> items;
+                glModel->CollectDrawItems(transform.GetTransformMatrix(), items);
 
-// ---------------------------------------------------------------------------
-// Events
-// ---------------------------------------------------------------------------
+                for (auto &item : items)
+                {
+                        GLMaterial *mat = nullptr;
+                        if (item.materialIndex != INVALID_INDEX && glModel->Get())
+                                mat = m_cache.GetMaterial(mesh.modelID, item.materialIndex, *glModel->Get());
+
+                        const glm::vec3 center = glm::vec3(item.worldTransform[3]);
+                        const float     depth  = glm::length(center - camPos);
+
+                        m_queue.Submit({item.primitive, mat, glModel, item.worldTransform, depth});
+                }
+        }
+
+        for (Entity &e : m_scene->GetEntitiesWith<LightComponent, TransformComponent>())
+        {
+                LightComponent     &lc        = e.GetComponent<LightComponent>();
+                TransformComponent &transform = e.GetComponent<TransformComponent>();
+                if (lc.visible)
+                {
+                        GLModel *glModel = m_cache.GetOrUpload(lc.modelID, AssetManager::Get());
+                        if (!glModel)
+                                continue;
+                        std::vector<GLModel::DrawItem> items;
+                        glModel->CollectDrawItems(transform.GetTransformMatrix(), items);
+
+                        for (auto &item : items)
+                        {
+                                GLMaterial *mat = nullptr;
+                                if (item.materialIndex != INVALID_INDEX && glModel->Get())
+                                        mat = m_cache.GetMaterial(lc.modelID, item.materialIndex, *glModel->Get());
+
+                                const glm::vec3 center = glm::vec3(item.worldTransform[3]);
+                                const float     depth  = glm::length(center - camPos);
+
+                                m_queue.Submit({item.primitive, mat, glModel, item.worldTransform, depth});
+                        }
+                }
+        }
+
+        m_queue.Sort();
+
+        m_opaquePass.Execute(m_queue.OpaqueCommands(), m_shader);
+        m_outlinePass.Execute(m_queue.OutlineCommands(), m_shader);
+        m_transPass.Execute(m_queue.BlendCommands(), m_shader);
+
+        if (m_Skybox.IsReady())
+                RenderCubeMap(m_cubemapShader, &m_Skybox);
+}
 
 void OpenGLRenderer::OnEvent(event &e)
 {
@@ -243,7 +279,7 @@ void OpenGLRenderer::OnEvent(event &e)
 
 void OpenGLRenderer::ClearColor()
 {
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
@@ -265,20 +301,13 @@ bool OpenGLRenderer::OnWindowResize(WindowResizedEvent &e)
         return false;
 }
 
-// ---------------------------------------------------------------------------
-// Cleanup
-// ---------------------------------------------------------------------------
-
 void OpenGLRenderer::CleanUp()
 {
-        for (auto &it : m_gpuCache)
-        {
-                it.second->clearGPUMemory();
-                delete it.second;
-        }
-
-        m_gpuCache.clear();
+        m_lightUBO.Destroy();
+        m_cache.Clear();
+        m_Skybox.Destroy();
         delete m_shader;
+        delete m_cubemapShader;
         m_shader = nullptr;
 }
 

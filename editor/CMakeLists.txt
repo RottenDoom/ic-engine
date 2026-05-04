@@ -1,8 +1,11 @@
 set(EDITOR_SOURCES
     src/main.cpp
     src/editor.cpp
+    src/panels/camera.cpp
     src/panels/component.cpp
     src/panels/heirarchy.cpp
+    src/panels/light.cpp
+    src/extern/ImGuiFileDialog.cpp
 )
 
 add_executable(editor ${EDITOR_SOURCES})

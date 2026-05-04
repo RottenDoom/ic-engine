@@ -1,0 +1,15 @@
+#default_scene/default.scene
+scene:
+  name: "Default Scene"
+  skybox: "landscape_cubemap"
+
+entities:
+  - id: 2
+    name: "Cube"
+    components:
+      TransformComponent:
+        position: [0.0, 0.0, 0.0]
+        rotation: [1.0, 0.0, 0.0, 0.0]
+        scale:    [1.0, 1.0, 1.0]
+      MeshComponent:
+        model: "cube_model"

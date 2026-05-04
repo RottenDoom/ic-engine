@@ -14,6 +14,7 @@ set(CORE_SRC
     src/core/allocator.cpp
 
     src/core/assets/types/model.cpp
+    src/core/assets/types/skybox.cpp
     src/core/assets/types/material.cpp
     src/core/assets/asset_cache.cpp
     src/core/assets/asset_manager.cpp
@@ -28,15 +29,21 @@ set(RENDERER_SRC
     src/renderer/camera.cpp
     src/renderer/renderer_frontend.cpp
     src/renderer/scene.cpp
+    src/renderer/lighting_system.cpp
     src/renderer/scene_serializer.cpp
 )
 
 set(OPENGL_SRC
-    src/renderer/opengl/gl_material.cpp
-    src/renderer/opengl/gl_model.cpp
-    src/renderer/opengl/gl_shader.cpp
-    src/renderer/opengl/gl_framebuffer.cpp
-    src/renderer/opengl/opengl_renderer.cpp
+	src/renderer/opengl/gl_material.cpp
+	src/renderer/opengl/gl_model.cpp
+	src/renderer/opengl/gl_skybox.cpp
+	src/renderer/opengl/gl_shader.cpp
+	src/renderer/opengl/light_ubo.cpp
+	src/renderer/opengl/gl_framebuffer.cpp
+	src/renderer/opengl/opengl_renderer.cpp
+	src/renderer/opengl/render_command.cpp
+	src/renderer/opengl/render_pass.cpp
+	src/renderer/opengl/gpu_resource_cache.cpp
 )
 
 set(VULKAN_SRC
@@ -148,6 +155,14 @@ set_target_properties(engine PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     ARCHIVE_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_BINARY_DIR}/bin/Debug
     ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin/Release
+)
+
+add_custom_command(TARGET engine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets
+    COMMENT "Copying engine assets..."
+    VERBATIM
 )
 
 # ─────────────────────────────────────────────

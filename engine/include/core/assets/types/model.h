@@ -34,7 +34,7 @@ class Model;
  * This is the only function that may write into Model's private members.
  * Defined in model_builder.cpp.
  */
-Model buildModel(ModelImportData *data, IC_GUID id);
+Model build_model(ModelImportData *data, IC_GUID id);
 
 // ---------------------------------------------------------------------------
 // AABB
@@ -50,27 +50,27 @@ struct AABB
         glm::vec3 extents() const { return (max - min) * 0.5f; }
         glm::vec3 size() const { return max - min; }
 
-        void expand(const glm::vec3 &p)
+        void Expand(const glm::vec3 &p)
         {
                 min = glm::min(min, p);
                 max = glm::max(max, p);
         }
-        void merge(const AABB &other)
+        void Merge(const AABB &other)
         {
                 min = glm::min(min, other.min);
                 max = glm::max(max, other.max);
         }
 
-        bool contains(const glm::vec3 &p) const
+        bool Contains(const glm::vec3 &p) const
         {
                 return glm::all(glm::greaterThanEqual(p, min)) && glm::all(glm::lessThanEqual(p, max));
         }
-        bool intersects(const AABB &other) const
+        bool Intersects(const AABB &other) const
         {
                 return glm::all(glm::lessThanEqual(min, other.max)) && glm::all(glm::greaterThanEqual(max, other.min));
         }
 
-        static AABB makeInvalid() { return AABB{}; }
+        static AABB MakeInvalid() { return AABB{}; }
 };
 
 // ---------------------------------------------------------------------------
@@ -325,7 +325,7 @@ class Model : public IAsset
         // Only these two may write into private data.
         // A free function is preferred over a friend class -> it grants
         // access to exactly one operation rather than an entire class scope.
-        friend Model ic::buildModel(ic::ModelImportData *data, IC_GUID id);
+        friend Model ic::build_model(ic::ModelImportData *data, IC_GUID id);
         friend class ic::Serializer;
 
 public:
@@ -339,49 +339,35 @@ public:
         Model(Model &&)                 = default;
         Model &operator=(Model &&)      = default;
 
-        // -----------------------------------------------------------------------
-        // IAsset -> cold load path
-        // -----------------------------------------------------------------------
-
         /**
-         * Load from disk using the appropriate IModelLoader.
-         * Internally: calls GLTFLoader → buildModel().
+         * Load from disk using the IModelLoader.
          * Transitions: Unloaded → Pending → CPUReady (or Failed)
          */
-        bool load(const char *filepath) override;
+        bool Load(const char *filepath) override;
 
         /**
-         * Fast warm load from a .icache binary.
+         * Fast file load from a .icmodel binary.
          * Skips the loader and builder entirely.
          * Transitions: Unloaded → CPUReady
          */
-        bool serializedLoad(ic::Serializer *s) override;
+        bool SerializedLoad(ic::Serializer *s) override;
 
-        /** Write CPUReady data to .icmodel binary for future warm loads. */
-        bool serializedSave(ic::Serializer *s) const override;
+        /** Write CPUReady data to .icmodel binary for future fast file loads. */
+        bool SerializedSave(ic::Serializer *s) const override;
 
         /**
          * Release all CPU and GPU data. Returns to Unloaded.
          * Safe to call in any state.
          */
-        bool release() override;
+        bool Release() override;
 
-        bool isLoaded() const override { return m_state >= State::CPUReady; }
-
-        // -----------------------------------------------------------------------
-        // GPU lifecycle -> called by GLModel
-        // -----------------------------------------------------------------------
-
+        bool IsLoaded() const override { return m_state >= State::CPUReady; }
         /**
          * Free CPU-side vertexData and Image::pixels after successful GPU upload.
          * State stays GPUReady. After this call the model cannot be re-uploaded
          * without reloading from disk or cache.
          */
-        void freeCPU();
-
-        // -----------------------------------------------------------------------
-        // State machine
-        // -----------------------------------------------------------------------
+        void FreeCPU();
 
         enum class State : uint8_t
         {
@@ -410,22 +396,22 @@ public:
         const std::vector<Animation>   &animations() const { return m_animations; }
         const std::vector<Scene>       &scenes() const { return m_scenes; }
 
-        const AABB  &getWorldBounds() const { return m_worldBounds; }
-        Index        getDefaultSceneIndex() const { return m_defaultScene; }
-        const Scene *getDefaultScene() const { return getScene(m_defaultScene); }
+        const AABB  &GetWorldBounds() const { return m_worldBounds; }
+        Index        GetDefaultSceneIndex() const { return m_defaultScene; }
+        const Scene *GetDefaultScene() const { return GetScene(m_defaultScene); }
 
-        size_t getMeshCount() const { return m_meshes.size(); }
-        size_t getNodeCount() const { return m_nodes.size(); }
-        size_t getMaterialCount() const { return m_materials.size(); }
-        size_t getAnimationCount() const { return m_animations.size(); }
+        size_t GetMeshCount() const { return m_meshes.size(); }
+        size_t GetNodeCount() const { return m_nodes.size(); }
+        size_t GetMaterialCount() const { return m_materials.size(); }
+        size_t GetAnimationCount() const { return m_animations.size(); }
 
-        const Mesh      *getMesh(Index i) const { return i < m_meshes.size() ? &m_meshes[i] : nullptr; }
-        const Node      *getNode(Index i) const { return i < m_nodes.size() ? &m_nodes[i] : nullptr; }
-        const Material  *getMaterial(Index i) const { return i < m_materials.size() ? &m_materials[i] : nullptr; }
-        const Animation *getAnimation(Index i) const { return i < m_animations.size() ? &m_animations[i] : nullptr; }
-        const Scene     *getScene(Index i) const { return i < m_scenes.size() ? &m_scenes[i] : nullptr; }
-        const Image     *getImage(Index i) const { return i < m_images.size() ? &m_images[i] : nullptr; }
-        const Sampler   *getSampler(Index i) const { return i < m_samplers.size() ? &m_samplers[i] : nullptr; }
+        const Mesh      *GetMesh(Index i) const { return i < m_meshes.size() ? &m_meshes[i] : nullptr; }
+        const Node      *GetNode(Index i) const { return i < m_nodes.size() ? &m_nodes[i] : nullptr; }
+        const Material  *GetMaterial(Index i) const { return i < m_materials.size() ? &m_materials[i] : nullptr; }
+        const Animation *GetAnimation(Index i) const { return i < m_animations.size() ? &m_animations[i] : nullptr; }
+        const Scene     *GetScene(Index i) const { return i < m_scenes.size() ? &m_scenes[i] : nullptr; }
+        const Image     *GetImage(Index i) const { return i < m_images.size() ? &m_images[i] : nullptr; }
+        const Sampler   *GetSampler(Index i) const { return i < m_samplers.size() ? &m_samplers[i] : nullptr; }
 
 private:
         std::vector<Mesh>        m_meshes;

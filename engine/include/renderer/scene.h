@@ -4,8 +4,10 @@
 #include "defines.h"
 #include "camera.h"
 #include "core/uuid.h"
+#include "core/assets/types/skybox.h"
 #include "core/ecs/entity.h"
 #include "core/ecs/components.h"
+
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 
@@ -19,7 +21,7 @@ class IC_API RenderScene
 public:
         friend class Entity;
 
-        RenderScene();
+        RenderScene(const string &name);
         ~RenderScene();
 
         Entity CreateEntityWithName(const string &name = string());
@@ -28,10 +30,13 @@ public:
         bool   SetParent(Entity child, Entity parent);
         bool   ClearParent(Entity child);
 
+        string             &GetName() { return m_Name; }
         Entity              GetParent(Entity e);
         std::vector<Entity> GetChildren(Entity e);
         std::vector<Entity> GetRoots();
         std::vector<Entity> GetAllEntities();
+        void                SetSkybox(const string &name, bool isSkybox = true);
+        Skybox             *GetSkybox();
 
         // walks the parent chain multiplying transforms
         glm::mat4 GetWorldTransform(Entity e);
@@ -39,6 +44,8 @@ public:
         bool   HasEntity(UUID uuid) const;
         Entity FindEntityByName(std::string_view name);
         Entity GetEntityByUUID(UUID uuid);
+
+        void SetName(const string &name) { m_Name = name; }
 
         bool IsRunning() const { return m_IsRunning; }
         bool IsPaused() const { return m_IsPaused; }
@@ -98,6 +105,9 @@ private:
         bool                                   m_IsRunning      = false;
         bool                                   m_IsPaused       = false;
         std::unordered_map<UUID, entt::entity> m_EntityMap;
+        string                                 m_Name;
+        bool                                   m_IsSkybox = true;  // by default all scenes have a skybox
+        Skybox *m_Skybox;  // every scene will have default skybox but can be toggled and can be removed as well.
 };
 
 template <>

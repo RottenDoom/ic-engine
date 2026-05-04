@@ -151,6 +151,7 @@ bool GLTFLoader::load(const char *path, ModelImportData *out)
                 return false;
         }
 
+        /** FIX: Remove std::filesystem from here */
         const char *parentPath    = fs_getParentPath(fullpath);
         auto        expectedAsset = parser.loadGltf(gltfFile.get(), std::filesystem::path(parentPath), kOptions);
 
@@ -388,6 +389,7 @@ bool GLTFLoader::loadImage(fastgltf::Asset *asset, const fastgltf::Image *src, M
                 img.width    = static_cast<uint32_t>(w);
                 img.height   = static_cast<uint32_t>(h);
                 img.channels = static_cast<uint32_t>(ch);
+                img.srgb     = true;
                 size_t size  = static_cast<size_t>(w) * static_cast<size_t>(h) * 4;
                 img.pixels.assign(pixels, pixels + size);
                 stbi_image_free(pixels);
@@ -414,6 +416,7 @@ bool GLTFLoader::loadImage(fastgltf::Asset *asset, const fastgltf::Image *src, M
                         img.width    = static_cast<uint32_t>(w);
                         img.height   = static_cast<uint32_t>(h);
                         img.channels = static_cast<uint32_t>(ch);
+                        img.srgb     = true;
                         size_t size  = static_cast<size_t>(w) * static_cast<size_t>(h) * 4;
                         img.pixels.assign(pixels, pixels + size);
                         stbi_image_free(pixels);

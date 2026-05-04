@@ -1,0 +1,24 @@
+#default_scene/default.scene
+scene:
+  name: "Default Scene"
+  skybox: "dusk_cubemap"
+
+entities:
+  - id: 1
+    name: "Cube"
+    components:
+      TransformComponent:
+        position: [0.0, 0.0, 0.0]
+        rotation: [1.0, 0.0, 0.0, 0.0]
+        scale:    [1.0, 1.0, 1.0]
+      MeshComponent:
+        model: "test_model"
+  - id: 2
+    name: "Plane"
+    components:
+      TransformComponent:
+        position: [0.0, 0.0, 0.0]
+        rotation: [1.0, 0.0, 0.0, 0.0]
+        scale:    [1.0, 1.0, 1.0]
+      MeshComponent:
+        model: "plane_model"

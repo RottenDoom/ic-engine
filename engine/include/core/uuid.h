@@ -5,6 +5,8 @@
 
 namespace ic
 {
+
+// TODO: Make a uuid generator
 class UUID
 {
 public:

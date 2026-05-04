@@ -64,8 +64,8 @@ void AssetRegistry::ParseAssetEntry(const YAML::Node &node)
         if (!node["id"] || !node["filepath"])
                 return;
 
-        string idStr = node["id"].as<string>();
-        IC_GUID   id    = 0;
+        string  idStr = node["id"].as<string>();
+        IC_GUID id    = 0;
 
         if (idStr.rfind("0x", 0) == 0)
                 id = std::stoull(idStr, nullptr, 16);
@@ -108,8 +108,8 @@ void AssetRegistry::ParseAssetEntry(const YAML::Node &node)
         {
                 for (auto depNode : node["dependencies"])
                 {
-                        string depStr = depNode.as<string>();
-                        IC_GUID   depId  = 0;
+                        string  depStr = depNode.as<string>();
+                        IC_GUID depId  = 0;
 
                         if (depStr.rfind("0x", 0) == 0)
                                 depId = std::stoull(depStr, nullptr, 16);
@@ -176,7 +176,7 @@ bool AssetRegistry::Save(const char *m_assetsregistry_file)
         std::ofstream fout(m_assetsregistry_file);
         fout << out.c_str();
 
-	m_registry_unsaved = false;
+        m_registry_unsaved = false;
 
         return true;
 }
@@ -231,27 +231,28 @@ const char *AssetRegistry::GetCachePath(IC_GUID id) const
         return cachePath;
 }
 
-
-const char* AssetRegistry::GetAssetName(IC_GUID id) const
+const char *AssetRegistry::GetAssetName(IC_GUID id) const
 {
-	auto it = m_assets.find(id);
-	if (it == m_assets.end()) {
-		IC_CORE_WARN("AssetRegistry: Asset ID {} does not exist", id);
-		return nullptr;
-	}
-	return it->second.name.c_str();
-
+        auto it = m_assets.find(id);
+        if (it == m_assets.end())
+        {
+                IC_CORE_WARN("AssetRegistry: Asset ID {} does not exist", id);
+                return nullptr;
+        }
+        return it->second.name.c_str();
 }
 
-void AssetRegistry::SetAssetName(IC_GUID id, const string& name) {
-	auto it = m_assets.find(id);
-	if (it == m_assets.end()) {
-		IC_CORE_WARN("AssetRegistry: Asset requested does not exist");
-		return;
-	}
+void AssetRegistry::SetAssetName(IC_GUID id, const string &name)
+{
+        auto it = m_assets.find(id);
+        if (it == m_assets.end())
+        {
+                IC_CORE_WARN("AssetRegistry: Asset requested does not exist");
+                return;
+        }
 
-	it->second.name = name;
-	m_registry_unsaved = true;
+        it->second.name    = name;
+        m_registry_unsaved = true;
 }
 
 IC_GUID AssetRegistry::RegisterAsset(IC_GUID id, const char *file_path, AssetType type)
@@ -265,8 +266,8 @@ IC_GUID AssetRegistry::RegisterAsset(IC_GUID id, const char *file_path, AssetTyp
         m_assets[id] = meta;
 
         // TODO: name generator function
-        m_ids[file_path] = id;
-	m_registry_unsaved = true;
+        m_ids[file_path]   = id;
+        m_registry_unsaved = true;
 
         return id;
 }
@@ -296,7 +297,7 @@ void AssetRegistry::Unregister(IC_GUID id)
         m_ids.erase(it->second.name);
         m_dependencies.erase(id);
         m_assets.erase(it);
-	m_registry_unsaved = true;
+        m_registry_unsaved = true;
 }
 
 AssetType AssetRegistry::AssetTypeFromString(const string &s)
@@ -309,6 +310,8 @@ AssetType AssetRegistry::AssetTypeFromString(const string &s)
                 return AssetType::ASSET_TYPE_MATERIAL;
         if (s == "shader")
                 return AssetType::ASSET_TYPE_SHADER;
+        if (s == "skybox")
+                return AssetType::ASSET_TYPE_SKYBOX;
         return AssetType::ASSET_TYPE_NONE;
 }
 
@@ -324,6 +327,8 @@ string AssetRegistry::AssetTypeToString(AssetType type)
                 return "material";
         case AssetType::ASSET_TYPE_SHADER:
                 return "shader";
+        case AssetType::ASSET_TYPE_SKYBOX:
+                return "skybox";
         default:
                 return "unknown";
         }
