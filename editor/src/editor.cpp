@@ -181,7 +181,7 @@ void EditorSystem::Render()
                         if (doSaveAsPopup)
                         {
                                 if (!m_ScenePath.empty())
-                                        snprintf(s_SaveAsPath, sizeof(s_SaveAsPath), "%s", m_ScenePath);
+                                        snprintf(s_SaveAsPath, sizeof(s_SaveAsPath), "%s", m_ScenePath.c_str());
                                 ImGui::OpenPopup("Save Scene As");
                         }
 
