@@ -339,25 +339,20 @@ public:
         Model(Model &&)                 = default;
         Model &operator=(Model &&)      = default;
 
-        // -----------------------------------------------------------------------
-        // IAsset -> cold load path
-        // -----------------------------------------------------------------------
-
         /**
-         * Load from disk using the appropriate IModelLoader.
-         * Internally: calls GLTFLoader → buildModel().
+         * Load from disk using the IModelLoader.
          * Transitions: Unloaded → Pending → CPUReady (or Failed)
          */
         bool Load(const char *filepath) override;
 
         /**
-         * Fast warm load from a .icache binary.
+         * Fast file load from a .icmodel binary.
          * Skips the loader and builder entirely.
          * Transitions: Unloaded → CPUReady
          */
         bool SerializedLoad(ic::Serializer *s) override;
 
-        /** Write CPUReady data to .icmodel binary for future warm loads. */
+        /** Write CPUReady data to .icmodel binary for future fast file loads. */
         bool SerializedSave(ic::Serializer *s) const override;
 
         /**
@@ -367,21 +362,12 @@ public:
         bool Release() override;
 
         bool IsLoaded() const override { return m_state >= State::CPUReady; }
-
-        // -----------------------------------------------------------------------
-        // GPU lifecycle -> called by GLModel
-        // -----------------------------------------------------------------------
-
         /**
          * Free CPU-side vertexData and Image::pixels after successful GPU upload.
          * State stays GPUReady. After this call the model cannot be re-uploaded
          * without reloading from disk or cache.
          */
         void FreeCPU();
-
-        // -----------------------------------------------------------------------
-        // State machine
-        // -----------------------------------------------------------------------
 
         enum class State : uint8_t
         {
