@@ -51,8 +51,8 @@ public:
         // Open / close
         // -----------------------------------------------------------------------
 
-        bool openForRead(const string &fname);
-        bool openForWrite(const string &fname);
+        bool openForRead(const char *fname);
+        bool openForWrite(const char *fname);
         void close();
 
         bool   isOpen() const;
@@ -156,7 +156,7 @@ public:
         // String  [uint32_t length | chars (no null terminator)]
         // -----------------------------------------------------------------------
 
-        void writeString(const std::string &s);
+        void writeString(const char *s);
         void readString(std::string &out);
 
 private:

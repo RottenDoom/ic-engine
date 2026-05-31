@@ -141,7 +141,7 @@ struct MeshPrimitive
 
 struct Mesh
 {
-        std::string                name;
+        string                     name;  // see how we can
         std::vector<MeshPrimitive> primitives;
         AABB                       bounds;
 };

@@ -8,16 +8,16 @@ namespace ic
 // Open / close
 // ---------------------------------------------------------------------------
 
-bool Serializer::openForRead(const string &fname)
+bool Serializer::openForRead(const char *fname)
 {
         IC_CORE_ASSERT(!isOpen(), "Serializer: close the current file before opening another");
 
         m_filename           = fname;
-        const char *fullpath = fs_getfullpath(fname.c_str());
+        const char *fullpath = fs_getfullpath(fname);
 
         if (!mmap_open(&m_mmap, fullpath, MMAP_SEQUENTIAL))
         {
-                IC_CORE_ERROR("Serializer: failed to memory-map '{}' (errno={})", fname.c_str(), errno);
+                IC_CORE_ERROR("Serializer: failed to memory-map '{}' (errno={})", fname, errno);
                 ic_free((void *)fullpath);
                 return false;
         }
@@ -27,14 +27,14 @@ bool Serializer::openForRead(const string &fname)
         return true;
 }
 
-bool Serializer::openForWrite(const string &fname)
+bool Serializer::openForWrite(const char *fname)
 {
         IC_CORE_ASSERT(!isOpen(), "Serializer: close the current file before opening another");
-        IC_CORE_ASSERT(fname.c_str(), "Serializer: empty filename");
+        IC_CORE_ASSERT(fname, "Serializer: empty filename");
 
         m_filename = fname;
 
-        char *parentPath = fs_getParentPath(fname.c_str());
+        char *parentPath = fs_getParentPath(fname);
         if (parentPath && !fs_exists(parentPath))
                 fs_mkdir(parentPath);
         ic_free(parentPath);
@@ -43,7 +43,7 @@ bool Serializer::openForWrite(const string &fname)
         m_writeFile.open(fname, std::ios::binary | std::ios::trunc);
         if (!m_writeFile.is_open())
         {
-                IC_CORE_ERROR("Serializer: failed to open '{}' for writing", fname.c_str());
+                IC_CORE_ERROR("Serializer: failed to open '{}' for writing", fname);
                 return false;
         }
         return true;
@@ -129,15 +129,15 @@ void Serializer::skip(size_t bytes)
         m_readPos += bytes;
 }
 
-void Serializer::writeString(const string &s)
+void Serializer::writeString(const char *s)
 {
-        uint32_t len = static_cast<uint32_t>(s.size());
+        uint32_t len = static_cast<uint32_t>(strlen(s));
         write(&len, sizeof(len));
         if (len > 0)
-                write(s.data(), len);
+                write(s, len);
 }
 
-void Serializer::readString(string &out)
+void Serializer::readString(std::string &out)
 {
         uint32_t len = 0;
         read(&len, sizeof(len));

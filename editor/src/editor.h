@@ -62,14 +62,14 @@ private:
         void        DrawSceneHeirarchy();
 
         // Heirarchy helperss
-        void DrawSceneNode();                               // scene root tree node + rename + context
-        void DrawSceneContextMenu();                        // create entity / lighting submenu
-        void DrawEntityNode(ic::Entity e);                  // one entity row, dispatches rename vs normal
-        void DrawEntityRename(ic::Entity e);                // inline rename for an entity
-        void DrawEntityContextMenu(ic::Entity e);           // rename / duplicate / delete
-        void DrawSubmeshNodes(ic::Entity e, size_t count);  // selectable submesh child rows
-        void DrawCameraPanel();                             // bottom panel + height tracking
-        bool DrawRenameField();                             // shared focus+input+commit widget
+        void DrawSceneNode();                      // scene root tree node + rename + context
+        void DrawSceneContextMenu();               // create entity / lighting submenu
+        void DrawEntityNode(ic::Entity e);         // one entity row, dispatches rename vs normal
+        void DrawEntityRename(ic::Entity e);       // inline rename for an entity
+        void DrawEntityContextMenu(ic::Entity e);  // rename / duplicate / delete
+        void DrawSubmeshNodes(ic::Entity e);       // selectable submesh child rows
+        void DrawCameraPanel();                    // bottom panel + height tracking
+        bool DrawRenameField();                    // shared focus+input+commit widget
 
         // Editor Resources
 

@@ -3,6 +3,7 @@
 
 #include "defines.h"
 #include "renderer/camera.h"
+#include "core/assets/asset_manager.h"
 #include "core/assets/types/asset_base.h"
 #include "core/assets/types/model.h"
 #include "core/uuid.h"
@@ -95,6 +96,12 @@ struct MeshComponent
 
         // Material ID or material pointer
         void SetModel(IC_GUID id) { modelID = id; }
+
+        std::vector<Mesh> GetMeshes()
+        {
+                Model *model = (Model *)AssetManager::Get().GetAsset(modelID);
+                return model->meshes();
+        }
 };
 
 struct CameraComponent

@@ -411,7 +411,7 @@ Model build_model(ModelImportData *data, IC_GUID id)
         for (auto &importMesh : data->meshes)
         {
                 Mesh mesh;
-                mesh.name       = importMesh.name;
+                mesh.name       = importMesh.name.c_str();
                 mesh.bounds.min = importMesh.aabbMin;
                 mesh.bounds.max = importMesh.aabbMax;
 
@@ -709,7 +709,7 @@ bool Model::SerializedSave(ic::Serializer *s) const
 
                 for (const auto &mat : m_materials)
                 {
-                        s->writeString(mat.name);
+                        s->writeString(mat.name.c_str());
                         s->writePOD(mat.pbr.baseColorFactor);
                         s->writePOD(mat.pbr.metallicFactor);
                         s->writePOD(mat.pbr.roughnessFactor);
@@ -743,7 +743,7 @@ bool Model::SerializedSave(ic::Serializer *s) const
 
                 for (const auto &cam : m_cameras)
                 {
-                        s->writeString(cam.name);
+                        s->writeString(cam.name.c_str());
                         s->writePOD(cam.type);
                         s->writePOD(cam.perspective);
                         s->writePOD(cam.orthographic);
@@ -765,7 +765,7 @@ bool Model::SerializedSave(ic::Serializer *s) const
 
                 for (const auto &skin : m_skins)
                 {
-                        s->writeString(skin.name);
+                        s->writeString(skin.name.c_str());
                         s->writePOD(skin.skeletonRootIndex);
 
                         uint32_t jointCount = static_cast<uint32_t>(skin.jointIndices.size());
@@ -795,7 +795,7 @@ bool Model::SerializedSave(ic::Serializer *s) const
 
                 for (const auto &anim : m_animations)
                 {
-                        s->writeString(anim.name);
+                        s->writeString(anim.name.c_str());
                         s->writePOD(anim.duration);
 
                         uint32_t samplerCount = static_cast<uint32_t>(anim.samplers.size());
@@ -841,7 +841,7 @@ bool Model::SerializedSave(ic::Serializer *s) const
 
                 for (const auto &node : m_nodes)
                 {
-                        s->writeString(node.name);
+                        s->writeString(node.name.c_str());
                         s->writePOD(node.translation);
                         s->writePOD(node.rotation);
                         s->writePOD(node.scale);
@@ -875,7 +875,7 @@ bool Model::SerializedSave(ic::Serializer *s) const
 
                 for (const auto &scene : m_scenes)
                 {
-                        s->writeString(scene.name);
+                        s->writeString(scene.name.c_str());
                         uint32_t rootCount = static_cast<uint32_t>(scene.rootNodes.size());
                         s->writePOD(rootCount);
                         if (rootCount > 0)
@@ -900,7 +900,7 @@ bool Model::SerializedSave(ic::Serializer *s) const
 
                 for (const auto &mesh : m_meshes)
                 {
-                        s->writeString(mesh.name);
+                        s->writeString(mesh.name.c_str());
                         s->writePOD(mesh.bounds.min);
                         s->writePOD(mesh.bounds.max);
 

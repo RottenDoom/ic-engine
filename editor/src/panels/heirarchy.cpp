@@ -1,7 +1,6 @@
 #include "panels.h"
 #include "editor.h"
 #include <imgui.h>
-#include "core/assets/asset_manager.h"
 
 // TODO:
 // make a toggle that works when I press c etc.
@@ -13,26 +12,6 @@ static uint8_t count_lights(ic::RenderScene *scene)
         uint8_t count = 0;
         scene->Each<ic::LightComponent>([&](auto) { count++; });
         return count;
-}
-
-static size_t get_submesh_count(ic::Entity e)
-{
-        if (!e.HasComponent<ic::MeshComponent>())
-                return 0;
-
-        auto      &mc    = e.GetComponent<ic::MeshComponent>();
-        ic::Model *model = (ic::Model *)ic::AssetManager::Get().GetAsset(mc.modelID);
-        return model ? model->meshes().size() : 0;
-}
-
-static string get_submesh_name(ic::Entity e, size_t index)
-{
-        auto                 &mc     = e.GetComponent<ic::MeshComponent>();
-        ic::Model            *model  = (ic::Model *)ic::AssetManager::Get().GetAsset(mc.modelID);
-        std::vector<ic::Mesh> meshes = model->meshes();
-        if (model && index < meshes.size() && !meshes[index].name.empty())
-                return meshes[index].name;
-        return "Mesh" + std::to_string(index);
 }
 
 namespace ic
@@ -148,13 +127,12 @@ void EditorSystem::DrawEntityNode(ic::Entity e)
         // selected submesh is just a meshprimitive id
         bool entityHighlighted = (m_State.selected && m_State.selected == e && m_State.selectedSubmesh < 0);
 
-        size_t submeshCount = get_submesh_count(e);  // get this from meshcomponent of e
-        bool   hasSubmeshes = submeshCount > 0;
-
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow |
                                    (entityHighlighted ? ImGuiTreeNodeFlags_Selected : 0);
-        if (!hasSubmeshes)
-                flags |= ImGuiTreeNodeFlags_Leaf;  // no expand arrow if there is nothing to expand
+
+        // TODO: this line may not be needed
+        // if (!(e.GetComponent<MeshComponent>().GetMeshes().size() > 0))
+        //         flags |= ImGuiTreeNodeFlags_Leaf;  // no expand arrow if there is nothing to expand
 
         bool open = ImGui::TreeNodeEx(label.c_str(), flags);
 
@@ -169,8 +147,7 @@ void EditorSystem::DrawEntityNode(ic::Entity e)
 
         if (open)
         {
-                if (hasSubmeshes)
-                        DrawSubmeshNodes(e, submeshCount);
+                DrawSubmeshNodes(e);
                 ImGui::TreePop();
         }
 
@@ -237,9 +214,15 @@ void EditorSystem::DrawEntityContextMenu(ic::Entity e)
         ImGui::EndPopup();
 }
 
-void EditorSystem::DrawSubmeshNodes(ic::Entity e, size_t submeshCount)
+void EditorSystem::DrawSubmeshNodes(ic::Entity e)
 {
-        for (size_t i = 0; i < submeshCount; ++i)
+        std::vector<ic::Mesh> meshes;
+        if (e.HasComponent<MeshComponent>())
+        {
+                meshes = e.GetComponent<MeshComponent>().GetMeshes();
+        }
+
+        for (size_t i = 0; i < meshes.size(); ++i)
         {
                 ImGui::PushID((int)i);
 
@@ -248,8 +231,7 @@ void EditorSystem::DrawSubmeshNodes(ic::Entity e, size_t submeshCount)
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
                                            (subSelected ? ImGuiTreeNodeFlags_Selected : 0);
 
-                string label = get_submesh_name(e, i);
-                ImGui::TreeNodeEx(label.c_str(), flags);
+                ImGui::TreeNodeEx(meshes[i].name.c_str(), flags);
 
                 if (ImGui::IsItemClicked())
                 {
