@@ -246,7 +246,7 @@ ic::RenderScene *SceneSerializer::Deserialize(const char *path)
                         IC_GUID     id        = ic::AssetManager::Get().GetRegistry()->GetAssetId(modelName.c_str());
                         ic::AssetManager::Get().LoadAs<Model>(id);
                         if (id != IC_GUID{})
-                                e.AddComponent<ic::MeshComponent>().SetMesh(id);
+                                e.AddComponent<ic::MeshComponent>().SetModel(id);
                         else
                                 IC_CORE_WARN("SceneSerializer: model '{}' not found in registry", modelName);
                 }

@@ -10,7 +10,7 @@ struct GameState
 {
         std::vector<IC_GUID> models;
         ic::RenderScene      defaultScene{"Scene"};  // TODO Probably gonna make a World class later instead of directly
-                                                // using scene here.
+                                                     // using scene here.
 };
 
 GameState g_state;
@@ -70,13 +70,13 @@ int main(int argc, char *argv[])
         ic::Entity entt = g_state.defaultScene.CreateEntityWithName("Player");
         entt.AddComponent<PlayerComponent>();
         entt.GetComponent<ic::TransformComponent>().SetPosition({0.0f, 0.0f, 0.0f});
-        entt.AddComponent<ic::MeshComponent>().SetMesh(id);  // this id that is output must be from
+        entt.AddComponent<ic::MeshComponent>().SetModel(id);  // this id that is output must be from
 
         IC_GUID cube = ic_load_model("cube_model");
 
         ic::Entity cube_entt = g_state.defaultScene.CreateEntityWithName("Cube");
         cube_entt.GetComponent<ic::TransformComponent>().SetPosition({15.0f, 15.0f, 0.0f});
-        cube_entt.AddComponent<ic::MeshComponent>().SetMesh(cube);
+        cube_entt.AddComponent<ic::MeshComponent>().SetModel(cube);
 
         // Camera Entity
 

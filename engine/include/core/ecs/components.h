@@ -94,11 +94,7 @@ struct MeshComponent
         IC_GUID modelID;
 
         // Material ID or material pointer
-        void SetMesh(IC_GUID id) { modelID = id; }
-        // void SetMaterial(MaterialID id) {MaterialID = id;}
-
-        // Some kind of render component?
-        // some render and update function?
+        void SetModel(IC_GUID id) { modelID = id; }
 };
 
 struct CameraComponent

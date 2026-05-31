@@ -100,6 +100,9 @@ enum VertexAttributeFlags : uint32_t
 
 struct MeshPrimitive
 {
+        // name of the mesh primitive loaded from the gltf file or loaded into the serialized file
+        string name;
+
         enum class Mode : uint8_t
         {
                 Points        = 0,
@@ -111,6 +114,7 @@ struct MeshPrimitive
                 TriangleFan   = 6,
         } mode = Mode::Triangles;
 
+        /** TODO: Each mesh can have more than one materials */
         Index materialIndex = INVALID_INDEX;
 
         // Packed, interleaved vertex data.
@@ -126,6 +130,9 @@ struct MeshPrimitive
         std::vector<float> morphWeights;
 
         AABB bounds;
+
+        // set the material of the particular material
+        // void SetMaterial(MaterialID id) {materialIndex = id;}
 };
 
 // ---------------------------------------------------------------------------

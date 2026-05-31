@@ -85,6 +85,7 @@ void OpenGLRenderer::SetScene(RenderScene *scene, Camera &editorCamera)
 
 void OpenGLRenderer::EnableFeatures()
 {
+        // TODO: These features needs to be in the pipeline asset
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
