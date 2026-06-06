@@ -15,7 +15,7 @@
  *
  * Build pipeline:
  *   Cold path:  filepath → IModelLoader → ModelImportData → ic::buildModel() → Model (CPUReady)
- *   Warm path:  .icache  → serializedLoad()                                  → Model (CPUReady)
+ *   Warm path:  .icmodel  → serializedLoad()                                  → Model (CPUReady)
  *   GPU upload: GLModel::upload(model) transitions Model to GPUReady
  *
  * Private data is written ONLY by ic::buildModel() and ic::Serializer.
@@ -69,6 +69,8 @@ struct AABB
         {
                 return glm::all(glm::lessThanEqual(min, other.max)) && glm::all(glm::greaterThanEqual(max, other.min));
         }
+
+        /** TODO: we need an AABB function that draws wireframe for AABBs for the each models or meshes */
 
         static AABB MakeInvalid() { return AABB{}; }
 };

@@ -8,11 +8,11 @@
 - [x] Skybox
 - [x] Light mesh (Now add material to it)
 - [ ] Texture and material assets + samplers
+- [ ] Profiling and meshoptimizer.
 - [ ] use gluniformiv for editing through editor.
 - [ ] Material Edit panel and skybox + shadow mapping.
 - [ ] Camera panels. (#PROBABLY: Collections like blender for entities)
 - [ ] Scene testing and sponza [Secondary: Add file compression in asset deserialization]
-- [ ] Profiling and meshoptimizer.
 
 ### TODO:
 - [x] Skybox and HDR and scene plane and RenderBox (or whatever you call it)

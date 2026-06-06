@@ -237,6 +237,17 @@ void EditorSystem::DrawSubmeshNodes(ic::Entity e)
                 {
                         m_State.selected        = e;
                         m_State.selectedSubmesh = (int)i;
+
+                        /** TODO: In the component section we need a material selector */
+                        // DrawMaterialPanel(meshId);
+                        /**
+                         * {
+                         * 	mesh = getmesh();
+                         * 	if (choosematerial) openassetbrowser
+                         * 	choose an asset / material (will have all materials that are loaded yet with each
+                         * catergories as well) load it and hot reload it into the scene make a shader asset as well.
+                         * }
+                         */
                 }
 
                 ImGui::TreePop();
