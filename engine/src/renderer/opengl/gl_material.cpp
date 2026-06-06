@@ -1,5 +1,6 @@
 #include "renderer/opengl/gl_material.h"
 #include "renderer/opengl/gl_shader.h"
+#include "renderer/opengl/gl_sampler.h"
 
 namespace ic
 {
@@ -52,25 +53,12 @@ void GLTexture::Upload(const Image &img)
                       textureHandle);
 }
 
-void GLTexture::ApplySampler(const Sampler *sampler) const
+void GLTexture::ApplySampler(const GLSampler &sampler, GLuint textureUnit, Index samplerIdx, size_t totalSamplers) const
 {
-        if (!IsValid())
-                return;
-
-        // Sampler::Filter and Sampler::Wrap values match GL constants exactly.
-        // NoFilter/NoWrap fall back to the defaults set in upload().
-
-        if (sampler->minFilter != Sampler::Filter::None)
-                glTextureParameteri(textureHandle, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(sampler->minFilter));
-
-        if (sampler->magFilter != Sampler::Filter::None)
-                glTextureParameteri(textureHandle, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(sampler->magFilter));
-
-        if (sampler->wrapS != Sampler::Wrap::None)
-                glTextureParameteri(textureHandle, GL_TEXTURE_WRAP_S, static_cast<GLint>(sampler->wrapS));
-
-        if (sampler->wrapT != Sampler::Wrap::None)
-                glTextureParameteri(textureHandle, GL_TEXTURE_WRAP_T, static_cast<GLint>(sampler->wrapT));
+        if (samplerIdx != INVALID_INDEX && samplerIdx < totalSamplers)
+                glBindSampler(textureUnit, sampler.handle);
+        else
+                glBindSampler(textureUnit, 0);
 }
 
 void GLTexture::Destroy()
@@ -130,7 +118,7 @@ void GLMaterial::Build(const Material &mat)
 
 void GLMaterial::Bind(Shader                       *shader,
                       const std::vector<GLTexture> &textures,
-                      const std::vector<Sampler>   &samplers) const
+                      const std::vector<GLSampler> &samplers) const
 {
         shader->setBool("u_useDefaultMaterial", false);
 
@@ -140,8 +128,7 @@ void GLMaterial::Bind(Shader                       *shader,
             textures[baseColorIdx].IsValid())
         {
                 shader->setTexture("u_BaseColorTexture", 0, textures[baseColorIdx].textureHandle);
-                if (baseColorSampler != INVALID_INDEX && baseColorSampler < samplers.size())
-                        textures[baseColorIdx].ApplySampler(&samplers[baseColorSampler]);
+                textures[baseColorIdx].ApplySampler(samplers[baseColorSampler], 0, baseColorSampler, samplers.size());
                 shader->setBool("u_HasBaseColorTexture", true);
         }
         else
@@ -156,8 +143,10 @@ void GLMaterial::Bind(Shader                       *shader,
             textures[metallicRoughIdx].IsValid())
         {
                 shader->setTexture("u_MetallicRoughnessTexture", 1, textures[metallicRoughIdx].textureHandle);
-                if (metallicRoughSampler != INVALID_INDEX && metallicRoughSampler < samplers.size())
-                        textures[metallicRoughIdx].ApplySampler(&samplers[metallicRoughSampler]);
+                textures[metallicRoughIdx].ApplySampler(samplers[metallicRoughSampler],
+                                                        1,
+                                                        metallicRoughSampler,
+                                                        samplers.size());
                 shader->setBool("u_HasMetallicRoughnessTexture", true);
         }
         else
@@ -169,8 +158,7 @@ void GLMaterial::Bind(Shader                       *shader,
         if (normalIdx >= 0 && static_cast<size_t>(normalIdx) < textures.size() && textures[normalIdx].IsValid())
         {
                 shader->setTexture("u_NormalTexture", 2, textures[normalIdx].textureHandle);
-                if (normalSampler != INVALID_INDEX && normalSampler < samplers.size())
-                        textures[normalIdx].ApplySampler(&samplers[normalSampler]);
+                textures[normalIdx].ApplySampler(samplers[normalSampler], 2, normalSampler, samplers.size());
                 shader->setFloat("u_NormalScale", normalScale);
                 shader->setBool("u_HasNormalTexture", true);
         }
@@ -184,8 +172,8 @@ void GLMaterial::Bind(Shader                       *shader,
             textures[occlusionIdx].IsValid())
         {
                 shader->setTexture("u_OcclusionTexture", 3, textures[occlusionIdx].textureHandle);
-                if (occlusionSampler != INVALID_INDEX && occlusionSampler < samplers.size())
-                        textures[occlusionIdx].ApplySampler(&samplers[occlusionSampler]);
+                textures[occlusionIdx].ApplySampler(samplers[occlusionSampler], 3, occlusionSampler, samplers.size());
+                ;
                 shader->setFloat("u_OcclusionStrength", occlusionStrength);
                 shader->setBool("u_HasOcclusionTexture", true);
         }
@@ -199,8 +187,8 @@ void GLMaterial::Bind(Shader                       *shader,
         if (emissiveIdx >= 0 && static_cast<size_t>(emissiveIdx) < textures.size() && textures[emissiveIdx].IsValid())
         {
                 shader->setTexture("u_EmissiveTexture", 4, textures[emissiveIdx].textureHandle);
-                if (emissiveSampler != INVALID_INDEX && emissiveSampler < samplers.size())
-                        textures[emissiveIdx].ApplySampler(&samplers[emissiveSampler]);
+                textures[emissiveIdx].ApplySampler(samplers[emissiveSampler], 4, emissiveSampler, samplers.size());
+                ;
                 shader->setBool("u_HasEmissiveTexture", true);
         }
         else

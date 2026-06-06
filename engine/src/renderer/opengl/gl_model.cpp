@@ -15,6 +15,11 @@ void GLModel::Upload(Model &model)
         UploadMeshes();
 }
 
+/** Load the model textures from GLmodel to the GPU for each texture
+ * This just uploads the data to the gpu.
+ * TODO: make a function that uploads a single image to the GLmodel data goes out of scope as soon as model loading
+ * completes.
+ */
 void GLModel::UploadTextures()
 {
         const auto &images   = m_model->images();
@@ -23,6 +28,7 @@ void GLModel::UploadTextures()
         // GLModel owns one GLTexture per Image (not per Texture-list entry).
         // Materials hold resolved (image, sampler) pairs -> we just Upload each image once.
         m_textures.resize(images.size());
+        m_samplers.resize(samplers.size());
 
         for (size_t i = 0; i < images.size(); ++i)
         {
@@ -33,15 +39,17 @@ void GLModel::UploadTextures()
                 m_textures[i].Upload(img);
         }
 
-        // Apply sampler state per texture slot.
-        // Since materials store image+sampler pairs, we apply the sampler
-        // at bind time in bindMaterial() rather than here, to handle
-        // the case where the same image is used with different samplers.
-        // This loop pre-applies the default if no per-draw override exists.
-        for (size_t i = 0; i < images.size(); ++i)
+        for (size_t i = 0; i < samplers.size(); ++i)
         {
-                // Sampler application is deferred to bind time see bindMaterial().
-                (void)samplers;
+                const Sampler s = samplers[i];
+                GLSampler     gl_s;
+                gl_s.Build(s);
+                if (!gl_s.handle)
+                {
+                        IC_CORE_WARN("OpenGL sampler did not upload resorting to fallbacks");
+                        continue;
+                }
+                m_samplers.push_back(gl_s);
         }
 }
 

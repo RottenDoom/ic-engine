@@ -217,6 +217,7 @@ static TextureRef resolve_texture_ref(const TextureRefImportData &ref, const std
         return out;
 }
 
+/** TODO: this function must use our material system not just material as a struct */
 static Material build_material(const MaterialImportData &src, const std::vector<TextureImportData> &textures)
 {
         Material mat;
@@ -457,6 +458,7 @@ Model build_model(ModelImportData *data, IC_GUID id)
         return model;
 }
 
+/** Loads the model using build_model function */
 bool Model::Load(const char *filepath)
 {
         IC_CORE_ASSERT(filepath, "Model::load -> null filepath");
@@ -535,7 +537,7 @@ bool Model::Load(const char *filepath)
         auto us  = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         IC_CORE_INFO("Model::load -> parsed '{}' in {:.2f} ms", filepath, us / 1000.0);
 #endif
-
+        // build up the intermediate model and setup the state for gpu upload
         *this   = build_model(&importData, GetID());
         m_state = State::CPUReady;
 

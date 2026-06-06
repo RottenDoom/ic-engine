@@ -12,6 +12,7 @@ namespace ic
 {
 
 class Shader;
+struct GLSampler;
 
 // ---------------------------------------------------------------------------
 // GLTexture -> one OpenGL texture object (owns the GL handle)
@@ -25,7 +26,10 @@ struct GLTexture
         GLuint textureHandle = 0;
 
         void Upload(const Image &img);
-        void ApplySampler(const Sampler *sampler) const;  // const: modifies GL state only
+        void ApplySampler(const GLSampler &sampler,
+                          GLuint           textureUnit,
+                          Index            samplerIdx,
+                          size_t           totalSamplers) const;  // const: modifies GL state only
         void Destroy();
 
         bool IsValid() const { return textureHandle != 0; }
@@ -76,7 +80,7 @@ struct GLMaterial
          * textures[] must be the owning GLModel's m_textures array.
          * samplers[] must be the source Model's samplers() array.
          */
-        void Bind(Shader *shader, const std::vector<GLTexture> &textures, const std::vector<Sampler> &samplers) const;
+        void Bind(Shader *shader, const std::vector<GLTexture> &textures, const std::vector<GLSampler> &samplers) const;
 
         /**
          * Apply blend and cull-face GL state for this material.

@@ -12,13 +12,7 @@
  * material.h -> Runtime material types.
  *
  * Design rules:
- *   - All indices here are RESOLVED at build time by ModelBuilder.
- *     There are no GLTF accessor or texture-list references left.
- *   - TextureRef is the single source of truth for "a texture slot".
- *     NormalTextureRef / OcclusionTextureRef compose it, not inherit it.
- *   - KHR extension material data is optional<> so base PBR materials
- *     pay zero cost for extensions they don't use.
- *   - No raw pointer getDefaultMaterial() -> use the static factory.
+ *
  */
 
 // ---------------------------------------------------------------------------

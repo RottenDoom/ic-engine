@@ -4,6 +4,7 @@
 #include "defines.h"
 #include "core/assets/types/model.h"
 #include "gl_material.h"
+#include "gl_sampler.h"
 
 #include <glad/glad.h>
 #include <vector>
@@ -146,6 +147,7 @@ struct GLModel
 
         /** Non-owning view of uploaded textures (indexed by Model::images() index). */
         const std::vector<GLTexture> &textures() const { return m_textures; }
+        const std::vector<GLSampler> &samplers() const { return m_samplers; }
 
         /** Non-owning pointer to the source Model. Null after clearGPUMemory(). */
         const Model *Get() const { return m_model; }
@@ -156,6 +158,7 @@ private:
 
         // m_textures[i] corresponds to Model::images()[i] -> indexed by image index.
         std::vector<GLTexture> m_textures;
+        std::vector<GLSampler> m_samplers;
 
         // m_meshes[i] corresponds to Model::meshes()[i].
         std::vector<GLMesh> m_meshes;

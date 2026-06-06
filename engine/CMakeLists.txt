@@ -38,6 +38,7 @@ set(OPENGL_SRC
 	src/renderer/opengl/gl_model.cpp
 	src/renderer/opengl/gl_skybox.cpp
 	src/renderer/opengl/gl_shader.cpp
+	src/renderer/opengl/gl_sampler.cpp
 	src/renderer/opengl/light_ubo.cpp
 	src/renderer/opengl/gl_framebuffer.cpp
 	src/renderer/opengl/opengl_renderer.cpp
