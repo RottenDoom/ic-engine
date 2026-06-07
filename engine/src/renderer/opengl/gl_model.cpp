@@ -22,23 +22,11 @@ void GLModel::Upload(Model &model)
  */
 void GLModel::UploadTextures()
 {
-        const auto &images   = m_model->images();
         const auto &samplers = m_model->samplers();
 
-        // GLModel owns one GLTexture per Image (not per Texture-list entry).
-        // Materials hold resolved (image, sampler) pairs -> we just Upload each image once.
-        m_textures.resize(images.size());
         m_samplers.resize(samplers.size());
 
-        for (size_t i = 0; i < images.size(); ++i)
-        {
-                const Image img = images[i];
-                if (img.pixels.empty())
-                        continue;
-
-                m_textures[i].Upload(img);
-        }
-
+        // This code should be for per texture instead of here
         for (size_t i = 0; i < samplers.size(); ++i)
         {
                 const Sampler s = samplers[i];
@@ -80,9 +68,6 @@ void GLModel::ClearGPUMemory()
         for (auto &mesh : m_meshes)
                 for (auto &prim : mesh.primitives)
                         prim.Destroy();
-
-        for (auto &tex : m_textures)
-                tex.Destroy();
 
         m_meshes.clear();
         m_textures.clear();

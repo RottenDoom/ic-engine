@@ -2,6 +2,7 @@ set(EDITOR_SOURCES
     src/main.cpp
     src/editor.cpp
     src/panels/camera.cpp
+    src/panels/material.cpp
     src/panels/component.cpp
     src/panels/heirarchy.cpp
     src/panels/light.cpp

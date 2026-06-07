@@ -26,6 +26,7 @@ class Model;
 //   Safe to destroy without an active context.
 // ---------------------------------------------------------------------------
 
+// TODO: this needs to change
 struct MaterialKey
 {
         IC_GUID modelId;
@@ -59,7 +60,7 @@ public:
          * Builds and caches on first access.
          * Returns nullptr if materialIdx is out of range.
          */
-        GLMaterial *GetMaterial(IC_GUID modelId, Index materialIdx, const Model &model);
+        GLMaterial *GetMaterial(IC_GUID modelId, Index materialIdx, Model &model);
 
         /** Delete all GPU resources. Must be called with an active OpenGL context. */
         void Clear();

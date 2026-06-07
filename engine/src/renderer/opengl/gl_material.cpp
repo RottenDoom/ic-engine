@@ -74,7 +74,7 @@ void GLTexture::Destroy()
 // GLMaterial
 // ---------------------------------------------------------------------------
 
-void GLMaterial::Build(const Material &mat)
+void GLMaterial::Build(const Material &mat, const std::vector<Image> &textures)
 {
         baseColorFactor   = mat.pbr.baseColorFactor;
         metallicFactor    = mat.pbr.metallicFactor;
@@ -88,27 +88,27 @@ void GLMaterial::Build(const Material &mat)
 
         if (mat.pbr.baseColorTexture.isValid())
         {
-                baseColorIdx     = static_cast<int>(mat.pbr.baseColorTexture.image);
+                baseColor.Upload(textures[mat.pbr.baseColorTexture.image]);
                 baseColorSampler = mat.pbr.baseColorTexture.sampler;
         }
         if (mat.pbr.metallicRoughnessTexture.isValid())
         {
-                metallicRoughIdx     = static_cast<int>(mat.pbr.metallicRoughnessTexture.image);
+                metallicRoughness.Upload(textures[mat.pbr.metallicRoughnessTexture.image]);
                 metallicRoughSampler = mat.pbr.metallicRoughnessTexture.sampler;
         }
         if (mat.normalTexture.isValid())
         {
-                normalIdx     = static_cast<int>(mat.normalTexture.ref.image);
+                normal.Upload(textures[mat.normalTexture.ref.image]);
                 normalSampler = mat.normalTexture.ref.sampler;
         }
         if (mat.occlusionTexture.isValid())
         {
-                occlusionIdx     = static_cast<int>(mat.occlusionTexture.ref.image);
+                occlusion.Upload(textures[mat.occlusionTexture.ref.image]);
                 occlusionSampler = mat.occlusionTexture.ref.sampler;
         }
         if (mat.emissiveTexture.isValid())
         {
-                emissiveIdx     = static_cast<int>(mat.emissiveTexture.image);
+                emissive.Upload(textures[mat.emissiveTexture.image]);
                 emissiveSampler = mat.emissiveTexture.sampler;
         }
 
@@ -116,19 +116,16 @@ void GLMaterial::Build(const Material &mat)
                          !mat.doubleSided;
 }
 
-void GLMaterial::Bind(Shader                       *shader,
-                      const std::vector<GLTexture> &textures,
-                      const std::vector<GLSampler> &samplers) const
+void GLMaterial::Bind(Shader *shader, const std::vector<GLSampler> &samplers) const
 {
         shader->setBool("u_useDefaultMaterial", false);
 
         // --- Base color ---
         shader->setVec4("u_BaseColorFactor", baseColorFactor);
-        if (baseColorIdx >= 0 && static_cast<size_t>(baseColorIdx) < textures.size() &&
-            textures[baseColorIdx].IsValid())
+        if (baseColor.IsValid())
         {
-                shader->setTexture("u_BaseColorTexture", 0, textures[baseColorIdx].textureHandle);
-                textures[baseColorIdx].ApplySampler(samplers[baseColorSampler], 0, baseColorSampler, samplers.size());
+                shader->setTexture("u_BaseColorTexture", 0, baseColor.textureHandle);
+                baseColor.ApplySampler(samplers[baseColorSampler], 0, baseColorSampler, samplers.size());
                 shader->setBool("u_HasBaseColorTexture", true);
         }
         else
@@ -139,14 +136,10 @@ void GLMaterial::Bind(Shader                       *shader,
         // --- Metallic / roughness ---
         shader->setFloat("u_MetallicFactor", metallicFactor);
         shader->setFloat("u_RoughnessFactor", roughnessFactor);
-        if (metallicRoughIdx >= 0 && static_cast<size_t>(metallicRoughIdx) < textures.size() &&
-            textures[metallicRoughIdx].IsValid())
+        if (metallicRoughness.IsValid())
         {
-                shader->setTexture("u_MetallicRoughnessTexture", 1, textures[metallicRoughIdx].textureHandle);
-                textures[metallicRoughIdx].ApplySampler(samplers[metallicRoughSampler],
-                                                        1,
-                                                        metallicRoughSampler,
-                                                        samplers.size());
+                shader->setTexture("u_MetallicRoughnessTexture", 1, metallicRoughness.textureHandle);
+                metallicRoughness.ApplySampler(samplers[metallicRoughSampler], 1, metallicRoughSampler, samplers.size());
                 shader->setBool("u_HasMetallicRoughnessTexture", true);
         }
         else
@@ -155,10 +148,10 @@ void GLMaterial::Bind(Shader                       *shader,
         }
 
         // --- Normal ---
-        if (normalIdx >= 0 && static_cast<size_t>(normalIdx) < textures.size() && textures[normalIdx].IsValid())
+        if (normal.IsValid())
         {
-                shader->setTexture("u_NormalTexture", 2, textures[normalIdx].textureHandle);
-                textures[normalIdx].ApplySampler(samplers[normalSampler], 2, normalSampler, samplers.size());
+                shader->setTexture("u_NormalTexture", 2, normal.textureHandle);
+                normal.ApplySampler(samplers[normalSampler], 2, normalSampler, samplers.size());
                 shader->setFloat("u_NormalScale", normalScale);
                 shader->setBool("u_HasNormalTexture", true);
         }
@@ -168,11 +161,10 @@ void GLMaterial::Bind(Shader                       *shader,
         }
 
         // --- Occlusion ---
-        if (occlusionIdx >= 0 && static_cast<size_t>(occlusionIdx) < textures.size() &&
-            textures[occlusionIdx].IsValid())
+        if (occlusion.IsValid())
         {
-                shader->setTexture("u_OcclusionTexture", 3, textures[occlusionIdx].textureHandle);
-                textures[occlusionIdx].ApplySampler(samplers[occlusionSampler], 3, occlusionSampler, samplers.size());
+                shader->setTexture("u_OcclusionTexture", 3, occlusion.textureHandle);
+                occlusion.ApplySampler(samplers[occlusionSampler], 3, occlusionSampler, samplers.size());
                 ;
                 shader->setFloat("u_OcclusionStrength", occlusionStrength);
                 shader->setBool("u_HasOcclusionTexture", true);
@@ -184,10 +176,10 @@ void GLMaterial::Bind(Shader                       *shader,
 
         // --- Emissive ---
         shader->setVec3("u_EmissiveFactor", emissiveFactor);
-        if (emissiveIdx >= 0 && static_cast<size_t>(emissiveIdx) < textures.size() && textures[emissiveIdx].IsValid())
+        if (emissive.IsValid())
         {
-                shader->setTexture("u_EmissiveTexture", 4, textures[emissiveIdx].textureHandle);
-                textures[emissiveIdx].ApplySampler(samplers[emissiveSampler], 4, emissiveSampler, samplers.size());
+                shader->setTexture("u_EmissiveTexture", 4, emissive.textureHandle);
+                emissive.ApplySampler(samplers[emissiveSampler], 4, emissiveSampler, samplers.size());
                 ;
                 shader->setBool("u_HasEmissiveTexture", true);
         }

@@ -4,6 +4,7 @@
 #include "defines.h"
 #include "core/assets/types/model.h"
 #include "core/assets/types/material.h"
+#include "core/assets/types/texture.h"
 
 #include <glad/glad.h>
 #include <vector>
@@ -23,7 +24,11 @@ struct GLSampler;
 
 struct GLTexture
 {
-        GLuint textureHandle = 0;
+        GLuint   textureHandle = 0;
+        Texture *assetHandle   = nullptr;
+
+        void Reload();
+        void Load(Texture *texture);
 
         void Upload(const Image &img);
         void ApplySampler(const GLSampler &sampler,
@@ -47,12 +52,12 @@ struct GLMaterial
         glm::vec3 emissiveFactor    = glm::vec3(0.0f);
         float     alphaCutoff       = 0.5f;
 
-        // Texture slots: image indices into GLModel::m_textures[]
-        int baseColorIdx     = -1;
-        int metallicRoughIdx = -1;
-        int normalIdx        = -1;
-        int occlusionIdx     = -1;
-        int emissiveIdx      = -1;
+        // GPU texture handles that contain handles to Textures as well.
+        GLTexture baseColor;
+        GLTexture metallicRoughness;
+        GLTexture normal;
+        GLTexture occlusion;
+        GLTexture emissive;
 
         // Sampler indices into Model::samplers()
         Index baseColorSampler     = INVALID_INDEX;
@@ -73,14 +78,14 @@ struct GLMaterial
          * Bake all scalar fields and texture slot indices from a CPU Material.
          * Does not touch any GL objects.
          */
-        void Build(const Material &mat);
+        void Build(const Material &mat, const std::vector<Image> &textures);
 
         /**
          * Set all shader uniforms and bind texture units.
          * textures[] must be the owning GLModel's m_textures array.
          * samplers[] must be the source Model's samplers() array.
          */
-        void Bind(Shader *shader, const std::vector<GLTexture> &textures, const std::vector<GLSampler> &samplers) const;
+        void Bind(Shader *shader, const std::vector<GLSampler> &samplers) const;
 
         /**
          * Apply blend and cull-face GL state for this material.

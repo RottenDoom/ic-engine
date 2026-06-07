@@ -24,6 +24,7 @@
 #include "core/events/mouse_event.h"
 
 #include "core/assets/types/model.h"
+#include "core/assets/types/texture.h"
 
 // renderer
 #include "renderer/camera.h"

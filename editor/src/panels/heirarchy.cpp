@@ -125,7 +125,7 @@ void EditorSystem::DrawEntityNode(ic::Entity e)
                 label = "(unnamed)";
 
         // selected submesh is just a meshprimitive id
-        bool entityHighlighted = (m_State.selected && m_State.selected == e && m_State.selectedSubmesh < 0);
+        bool entityHighlighted = (m_State.selected && m_State.selected == e && m_State.selectedMesh < 0);
 
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow |
                                    (entityHighlighted ? ImGuiTreeNodeFlags_Selected : 0);
@@ -139,15 +139,15 @@ void EditorSystem::DrawEntityNode(ic::Entity e)
         // Selecting the entity clears any submesh sub-selection.
         if (ImGui::IsItemClicked())
         {
-                m_State.selected        = e;
-                m_State.selectedSubmesh = -1;
+                m_State.selected     = e;
+                m_State.selectedMesh = -1;
         }
 
         DrawEntityContextMenu(e);
 
         if (open)
         {
-                DrawSubmeshNodes(e);
+                DrawMeshNodes(e);
                 ImGui::TreePop();
         }
 
@@ -198,8 +198,8 @@ void EditorSystem::DrawEntityContextMenu(ic::Entity e)
                         auto &src = e.GetComponent<ic::MeshComponent>();
                         dup.AddComponent<ic::MeshComponent>().SetModel(src.modelID);
                 }
-                m_State.selected        = dup;
-                m_State.selectedSubmesh = -1;
+                m_State.selected     = dup;
+                m_State.selectedMesh = -1;
         }
         ImGui::Separator();
         if (ImGui::MenuItem("Delete"))
@@ -207,14 +207,14 @@ void EditorSystem::DrawEntityContextMenu(ic::Entity e)
                 m_ActiveScene->DestroyEntity(e);
                 if (m_State.selected && m_State.selected == e)
                 {
-                        m_State.selected        = {};
-                        m_State.selectedSubmesh = -1;
+                        m_State.selected     = {};
+                        m_State.selectedMesh = -1;
                 }
         }
         ImGui::EndPopup();
 }
 
-void EditorSystem::DrawSubmeshNodes(ic::Entity e)
+void EditorSystem::DrawMeshNodes(ic::Entity e)
 {
         std::vector<ic::Mesh> meshes;
         if (e.HasComponent<MeshComponent>())
@@ -226,7 +226,7 @@ void EditorSystem::DrawSubmeshNodes(ic::Entity e)
         {
                 ImGui::PushID((int)i);
 
-                bool subSelected = (m_State.selected && m_State.selected == e && m_State.selectedSubmesh == (int)i);
+                bool subSelected = (m_State.selected && m_State.selected == e && m_State.selectedMesh == (int)i);
 
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
                                            (subSelected ? ImGuiTreeNodeFlags_Selected : 0);
@@ -235,8 +235,12 @@ void EditorSystem::DrawSubmeshNodes(ic::Entity e)
 
                 if (ImGui::IsItemClicked())
                 {
-                        m_State.selected        = e;
-                        m_State.selectedSubmesh = (int)i;
+                        m_State.selected     = e;
+                        m_State.selectedMesh = (int)i;
+
+                        Mesh &mesh = meshes[i];
+
+                        DrawSubmeshNodes(e, mesh, i);
 
                         /** TODO: In the component section we need a material selector */
                         // DrawMaterialPanel(meshId);
@@ -248,6 +252,37 @@ void EditorSystem::DrawSubmeshNodes(ic::Entity e)
                          * catergories as well) load it and hot reload it into the scene make a shader asset as well.
                          * }
                          */
+                }
+
+                ImGui::TreePop();
+                ImGui::PopID();
+        }
+}
+
+void EditorSystem::DrawSubmeshNodes(ic::Entity e, Mesh &mesh, int selectedMesh)
+{
+        std::vector<MeshPrimitive> &submeshes = mesh.primitives;
+        for (size_t j = 0; j < submeshes.size(); ++j)
+        {
+                // TODO: learn if this breaks anything
+                ImGui::PushID((int)(selectedMesh + j));
+
+                bool subSelected = (m_State.selected && m_State.selected == e && m_State.selectedMesh == selectedMesh &&
+                                    m_State.selectedSubmesh == j);
+                ;
+
+                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
+                                           (subSelected ? ImGuiTreeNodeFlags_Selected : 0);
+
+                ImGui::TreeNodeEx(submeshes[j].name.c_str(), flags);
+
+                if (ImGui::IsItemClicked())
+                {
+                        m_State.selected        = e;
+                        m_State.selectedMesh    = selectedMesh;
+                        m_State.selectedSubmesh = j;
+
+                        ImGui::SetTooltip("This is a submeshh");
                 }
 
                 ImGui::TreePop();

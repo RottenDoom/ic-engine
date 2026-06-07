@@ -395,32 +395,33 @@ public:
         // Accessors -> all const, no copies
         // -----------------------------------------------------------------------
 
-        const std::vector<Mesh>        &meshes() const { return m_meshes; }
-        const std::vector<Material>    &materials() const { return m_materials; }
-        const std::vector<Image>       &images() const { return m_images; }
-        const std::vector<Sampler>     &samplers() const { return m_samplers; }
-        const std::vector<Node>        &nodes() const { return m_nodes; }
-        const std::vector<ModelCamera> &cameras() const { return m_cameras; }
-        const std::vector<Skin>        &skins() const { return m_skins; }
-        const std::vector<Animation>   &animations() const { return m_animations; }
-        const std::vector<Scene>       &scenes() const { return m_scenes; }
+        std::vector<Mesh>        &meshes() { return m_meshes; }
+        std::vector<Material>    &materials() { return m_materials; }
+        std::vector<Image>       &images() { return m_images; }
+        std::vector<Sampler>     &samplers() { return m_samplers; }
+        std::vector<Node>        &nodes() { return m_nodes; }
+        std::vector<ModelCamera> &cameras() { return m_cameras; }
+        std::vector<Skin>        &skins() { return m_skins; }
+        std::vector<Animation>   &animations() { return m_animations; }
+        std::vector<Scene>       &scenes() { return m_scenes; }
 
-        const AABB  &GetWorldBounds() const { return m_worldBounds; }
-        Index        GetDefaultSceneIndex() const { return m_defaultScene; }
-        const Scene *GetDefaultScene() const { return GetScene(m_defaultScene); }
+        AABB  &GetWorldBounds() { return m_worldBounds; }
+        Index  GetDefaultSceneIndex() const { return m_defaultScene; }
+        Scene *GetDefaultScene() { return GetScene(m_defaultScene); }
 
         size_t GetMeshCount() const { return m_meshes.size(); }
         size_t GetNodeCount() const { return m_nodes.size(); }
         size_t GetMaterialCount() const { return m_materials.size(); }
         size_t GetAnimationCount() const { return m_animations.size(); }
 
-        const Mesh      *GetMesh(Index i) const { return i < m_meshes.size() ? &m_meshes[i] : nullptr; }
-        const Node      *GetNode(Index i) const { return i < m_nodes.size() ? &m_nodes[i] : nullptr; }
-        const Material  *GetMaterial(Index i) const { return i < m_materials.size() ? &m_materials[i] : nullptr; }
-        const Animation *GetAnimation(Index i) const { return i < m_animations.size() ? &m_animations[i] : nullptr; }
-        const Scene     *GetScene(Index i) const { return i < m_scenes.size() ? &m_scenes[i] : nullptr; }
-        const Image     *GetImage(Index i) const { return i < m_images.size() ? &m_images[i] : nullptr; }
-        const Sampler   *GetSampler(Index i) const { return i < m_samplers.size() ? &m_samplers[i] : nullptr; }
+        /** TODO: remove dependecies on these function */
+        Mesh      *GetMesh(Index i) { return i < m_meshes.size() ? &m_meshes[i] : nullptr; }
+        Node      *GetNode(Index i) { return i < m_nodes.size() ? &m_nodes[i] : nullptr; }
+        Material  *GetMaterial(Index i) { return i < m_materials.size() ? &m_materials[i] : nullptr; }
+        Animation *GetAnimation(Index i) { return i < m_animations.size() ? &m_animations[i] : nullptr; }
+        Scene     *GetScene(Index i) { return i < m_scenes.size() ? &m_scenes[i] : nullptr; }
+        Image     *GetImage(Index i) { return i < m_images.size() ? &m_images[i] : nullptr; }
+        Sampler   *GetSampler(Index i) { return i < m_samplers.size() ? &m_samplers[i] : nullptr; }
 
 private:
         std::vector<Mesh>        m_meshes;

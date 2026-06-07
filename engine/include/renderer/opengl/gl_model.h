@@ -146,18 +146,18 @@ struct GLModel
         bool IsUploaded() const { return m_model != nullptr; }
 
         /** Non-owning view of uploaded textures (indexed by Model::images() index). */
-        const std::vector<GLTexture> &textures() const { return m_textures; }
+        const std::vector<Texture>   &textures() const { return m_textures; }
         const std::vector<GLSampler> &samplers() const { return m_samplers; }
 
         /** Non-owning pointer to the source Model. Null after clearGPUMemory(). */
-        const Model *Get() const { return m_model; }
+        Model *Get() const { return m_model; }
 
 private:
         // Non-owning. Set by upload(), cleared by clearGPUMemory().
         Model *m_model = nullptr;
 
-        // m_textures[i] corresponds to Model::images()[i] -> indexed by image index.
-        std::vector<GLTexture> m_textures;
+        // m_textures[i] contains gl textures and nothing else these are indexed by texture handle indices.
+        std::vector<Texture>   m_textures;
         std::vector<GLSampler> m_samplers;
 
         // m_meshes[i] corresponds to Model::meshes()[i].
