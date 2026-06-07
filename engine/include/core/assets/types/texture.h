@@ -16,7 +16,7 @@ public:
         Texture(const IC_GUID id) : IAsset(id) {}
         ~Texture() override { Release(); }
 
-        // Load texture from path
+        // Load texture from path into image struct for loading
         bool Load(const char *filepath) override;
 
         // Note implemented yet
@@ -26,8 +26,10 @@ public:
         // Release the resources after use.
         bool Release() override;
 
-        // Load from image data
-        bool LoadImage(const Image &img);
+        Image *GetImageTexture() { return m_image; }
+
+private:
+        Image *m_image = nullptr;  // Texture pixels
 };
 
 }  // namespace ic

@@ -16,6 +16,7 @@ set(CORE_SRC
     src/core/assets/types/model.cpp
     src/core/assets/types/skybox.cpp
     src/core/assets/types/material.cpp
+    src/core/assets/types/texture.cpp
     src/core/assets/asset_cache.cpp
     src/core/assets/asset_manager.cpp
     src/core/assets/asset_registry.cpp

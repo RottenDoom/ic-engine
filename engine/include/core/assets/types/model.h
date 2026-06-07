@@ -207,6 +207,7 @@ struct ModelCamera
 // ---------------------------------------------------------------------------
 // Image -> decoded RGBA8 pixel data (CPU-side only)
 // Freed by Model::freeCPU() after GPU upload.
+// Texture asset loads into this
 // ---------------------------------------------------------------------------
 
 struct Image
