@@ -60,6 +60,7 @@ bool Texture::Release()
         m_image->srgb     = false;
         ic_free(m_image);
         m_image = nullptr;
+        return true;
 }
 
 }  // namespace ic

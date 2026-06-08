@@ -251,6 +251,7 @@ void EditorSystem::Render()
 
         // ImGui::ShowDemoWindow(); // https://pthom.github.io/imgui_explorer/
         DrawSceneHeirarchy();
+
         ic::panels::component_panel_draw(m_State.selected);
 
         ImGui::Render();

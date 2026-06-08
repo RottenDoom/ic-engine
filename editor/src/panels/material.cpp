@@ -8,24 +8,41 @@ namespace ic
 void EditorSystem::DrawMaterialEditor(Entity &e)
 {
         ImGui::Begin("Material");
+        auto &comp = e.GetComponent<MeshComponent>();
 
-        if (!e.IsValid())
+        Model *model = (Model *)AssetManager::Get().GetAsset(comp.modelID);
+
+        if (!model)
         {
-                ImGui::TextDisabled("No Entity selected");
                 ImGui::End();
                 return;
         }
 
-        // TODO: change this part of the project
-        MeshComponent comp  = e.GetComponent<MeshComponent>();
-        Model        *model = (Model *)AssetManager::Get().GetAsset(comp.modelID);
+        Mesh *mesh = model->GetMesh(m_State.selectedMesh);
 
-        Mesh          *mesh = model->GetMesh(m_State.selectedMesh);
+        if (!mesh)
+        {
+                ImGui::End();
+                return;
+        }
+
+        if (m_State.selectedSubmesh >= mesh->primitives.size())
+        {
+                ImGui::End();
+                return;
+        }
+
         MeshPrimitive &prim = mesh->primitives[m_State.selectedSubmesh];
 
         Material *mat = model->GetMaterial(prim.materialIndex);
 
-        // Most basic property change
+        if (!mat)
+        {
+                ImGui::End();
+                return;
+        }
+
+        // Change the properties from here however this might not get updated yet
         ImGui::SliderFloat("Roughness", &mat->pbr.metallicFactor, 0.0f, 1.0f);
 
         ImGui::End();

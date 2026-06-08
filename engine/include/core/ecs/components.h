@@ -97,7 +97,7 @@ struct MeshComponent
         // Material ID or material pointer
         void SetModel(IC_GUID id) { modelID = id; }
 
-        std::vector<Mesh> GetMeshes()
+        std::vector<Mesh> &GetMeshes()
         {
                 Model *model = (Model *)AssetManager::Get().GetAsset(modelID);
                 return model->meshes();

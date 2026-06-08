@@ -130,24 +130,33 @@ void EditorSystem::DrawEntityNode(ic::Entity e)
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow |
                                    (entityHighlighted ? ImGuiTreeNodeFlags_Selected : 0);
 
-        // TODO: this line may not be needed
-        // if (!(e.GetComponent<MeshComponent>().GetMeshes().size() > 0))
-        //         flags |= ImGuiTreeNodeFlags_Leaf;  // no expand arrow if there is nothing to expand
+        // if entity has no mesh component or does not have any meshes dont draw its meshes
+        if (!(e.HasComponent<MeshComponent>()))
+                flags |= ImGuiTreeNodeFlags_Leaf;
+        else if (e.GetComponent<MeshComponent>().GetMeshes().size() <= 0)
+        {
+                flags |= ImGuiTreeNodeFlags_Leaf;
+        }
 
+        // according to flags this should be close when loading a new entitiy
         bool open = ImGui::TreeNodeEx(label.c_str(), flags);
 
         // Selecting the entity clears any submesh sub-selection.
         if (ImGui::IsItemClicked())
         {
-                m_State.selected     = e;
-                m_State.selectedMesh = -1;
+                m_State.selected        = e;
+                m_State.selectedMesh    = -1;
+                m_State.selectedSubmesh = -1;
         }
 
+        // for loading new components of entity
         DrawEntityContextMenu(e);
 
+        // extra check just to make sure
         if (open)
         {
-                DrawMeshNodes(e);
+                if (e.HasComponent<MeshComponent>())
+                        DrawMeshNodes(e);
                 ImGui::TreePop();
         }
 
@@ -216,45 +225,28 @@ void EditorSystem::DrawEntityContextMenu(ic::Entity e)
 
 void EditorSystem::DrawMeshNodes(ic::Entity e)
 {
-        std::vector<ic::Mesh> meshes;
-        if (e.HasComponent<MeshComponent>())
-        {
-                meshes = e.GetComponent<MeshComponent>().GetMeshes();
-        }
-
+        std::vector<ic::Mesh> &meshes = e.GetComponent<MeshComponent>().GetMeshes();
         for (size_t i = 0; i < meshes.size(); ++i)
         {
-                ImGui::PushID((int)i);
-
                 bool subSelected = (m_State.selected && m_State.selected == e && m_State.selectedMesh == (int)i);
 
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
+                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth |
                                            (subSelected ? ImGuiTreeNodeFlags_Selected : 0);
-
-                ImGui::TreeNodeEx(meshes[i].name.c_str(), flags);
+                ImGui::PushID((int)i);
+                bool open = ImGui::TreeNodeEx(meshes[i].name.c_str(), flags);
 
                 if (ImGui::IsItemClicked())
                 {
-                        m_State.selected     = e;
-                        m_State.selectedMesh = (int)i;
-
-                        Mesh &mesh = meshes[i];
-
-                        DrawSubmeshNodes(e, mesh, i);
-
-                        /** TODO: In the component section we need a material selector */
-                        // DrawMaterialPanel(meshId);
-                        /**
-                         * {
-                         * 	mesh = getmesh();
-                         * 	if (choosematerial) openassetbrowser
-                         * 	choose an asset / material (will have all materials that are loaded yet with each
-                         * catergories as well) load it and hot reload it into the scene make a shader asset as well.
-                         * }
-                         */
+                        m_State.selectedMesh    = (int)i;
+                        m_State.selected        = e;
+                        m_State.selectedSubmesh = -1;
                 }
 
-                ImGui::TreePop();
+                if (open)
+                {
+                        DrawSubmeshNodes(e, meshes[i], (int)i);
+                        ImGui::TreePop();
+                }
                 ImGui::PopID();
         }
 }
@@ -264,28 +256,32 @@ void EditorSystem::DrawSubmeshNodes(ic::Entity e, Mesh &mesh, int selectedMesh)
         std::vector<MeshPrimitive> &submeshes = mesh.primitives;
         for (size_t j = 0; j < submeshes.size(); ++j)
         {
-                // TODO: learn if this breaks anything
-                ImGui::PushID((int)(selectedMesh + j));
+                ImGui::PushID((int)j);
 
-                bool subSelected = (m_State.selected && m_State.selected == e && m_State.selectedMesh == selectedMesh &&
-                                    m_State.selectedSubmesh == j);
+                bool selected = (m_State.selected && m_State.selected == e && m_State.selectedMesh == selectedMesh &&
+                                 m_State.selectedSubmesh == j);
                 ;
 
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanFullWidth |
-                                           (subSelected ? ImGuiTreeNodeFlags_Selected : 0);
-
-                ImGui::TreeNodeEx(submeshes[j].name.c_str(), flags);
+                // submeshes do not need to be opened yet.
+                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                                           ImGuiTreeNodeFlags_SpanFullWidth |
+                                           (selected ? ImGuiTreeNodeFlags_Selected : 0);
+                if (!submeshes[j].name.empty())
+                        ImGui::TreeNodeEx(submeshes[j].name.c_str(), flags);
+                else
+                {
+                        char buffer[10];
+                        snprintf(buffer, 9, "Submesh%zu", j);
+                        ImGui::TreeNodeEx(buffer, flags);
+                }
 
                 if (ImGui::IsItemClicked())
                 {
                         m_State.selected        = e;
                         m_State.selectedMesh    = selectedMesh;
                         m_State.selectedSubmesh = j;
-
-                        ImGui::SetTooltip("This is a submeshh");
                 }
 
-                ImGui::TreePop();
                 ImGui::PopID();
         }
 }
@@ -331,7 +327,13 @@ void EditorSystem::DrawSceneHeirarchy()
 
         ImGui::BeginChild("SceneHierarchyRegion", ImVec2(0, hierarchyHeight), false);
         if (m_ActiveScene)
+        {
                 DrawSceneNode();
+                if (m_State.selected && m_State.selectedMesh >= 0 && m_State.selectedSubmesh >= 0)
+                {
+                        DrawMaterialEditor(m_State.selected);
+                }
+        }
         ImGui::EndChild();
 
         DrawCameraPanel();
