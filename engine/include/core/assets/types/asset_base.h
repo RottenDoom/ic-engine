@@ -76,11 +76,11 @@ public:
         IAsset(IC_GUID id) : _id(id) {}
         IAsset(const char *name)
         {
-                m_name = strdup(name);
+                m_name = name;
                 _id    = HASH(m_name);
         };
 
-        virtual ~IAsset() { m_name = nullptr; }
+        virtual ~IAsset() {}
 
         // Type Signatures Load this using ASSET_CLASS_TYPE(type)
         virtual AssetType   getAssetType() const = 0;
@@ -96,20 +96,21 @@ public:
         virtual bool IsLoaded() const { return loaded; }
 
         // Identifiable
-        IC_GUID     GetID() { return _id; }
-        void        SetName(char *name) { m_name = name; };
-        const char *GetName() { return m_name; }
+        IC_GUID     GetID() const { return _id; }
+        void        SetName(const char *name) { m_name = name; };
+        const char *GetName() const { return m_name.c_str(); }
 
         // RefCountable
         void    AddRef() { _ref_count++; }
-        int32_t GetRefNum() { return _ref_count; }
+        void    RemoveRef() { _ref_count--; }
+        int32_t GetRefNum() const { return _ref_count; }
 
 private:
         bool loaded = false;
 
         // Identifiable
         IC_GUID _id    = INVALID_ID;
-        char   *m_name = nullptr;
+        string  m_name = nullptr;
 
         // Refcountable - Not every object is refcountable so maybe add refcountable object but we are not worried right
         // now until we get an asset like that. Probably Shader would be like that.
