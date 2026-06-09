@@ -6,6 +6,7 @@
 #include "core/filesystem.h"
 
 #include "core/assets/types/asset_base.h"
+#include "core/assets/types/material.h"
 #include "material.h"
 
 #include <vector>
@@ -116,8 +117,8 @@ struct MeshPrimitive
                 TriangleFan   = 6,
         } mode = Mode::Triangles;
 
-        /** TODO: Each mesh can have more than one materials */
-        Index materialIndex = INVALID_INDEX;
+        MaterialHandle     materialHandle;
+        Index __deprecated materialIndex;  // TODO: This index is only here because the serialization will break
 
         // Packed, interleaved vertex data.
         // Layout: [pos][normal?][tangent?][uv0?][uv1?][uv2?][color?][joints?][weights?]
@@ -134,7 +135,7 @@ struct MeshPrimitive
         AABB bounds;
 
         // set the material of the particular material
-        // void SetMaterial(MaterialID id) {materialIndex = id;}
+        void SetMaterial(Material *material);
 };
 
 // ---------------------------------------------------------------------------
@@ -217,6 +218,8 @@ struct Image
         uint32_t channels = 0;  // original channel count before RGBA8 conversion
         bool     srgb     = false;
         string   name;
+        string   uri;
+        bool     fromGLTF = false;
 
         std::vector<uint8_t> pixels;  // always RGBA8: width * height * 4 bytes
 
@@ -442,4 +445,4 @@ private:
 
 }  // namespace ic
 
-#endif
+#endif  // MODEL_H

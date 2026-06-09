@@ -3,136 +3,106 @@
 
 #include "defines.h"
 #include "core/assets/types/asset_base.h"
+#include "core/assets/types/model.h"
 #include "core/math.h"
+#include "core/uuid.h"
 
 #include <optional>
 #include <string>
 
-/**
- * material.h -> Runtime material types.
- *
- * Design rules:
- *
- */
-
-// ---------------------------------------------------------------------------
-// TextureRef -> resolved image + sampler index pair
-// texCoord selects which UV set (TEXCOORD_0, TEXCOORD_1, ...)
-// ---------------------------------------------------------------------------
-
-struct TextureRef
+namespace ic
 {
-        Index image    = INVALID_INDEX;  // into Model::images
-        Index sampler  = INVALID_INDEX;  // into Model::samplers
-        Index texCoord = 0;              // UV set index
 
-        bool isValid() const { return image != INVALID_INDEX; }
+/** TextureHandle and MaterialHandle resolves to assetmanager asset handles */
+
+using MaterialHandle = UUID;
+using TextureHandle  = UUID;
+
+struct NormalTexture
+{
+        TextureHandle ref;
+        float         scale = 1.0f;
 };
 
-// ---------------------------------------------------------------------------
-// Texture slot variants that carry extra per-slot parameters
-// Use composition, NOT inheritance -> avoids the double-indirection trap
-// ---------------------------------------------------------------------------
-
-struct NormalTextureRef
+struct OcclusionTexture
 {
-        TextureRef ref;
-        float      scale = 1.0f;
-
-        bool isValid() const { return ref.isValid(); }
+        TextureHandle ref;
+        float         strength = 1.0f;
 };
-
-struct OcclusionTextureRef
-{
-        TextureRef ref;
-        float      strength = 1.0f;
-
-        bool isValid() const { return ref.isValid(); }
-};
-
-// ---------------------------------------------------------------------------
-// Core PBR -> metallic/roughness workflow (GLTF 2.0 core)
-// ---------------------------------------------------------------------------
 
 struct PBRMetallicRoughness
 {
-        glm::vec4  baseColorFactor = glm::vec4(1.0f);
-        TextureRef baseColorTexture;
+        glm::vec4     baseColorFactor = glm::vec4(1.0f);
+        TextureHandle baseColorTexture;
 
-        float      metallicFactor  = 1.0f;
-        float      roughnessFactor = 1.0f;
-        TextureRef metallicRoughnessTexture;
+        float         metallicFactor  = 1.0f;
+        float         roughnessFactor = 1.0f;
+        TextureHandle metallicRoughnessTexture;
 };
 
-// ---------------------------------------------------------------------------
-// KHR extension material data
-// Each is wrapped in std::optional -> only allocated when the material uses it.
-// ---------------------------------------------------------------------------
+struct EmissiveTexture
+{
+        TextureHandle emissiveTexture;
+        glm::vec3     emissiveFactor   = glm::vec3(0.0f);
+        float         emissiveStrength = 1.0f;
+};
+
+/**  ============= KHR extension material data ========== */
 
 /** KHR_materials_anisotropy */
 struct AnisotropyData
 {
-        float      anisotropyStrength = 0.0f;
-        float      anisotropyRotation = 0.0f;
-        TextureRef anisotropyTexture;
+        float         anisotropyStrength = 0.0f;
+        float         anisotropyRotation = 0.0f;
+        TextureHandle anisotropyTexture;
 };
 
 /** KHR_materials_specular */
 struct SpecularData
 {
-        float      specularFactor = 1.0f;
-        TextureRef specularTexture;
-        glm::vec3  specularColorFactor = glm::vec3(1.0f);
-        TextureRef specularColorTexture;
+        float         specularFactor = 1.0f;
+        TextureHandle specularTexture;
+        glm::vec3     specularColorFactor = glm::vec3(1.0f);
+        TextureHandle specularColorTexture;
 };
 
 /** KHR_materials_iridescence */
 struct IridescenceData
 {
-        float      iridescenceFactor = 0.0f;
-        TextureRef iridescenceTexture;
-        float      iridescenceIor          = 1.3f;
-        float      iridescenceThicknessMin = 100.0f;
-        float      iridescenceThicknessMax = 400.0f;
-        TextureRef iridescenceThicknessTexture;
+        float         iridescenceFactor = 0.0f;
+        TextureHandle iridescenceTexture;
+        float         iridescenceIor          = 1.3f;
+        float         iridescenceThicknessMin = 100.0f;
+        float         iridescenceThicknessMax = 400.0f;
+        TextureHandle iridescenceThicknessTexture;
 };
 
 /** KHR_materials_diffuse_transmission */
 struct DiffuseTransmissionData
 {
-        float      diffuseTransmissionFactor = 0.0f;
-        TextureRef diffuseTransmissionTexture;
-        glm::vec3  diffuseTransmissionColorFactor = glm::vec3(1.0f);
-        TextureRef diffuseTransmissionColorTexture;
+        float         diffuseTransmissionFactor = 0.0f;
+        TextureHandle diffuseTransmissionTexture;
+        glm::vec3     diffuseTransmissionColorFactor = glm::vec3(1.0f);
+        TextureHandle diffuseTransmissionColorTexture;
 };
 
 /** KHR_materials_transmission (volume/glass) */
 struct TransmissionData
 {
-        float      transmissionFactor = 0.0f;
-        TextureRef transmissionTexture;
+        float         transmissionFactor = 0.0f;
+        TextureHandle transmissionTexture;
 };
-
-// ---------------------------------------------------------------------------
-// Material -> runtime PBR material
-//
-// Only holds what the renderer needs per draw call.
-// Import-time data (GLTF alpha mode enums, extension strings) was resolved
-// by ModelBuilder and is not stored here.
-// ---------------------------------------------------------------------------
 
 struct Material
 {
-        std::string name;
+        string name;
 
         // --- Core PBR ---
         PBRMetallicRoughness pbr;
 
-        NormalTextureRef    normalTexture;
-        OcclusionTextureRef occlusionTexture;
-        TextureRef          emissiveTexture;
-        glm::vec3           emissiveFactor   = glm::vec3(0.0f);
-        float               emissiveStrength = 1.0f;
+        NormalTexture    normalTexture;
+        OcclusionTexture occlusionTexture;
+        EmissiveTexture  emissiveTexture;
 
         // --- Alpha ---
         enum class AlphaMode : uint8_t
@@ -140,19 +110,18 @@ struct Material
                 Opaque = 0,
                 Mask,
                 Blend
-        } alphaMode = AlphaMode::Opaque;
-
+        } alphaMode       = AlphaMode::Opaque;
         float alphaCutoff = 0.5f;
 
-        // --- Surface flags ---
+        // Surface lighting flags
         bool doubleSided = false;
         bool unlit       = false;  // KHR_materials_unlit
 
-        // --- Optical properties ---
+        // Optical properties
         float ior        = 1.5f;  // KHR_materials_ior
         float dispersion = 0.0f;  // KHR_materials_dispersion
 
-        // --- KHR extensions (zero-cost when unused) ---
+        // KHR Extensions
         std::optional<AnisotropyData>          anisotropy;
         std::optional<SpecularData>            specular;
         std::optional<IridescenceData>         iridescence;
@@ -182,4 +151,24 @@ inline Material Material::makeDefault()
         return m;
 }
 
-#endif
+/** Material Asset used for referencing from mesh primitives into asset manager */
+class MaterialAsset : public IAsset
+{
+public:
+        ASSET_CLASS_TYPE(ASSET_TYPE_MATERIAL);
+
+        // TODO: Loading and serializing materials from .mtl files etc.
+        bool      Load(const char *path) override { return false; }
+        bool      SerializedLoad(ic::Serializer *serializer) override { return false; }
+        bool      SerializedSave(ic::Serializer *serializer) const override { return false; }
+        bool      Release() override { return false; }
+        Material &GetMaterial() { return material; }
+
+private:
+        Material material;
+        string   name;
+};
+
+}  // namespace ic
+
+#endif  // MATERIAL_H
