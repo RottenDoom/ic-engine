@@ -14,7 +14,10 @@ class Serializer;
 class AssetManager
 {
 public:
-        static void          Initialize(const char *registryFile);
+        /** Registry initialization of the asset. The registry should be full path or filesystem mounted path */
+        static void Initialize(const char *registryFile);
+
+        /** Assetmanager shut down */
         static void          Shutdown();
         static AssetManager &Get() { return *s_instance; }
 
@@ -25,20 +28,12 @@ public:
         ~AssetManager();
 
         /**
-         * Load by ID. Asset must already be in the registry with a filepath.
-         * If already loaded, just increments refcount and returns cached pointer.
-         * Returns nullptr if the ID is unknown or load fails.
+         * Insert an already constructed asset the manager will own and later destroy.
+         * Used for asset with no backing file (glTF, editor created materials). Sets refcounts += 1.
          */
-        IAsset *Load(IC_GUID id);
+        IAsset *AddRuntimeAsset(IAsset *asset);
 
-        /**
-         * Load by ID + explicit filepath.
-         * Registers the asset if it isn't already in the registry.
-         * If already loaded, increments refcount and returns cached pointer.
-         * path is used for the first load only - ignored on cache hits.
-         */
-        IAsset *Load(IC_GUID id, const char *path, AssetType type = ASSET_TYPE_MODEL);
-
+        /** Load an asset with explicit type and id */
         template <typename T>
         T *LoadAs(IC_GUID id)
         {
@@ -54,6 +49,7 @@ public:
                 return static_cast<T *>(asset);
         }
 
+        /** Load an asset with a path and id. If the asset does not exist in registry registers it*/
         template <typename T>
         T *LoadAs(IC_GUID id, const char *path)
         {
@@ -69,6 +65,7 @@ public:
                 return static_cast<T *>(asset);
         }
 
+        /** Load from asset name if it exists in the registry */
         template <typename T>
         T *LoadAs(const char *name)
         {
@@ -94,8 +91,7 @@ public:
                 }
         }
 
-        IAsset *GetAsset(IC_GUID id);
-
+        /** Returns asset without incrementing the ref count */
         template <typename T>
         T *GetAsset(IC_GUID id)
         {
@@ -107,6 +103,7 @@ public:
                 return static_cast<T *>(asset);
         }
 
+        /** Unloads the asset with the given destroys the asset if its ref count is zero*/
         void Unload(IC_GUID id);
 
         using InternalIterator = std::unordered_map<IC_GUID, IAsset *>::iterator;
@@ -120,6 +117,24 @@ public:
         bool           LoadRegistry(const char *path);
 
 private:
+        /**
+         * Load by ID. Asset must already be in the registry with a filepath.
+         * If already loaded, just increments refcount and returns cached pointer.
+         * Returns nullptr if the ID is unknown or load fails.
+         */
+        IAsset *Load(IC_GUID id);
+
+        /**
+         * Load by ID + explicit filepath.
+         * Registers the asset if it isn't already in the registry.
+         * If already loaded, increments refcount and returns cached pointer.
+         * path is used for the first load only - ignored on cache hits.
+         */
+        IAsset *Load(IC_GUID id, const char *path, AssetType type = ASSET_TYPE_MODEL);
+
+        /** Gets asset from an id */
+        IAsset *GetAsset(IC_GUID id);
+
         AssetManager() = default;
 
         /** Allocate and construct an asset of the given type. */
@@ -128,11 +143,17 @@ private:
         /** Internal destroy - calls destructor + ic_free. */
         void DestroyAsset(IAsset *asset);
 
+        /** Asset manager singleton. This can be accessed by anywhere by the user */
         static AssetManager *s_instance;
 
-        string                                m_AssetRegistryPath;
+        /** Registry path for initializing registry for the asset manager */
+        string m_AssetRegistryPath;
+
+        /** Map of ids to asset references. TODO: tackle circular references */
         std::unordered_map<IC_GUID, IAsset *> m_assets;
-        AssetRegistry                         m_registry;
+
+        /** Registry is owned by the asset manager singleton */
+        AssetRegistry m_registry;
 };
 
 }  // namespace ic
@@ -174,4 +195,4 @@ extern "C"
 }
 #endif
 
-#endif
+#endif  // ASSET_MANAGER

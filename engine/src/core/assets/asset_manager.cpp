@@ -27,12 +27,13 @@ static size_t assetSize(AssetType type)
         }
 }
 
+// Static singleton initialization
 AssetManager *AssetManager::s_instance = nullptr;
 
 void AssetManager::Initialize(const char *registryFile)
 {
         IC_CORE_ASSERT(!s_instance, "AssetManager::Initialize called twice");
-        s_instance                      = new AssetManager();
+        s_instance                      = new AssetManager();  // TODO: this should have been IC_MALLOCED
         s_instance->m_AssetRegistryPath = registryFile;
 
         if (registryFile && !s_instance->m_registry.Init(registryFile))
@@ -63,7 +64,6 @@ AssetManager::~AssetManager()
 
 IAsset *AssetManager::Load(IC_GUID id)
 {
-        // --- Cache hit: already loaded, just bump refcount ---
         auto it = m_assets.find(id);
         if (it != m_assets.end())
         {
@@ -75,7 +75,7 @@ IAsset *AssetManager::Load(IC_GUID id)
         // --- Cache miss: must be in registry ---
         if (!m_registry.Contains(id))
         {
-                IC_CORE_WARN("AssetManager::Load - asset {} not in registry", id);
+                IC_CORE_WARN("AssetManager::Load - asset {} not in registry, provide a file path to register it", id);
                 return nullptr;
         }
 
@@ -85,11 +85,21 @@ IAsset *AssetManager::Load(IC_GUID id)
         return Load(id, path, type);
 }
 
+IAsset *AssetManager::AddRuntimeAsset(IAsset *asset)
+{
+        if (!asset)
+                return nullptr;
+        IC_GUID id   = asset->GetID();
+        m_assets[id] = asset;
+        asset->AddRef();
+        return asset;
+}
+
 IAsset *AssetManager::Load(IC_GUID id, const char *path, AssetType type)
 {
         IC_CORE_ASSERT(path, "AssetManager::Load - null path");
 
-        // --- Cache hit ---
+        // if cached hit increment ref count
         auto it = m_assets.find(id);
         if (it != m_assets.end())
         {
@@ -98,13 +108,13 @@ IAsset *AssetManager::Load(IC_GUID id, const char *path, AssetType type)
                 return it->second;
         }
 
-        // --- Register if not already in registry ---
+        // if asset not in registry register the asset for serialization if saved
         if (!m_registry.Contains(id))
         {
                 m_registry.RegisterAsset(id, path, type);
         }
 
-        // --- Construct ---
+        // construct the asset given the type
         IAsset *asset = CreateAsset(type, id);
         if (!asset)
         {
@@ -112,7 +122,7 @@ IAsset *AssetManager::Load(IC_GUID id, const char *path, AssetType type)
                 return nullptr;
         }
 
-        // --- Load from disk ---
+        // load the asset from the path
         if (!asset->Load(path))
         {
                 IC_CORE_ERROR("AssetManager::Load - failed to load '{}' (id={})", path, id);
@@ -120,7 +130,7 @@ IAsset *AssetManager::Load(IC_GUID id, const char *path, AssetType type)
                 return nullptr;
         }
 
-        // --- Cache and addRef ---
+        // increment ref count and register in asset pool
         asset->AddRef();  // refCount = 1
         m_assets[id] = asset;
 
@@ -133,7 +143,7 @@ IAsset *AssetManager::GetAsset(IC_GUID id)
         auto it = m_assets.find(id);
         if (it == m_assets.end())
         {
-                IC_CORE_WARN("AssetManager::getAsset - {} not loaded", id);
+                IC_CORE_WARN("AssetManager::GetAsset - {} not loaded", id);
                 return nullptr;
         }
         return it->second;
@@ -149,10 +159,12 @@ void AssetManager::Unload(IC_GUID id)
         }
 
         IAsset *asset = it->second;
+        asset->RemoveRef();
 
-        // release() decrements and returns true when refCount hits 0
-        if (asset->Release())
+        // release the resources
+        if (asset->GetRefNum() == 0)
         {
+                asset->Release();
                 IC_CORE_INFO("AssetManager: destroying asset {} (refCount=0)", id);
                 m_assets.erase(it);
                 DestroyAsset(asset);
@@ -211,6 +223,8 @@ void AssetManager::DestroyAsset(IAsset *asset)
 }
 
 }  // namespace ic
+
+// ----------------------- C API ----------------------------------
 
 void ic_load_registry(const char *registry_file_path)
 {
