@@ -3,6 +3,7 @@
 
 #include "defines.h"
 #include "core/assets/types/asset_base.h"
+#include "core/uuid.h"
 
 /** TODO:
  * 1. Write functions for writting assets registy and getting the file path to the current registry.

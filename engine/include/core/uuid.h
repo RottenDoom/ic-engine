@@ -1,38 +1,43 @@
-#ifndef UUID_H
-#define UUID_H
+#pragma once
 
-#include "defines.h"
+#include <cstdint>
 
 namespace ic
 {
 
-// TODO: Make a uuid generator
 class UUID
 {
 public:
-        UUID();
-        UUID(uint64_t uuid);
-        UUID(const UUID &) = default;
+        UUID() = default;
+        explicit UUID(uint64_t value) : m_Value(value) {}
 
-        operator uint64_t() const { return m_UUID; }
+        uint64_t Value() const { return m_Value; }
+
+        operator uint64_t() const { return m_Value; }
+
+        bool operator==(const UUID &other) const { return m_Value == other.m_Value; }
+
+        bool operator!=(const UUID &other) const { return m_Value != other.m_Value; }
 
 private:
-        uint64_t m_UUID;
+        uint64_t m_Value = 0;
+};
+
+class UUIDGenerator
+{
+public:
+        static UUID Generate();
 };
 
 }  // namespace ic
 
 namespace std
 {
-template <typename T>
-struct hash;
 
 template <>
 struct hash<ic::UUID>
 {
-        std::size_t operator()(const ic::UUID &uuid) const { return (uint64_t)uuid; }
+        size_t operator()(const ic::UUID &uuid) const { return static_cast<uint64_t>(uuid); }
 };
 
 }  // namespace std
-
-#endif  // UUID_H

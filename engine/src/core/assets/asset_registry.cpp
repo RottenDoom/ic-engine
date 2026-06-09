@@ -5,10 +5,9 @@
 
 #include <yaml-cpp/yaml.h>
 
-const IC_GUID INVALID_ID = ~0u;
+constexpr uint64_t INVALID_ID = 0;
 
 /** TODO:
- * 2. Hashing w.r.t types and names to get new ids for new models?
  * 3. Loading models without registry and thus editing the registry.
  * 4. More sections in the asset Registry for asset scenes models and more.
  */
@@ -65,12 +64,12 @@ void AssetRegistry::ParseAssetEntry(const YAML::Node &node)
                 return;
 
         string  idStr = node["id"].as<string>();
-        IC_GUID id    = 0;
+        IC_GUID id;
 
         if (idStr.rfind("0x", 0) == 0)
-                id = std::stoull(idStr, nullptr, 16);
+                id = UUID(std::stoull(idStr, nullptr, 16));
         else
-                id = std::stoull(idStr);
+                id = UUID(std::stoull(idStr));
 
         AssetMeta meta;
 
@@ -109,12 +108,12 @@ void AssetRegistry::ParseAssetEntry(const YAML::Node &node)
                 for (auto depNode : node["dependencies"])
                 {
                         string  depStr = depNode.as<string>();
-                        IC_GUID depId  = 0;
+                        IC_GUID depId;
 
                         if (depStr.rfind("0x", 0) == 0)
-                                depId = std::stoull(depStr, nullptr, 16);
+                                depId = UUID(std::stoull(depStr, nullptr, 16));
                         else
-                                depId = std::stoull(depStr);
+                                depId = UUID(std::stoull(depStr));
 
                         m_dependencies[id].insert(depId);
                 }
@@ -195,7 +194,7 @@ IC_GUID AssetRegistry::GetAssetId(const char *name) const
         auto it = m_ids.find(name);
         if (it == m_ids.end())
         {
-                return INVALID_ID;
+                return UUID(INVALID_ID);
         }
         return it->second;
 }

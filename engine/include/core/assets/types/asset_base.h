@@ -2,6 +2,7 @@
 #define ASSET_BASE_H
 
 #include "defines.h"
+#include "core/uuid.h"
 
 namespace ic
 {
@@ -9,33 +10,25 @@ class Serializer;
 
 }  // namespace ic
 
-/** TODO:
- * 1. Asset Base UUID generator when writing a file to registry
- * 2. File hash functions and versioning when packing assets.
- */
-
-/** TODO: Define this function */
-#define HASH(x) 1997;
-
-// TODO: make some place else for this as this is only for model.
+// TODO: use this in only modelimportdata eventually
 using Index                   = uint32_t;
 constexpr Index INVALID_INDEX = ~0u;
 
 #define ASSET_CLASS_TYPE(type)                                                                                         \
-        static AssetType getStaticType()                                                                               \
+        static AssetType GetStaticType()                                                                               \
         {                                                                                                              \
                 return AssetType::type;                                                                                \
         }                                                                                                              \
-        virtual AssetType getAssetType() const override                                                                \
+        virtual AssetType GetAssetType() const override                                                                \
         {                                                                                                              \
-                return getStaticType();                                                                                \
+                return GetStaticType();                                                                                \
         }                                                                                                              \
-        virtual const char *getAssetName() const override                                                                   \
+        virtual const char *GetAssetName() const override                                                                   \
         {                                                                                                              \
                 return #type;                                                                                          \
         }
 
-using IC_GUID = uint64_t;
+using IC_GUID = ic::UUID;
 extern const IC_GUID INVALID_ID;
 
 enum AssetType : uint8_t
@@ -74,18 +67,19 @@ class IAsset
 public:
         IAsset() = default;
         IAsset(IC_GUID id) : _id(id) {}
+
         IAsset(const char *name)
         {
                 m_name = name;
-                _id    = HASH(m_name);
+                _id    = ic::UUIDGenerator::Generate();
         };
 
         virtual ~IAsset() {}
 
         // Type Signatures Load this using ASSET_CLASS_TYPE(type)
-        virtual AssetType   getAssetType() const = 0;
-        virtual const char *getAssetName() const = 0;
-        virtual string      toString() const { return getAssetName(); }
+        virtual AssetType   GetAssetType() const = 0;
+        virtual const char *GetAssetName() const = 0;
+        virtual string      toString() const { return GetAssetName(); }
 
         // Implementation details to be implemented
         virtual bool Load(const char *filepath) { return false; };

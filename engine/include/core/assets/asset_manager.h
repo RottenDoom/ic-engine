@@ -18,7 +18,9 @@ public:
         static void Initialize(const char *registryFile);
 
         /** Assetmanager shut down */
-        static void          Shutdown();
+        static void Shutdown();
+
+        /** Returns AssetManager singleton */
         static AssetManager &Get() { return *s_instance; }
 
         // Non-copyable singleton
