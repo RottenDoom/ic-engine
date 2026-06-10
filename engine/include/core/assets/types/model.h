@@ -338,6 +338,7 @@ public:
         ASSET_CLASS_TYPE(ASSET_TYPE_MODEL)
 
         explicit Model(IC_GUID id) : IAsset(id) {}
+        string &GetVersion() { return version; }
 
         // Non-copyable -> owns potentially large vertex/pixel buffers
         Model(const Model &)            = delete;
@@ -421,9 +422,10 @@ private:
         std::vector<Animation>   m_animations;
         std::vector<Scene>       m_scenes;
 
-        AABB  m_worldBounds;
-        Index m_defaultScene = INVALID_INDEX;
-        State m_state        = State::Unloaded;
+        AABB   m_worldBounds;
+        Index  m_defaultScene = INVALID_INDEX;
+        State  m_state        = State::Unloaded;
+        string version        = "v1.0.2";  // TODO: semantic versioning for classes
 };
 
 }  // namespace ic
