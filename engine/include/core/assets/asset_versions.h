@@ -99,7 +99,8 @@ enum GfxImage : int32_t
 // -------------------------------------------------------------------------
 enum Material : int32_t
 {
-        Material_Initial = 1,
+        Material_Initial        = 1,
+        Material_TextureHandles = 2,  // texture refs are UUID handles, materials embedded by id in model cache
         // Material_AlphaMode         = 2,
         // Material_DoubleSided       = 3,
         // Material_EmissiveFactor    = 4,
@@ -111,7 +112,7 @@ enum Material : int32_t
         // Material_KHR_Specular      = 10,
         // Material_NameSerialization = 11,
 
-        Material_CURRENT = Material_Initial,
+        Material_CURRENT = Material_TextureHandles,
 };
 
 // -------------------------------------------------------------------------
@@ -206,7 +207,6 @@ enum Font : int32_t
 // Any bump to any asset type increments this, invalidating all caches.
 // That's intentional - it's the simplest correct behavior.
 //
-// TODO: store these versions in the cache for fast file loads
 
 namespace detail
 {

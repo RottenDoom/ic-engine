@@ -8,8 +8,8 @@
 constexpr uint64_t INVALID_ID = 0;
 
 /** TODO:
- * 3. Loading models without registry and thus editing the registry.
- * 4. More sections in the asset Registry for asset scenes models and more.
+ * 1. Asset name fallback
+ * 2. Material and Texture asset serialization
  */
 
 namespace ic
@@ -17,11 +17,11 @@ namespace ic
 
 AssetRegistry::AssetRegistry() {}
 
-bool AssetRegistry::Init(const char *m_assetsregistry_file)
+bool AssetRegistry::Init(const char *registryFile)
 {
         try
         {
-                const char *full = fs_getfullpath(m_assetsregistry_file);
+                const char *full = fs_getfullpath(registryFile);
                 IC_CORE_ASSERT(full, "Invalid registry path");
 
                 YAML::Node root = YAML::LoadFile(full);

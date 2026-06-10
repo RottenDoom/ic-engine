@@ -230,8 +230,10 @@ struct TextureImportData
 
 struct TextureRefImportData
 {
-        Index idx      = INVALID_INDEX;
-        Index texCoord = 0;
+        UUID    id         = INVALID_ID;  // optional id for serialization
+        Index   imageIdx   = INVALID_INDEX;
+        Index   samplerIdx = INVALID_INDEX;
+        uint8_t texCoord   = 0;
 };
 
 struct NormalTextureImportData

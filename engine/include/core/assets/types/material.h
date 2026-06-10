@@ -156,16 +156,19 @@ class MaterialAsset : public IAsset
 {
 public:
         ASSET_CLASS_TYPE(ASSET_TYPE_MATERIAL);
+        MaterialAsset(MaterialHandle id) : IAsset(id) {}
 
         // TODO: Loading and serializing materials from .mtl files etc.
-        bool      Load(const char *path) override { return false; }
-        bool      SerializedLoad(ic::Serializer *serializer) override { return false; }
-        bool      SerializedSave(ic::Serializer *serializer) const override { return false; }
-        bool      Release() override { return false; }
-        Material &GetMaterial() { return material; }
+        bool Load(const char *path) override { return false; }
+        bool SerializedLoad(ic::Serializer *serializer) override { return false; }
+        bool SerializedSave(ic::Serializer *serializer) const override { return false; }
+        bool Release() override { return false; }
+
+        void      SetMaterial(Material &material) { m_material = material; }
+        Material &GetMaterial() { return m_material; }
 
 private:
-        Material material;
+        Material m_material;
         string   name;
 };
 

@@ -24,6 +24,8 @@
 
 using string = std::string;
 
+#define __deprecated
+
 // clang-format off
 #if defined(_WIN32) || defined(_WIN64)
    	 #if defined(IC_ENGINE_SHARED)
@@ -43,7 +45,6 @@ using string = std::string;
     	#endif
 #endif
 // clang-format on
-
 
 #include "core/logger.h"
 
@@ -117,7 +118,6 @@ typedef void(AppUpdateFn)(float dt);
 typedef void(AppRenderFn)(void);
 
 #define NOT_IMPL() IC_CORE_ASSERT(false, "Function not implemented yet!")
-
 
 #if defined(_MSC_VER)
 #define IC_INLINE __forceinline

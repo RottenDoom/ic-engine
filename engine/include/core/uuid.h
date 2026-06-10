@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <spdlog/fmt/fmt.h>
 
 namespace ic
 {

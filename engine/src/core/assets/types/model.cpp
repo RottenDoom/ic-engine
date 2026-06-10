@@ -5,6 +5,11 @@
 #include "core/assets/asset_cache.h"
 #include "core/assets/asset_loaders/gltf_loader.h"
 #include "core/assets/asset_loaders/model_data.h"
+#include "core/assets/types/texture.h"
+
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 /**
  * model_builder.cpp
@@ -172,53 +177,40 @@ static void build_hierarchy(std::vector<Node> &nodes, Index nodeIdx, const glm::
 // Primitive builder
 // ---------------------------------------------------------------------------
 
-static MeshPrimitive build_primitive(MeshPrimitiveImportData *src)
+/**
+ * Creates (or reuses) a Texture asset for the given import ref and returns its handle.
+ * Image pixels are moved out of modelData on first use, so dedup is required.
+ */
+static TextureHandle resolve_texture_ref(const TextureRefImportData                  &ref,
+                                         ModelImportData                             *modelData,
+                                         std::unordered_map<uint32_t, TextureHandle> &textureCache)
 {
-        MeshPrimitive prim;
-        prim.mode          = static_cast<MeshPrimitive::Mode>(src->mode);
-        prim.materialIndex = src->materialIndex;
-        prim.morphWeights  = std::move(src->morphWeights);
-        prim.bounds.min    = src->aabbMin;
-        prim.bounds.max    = src->aabbMax;
+        if (ref.imageIdx == INVALID_INDEX || ref.imageIdx >= modelData->images.size())
+                return INVALID_ID;
 
-        uint32_t flags  = ATTRIB_NONE;
-        uint32_t stride = 0;
-        compute_vertex_layout(src, flags, stride);
+        // Dedup on image index: one Texture asset per source image.
+        // TODO: key on (image, sampler) once a texture owns its sampler identity.
+        auto it = textureCache.find(ref.imageIdx);
+        if (it != textureCache.end())
+                return it->second;
 
-        prim.attributeFlags = flags;
-        prim.vertexStride   = stride;
-        prim.vertexCount    = static_cast<uint32_t>(src->vertices.size());
-        prim.vertexData     = pack_vertices(src->vertices, flags, stride);
-        prim.indices        = std::move(src->indices);
+        TextureHandle id  = UUIDGenerator::Generate();
+        Texture      *tex = AssetManager::Get().CreateAsset<Texture>(id, false);
+        if (tex)
+        {
+                tex->LoadFromImageData(modelData->images[ref.imageIdx]);
+                if (ref.samplerIdx != INVALID_INDEX && ref.samplerIdx < modelData->samplers.size())
+                        tex->SetSampler(modelData->samplers[ref.samplerIdx]);
+        }
 
-        return prim;
+        textureCache[ref.imageIdx] = id;
+        return id;
 }
 
-// ---------------------------------------------------------------------------
-// Material translation
-// Converts MaterialImportData → runtime Material.
-// TextureRef resolution: import data stores texture-list index in idx.
-// The texture list maps texture index → (image index, sampler index).
-// We pre-resolve image+sampler here so the renderer never touches textures[].
-// ---------------------------------------------------------------------------
-
-static TextureRef resolve_texture_ref(const TextureRefImportData &ref, const std::vector<TextureImportData> &textures)
-{
-        TextureRef out;
-        if (ref.idx == INVALID_INDEX)
-                return out;
-        if (ref.idx >= textures.size())
-                return out;
-
-        const TextureImportData &tex = textures[ref.idx];
-        out.image                    = tex.image;
-        out.sampler                  = tex.sampler;
-        out.texCoord                 = ref.texCoord;
-        return out;
-}
-
-/** TODO: this function must use our material system not just material as a struct */
-static Material build_material(const MaterialImportData &src, const std::vector<TextureImportData> &textures)
+/** Translates an import material into a runtime Material, resolving texture refs into Texture assets. */
+static Material build_material(const MaterialImportData                    &src,
+                               ModelImportData                             *modelData,
+                               std::unordered_map<uint32_t, TextureHandle> &textureCache)
 {
         Material mat;
         mat.name = src.name;
@@ -227,21 +219,23 @@ static Material build_material(const MaterialImportData &src, const std::vector<
         mat.pbr.baseColorFactor          = src.pbr.baseColorFactor;
         mat.pbr.metallicFactor           = src.pbr.metallicFactor;
         mat.pbr.roughnessFactor          = src.pbr.roughnessFactor;
-        mat.pbr.baseColorTexture         = resolve_texture_ref(src.pbr.baseColorTexture, textures);
-        mat.pbr.metallicRoughnessTexture = resolve_texture_ref(src.pbr.metallicRoughnessTexture, textures);
+        mat.pbr.baseColorTexture         = resolve_texture_ref(src.pbr.baseColorTexture, modelData, textureCache);
+        mat.pbr.metallicRoughnessTexture = resolve_texture_ref(src.pbr.metallicRoughnessTexture,
+                                                               modelData,
+                                                               textureCache);
 
         // Normal
-        mat.normalTexture.ref   = resolve_texture_ref(src.normalTexture.ref, textures);
+        mat.normalTexture.ref   = resolve_texture_ref(src.normalTexture.ref, modelData, textureCache);
         mat.normalTexture.scale = src.normalTexture.scale;
 
         // Occlusion
-        mat.occlusionTexture.ref      = resolve_texture_ref(src.occlusionTexture.ref, textures);
+        mat.occlusionTexture.ref      = resolve_texture_ref(src.occlusionTexture.ref, modelData, textureCache);
         mat.occlusionTexture.strength = src.occlusionTexture.strength;
 
         // Emissive
-        mat.emissiveTexture  = resolve_texture_ref(src.emissiveTexture, textures);
-        mat.emissiveFactor   = src.emissiveFactor;
-        mat.emissiveStrength = 1.0f;  // KHR_materials_emissive_strength not yet in import data
+        mat.emissiveTexture.emissiveTexture  = resolve_texture_ref(src.emissiveTexture, modelData, textureCache);
+        mat.emissiveTexture.emissiveFactor   = src.emissiveFactor;
+        mat.emissiveTexture.emissiveStrength = 1.0f;  // KHR_materials_emissive_strength not yet in import data
 
         // Alpha
         mat.alphaMode   = static_cast<Material::AlphaMode>(src.alphaMode);
@@ -253,6 +247,34 @@ static Material build_material(const MaterialImportData &src, const std::vector<
         return mat;
 }
 
+/** Packs geometry from import data into a runtime primitive and assigns its material handle. */
+static MeshPrimitive build_primitive(MeshPrimitiveImportData *src, MaterialHandle materialHandle)
+{
+        MeshPrimitive prim;
+
+        prim.mode = static_cast<MeshPrimitive::Mode>(src->mode);
+
+        // setup primitive bouunds and weights
+        prim.morphWeights = std::move(src->morphWeights);
+        prim.bounds.min   = src->aabbMin;
+        prim.bounds.max   = src->aabbMax;
+
+        uint32_t flags  = ATTRIB_NONE;
+        uint32_t stride = 0;
+        compute_vertex_layout(src, flags, stride);
+
+        // setup vertex attribs and pack vertices
+        prim.attributeFlags = flags;
+        prim.vertexStride   = stride;
+        prim.vertexCount    = static_cast<uint32_t>(src->vertices.size());
+        prim.vertexData     = pack_vertices(src->vertices, flags, stride);
+        prim.indices        = std::move(src->indices);
+
+        prim.materialHandle = materialHandle;
+
+        return prim;
+}
+
 // ---------------------------------------------------------------------------
 // ic::build_model -> the single entry point
 // ---------------------------------------------------------------------------
@@ -261,43 +283,48 @@ Model build_model(ModelImportData *data, IC_GUID id)
 {
         Model model(id);
 
-        // --- Images ---
-        model.m_images.reserve(data->images.size());
-        for (auto &img : data->images)
+        // create material with already build texture cache in asset manager
+        std::unordered_map<uint32_t, TextureHandle> textureCache;
+        std::vector<MaterialHandle>                 materialHandles(data->materials.size());
         {
-                Image out;
-                out.width    = img.width;
-                out.height   = img.height;
-                out.channels = img.channels;
-                out.srgb     = img.srgb;
-                out.pixels   = std::move(img.pixels);
-#if defined(IC_ASSET_NAMES)
-                out.name = img.name;
-#endif
-                model.m_images.push_back(std::move(out));
+                AssetManager &mgr = AssetManager::Get();
+                for (size_t i = 0; i < data->materials.size(); ++i)
+                {
+                        Material       mat   = build_material(data->materials[i], data, textureCache);
+                        MaterialHandle matId = UUIDGenerator::Generate();
+                        MaterialAsset *asset = mgr.CreateAsset<MaterialAsset>(matId, false);
+                        if (asset)
+                        {
+                                asset->SetName(mat.name.c_str());
+                                asset->SetMaterial(mat);
+                        }
+                        materialHandles[i] = matId;
+                }
         }
 
-        // --- Samplers ---
-        model.m_samplers.reserve(data->samplers.size());
-        for (auto &s : data->samplers)
+        // Pack vertices and compute AABBs
+        model.m_meshes.reserve(data->meshes.size());
+        for (auto &importMesh : data->meshes)
         {
-                Sampler out;
-                out.magFilter = static_cast<Sampler::Filter>(s.magFilter);
-                out.minFilter = static_cast<Sampler::Filter>(s.minFilter);
-                out.wrapS     = static_cast<Sampler::Wrap>(s.wrapS);
-                out.wrapT     = static_cast<Sampler::Wrap>(s.wrapT);
-                model.m_samplers.push_back(out);
+                Mesh mesh;
+                mesh.name       = importMesh.name.c_str();
+                mesh.bounds.min = importMesh.aabbMin;
+                mesh.bounds.max = importMesh.aabbMax;
+
+                mesh.primitives.reserve(importMesh.primitives.size());
+                for (auto &importPrim : importMesh.primitives)
+                {
+                        MaterialHandle mh = (importPrim.materialIndex != INVALID_INDEX &&
+                                             importPrim.materialIndex < materialHandles.size())
+                                                ? materialHandles[importPrim.materialIndex]
+                                                : INVALID_ID;
+                        mesh.primitives.push_back(build_primitive(&importPrim, mh));
+                }
+
+                model.m_meshes.push_back(std::move(mesh));
         }
 
-        // --- Materials (resolve texture refs against import texture list) ---
-        model.m_materials.reserve(data->materials.size());
-        for (const auto &mat : data->materials)
-                model.m_materials.push_back(build_material(mat, data->textures));
-
-        // Note: data.textures is NOT stored on Model.
-        // All texture references are now resolved to (image, sampler) index pairs.
-
-        // --- Cameras ---
+        // Cameras
         model.m_cameras.reserve(data->cameras.size());
         for (const auto &cam : data->cameras)
         {
@@ -315,7 +342,7 @@ Model build_model(ModelImportData *data, IC_GUID id)
                 model.m_cameras.push_back(std::move(out));
         }
 
-        // --- Skins ---
+        // Skins
         model.m_skins.reserve(data->skins.size());
         for (auto &skin : data->skins)
         {
@@ -327,7 +354,7 @@ Model build_model(ModelImportData *data, IC_GUID id)
                 model.m_skins.push_back(std::move(out));
         }
 
-        // --- Animations ---
+        // Animations
         model.m_animations.reserve(data->animations.size());
         for (auto &anim : data->animations)
         {
@@ -358,7 +385,7 @@ Model build_model(ModelImportData *data, IC_GUID id)
                 model.m_animations.push_back(std::move(out));
         }
 
-        // --- Nodes ---
+        // Nodes
         model.m_nodes.reserve(data->nodes.size());
         for (auto &n : data->nodes)
         {
@@ -378,7 +405,7 @@ Model build_model(ModelImportData *data, IC_GUID id)
                 model.m_nodes.push_back(std::move(out));
         }
 
-        // --- Scenes ---
+        // Scenes
         model.m_scenes.reserve(data->scenes.size());
         for (auto &scene : data->scenes)
         {
@@ -407,23 +434,7 @@ Model build_model(ModelImportData *data, IC_GUID id)
                                 build_hierarchy(model.m_nodes, rootIdx, glm::mat4(1.0f));
         }
 
-        // --- Meshes (pack geometry, compute AABBs) ---
-        model.m_meshes.reserve(data->meshes.size());
-        for (auto &importMesh : data->meshes)
-        {
-                Mesh mesh;
-                mesh.name       = importMesh.name.c_str();
-                mesh.bounds.min = importMesh.aabbMin;
-                mesh.bounds.max = importMesh.aabbMax;
-
-                mesh.primitives.reserve(importMesh.primitives.size());
-                for (auto &importPrim : importMesh.primitives)
-                        mesh.primitives.push_back(build_primitive(&importPrim));  // see if this fixes things
-
-                model.m_meshes.push_back(std::move(mesh));
-        }
-
-        // --- World AABB -> union of all mesh AABBs transformed by their node's world matrix ---
+        // World AABB -> union of all mesh AABBs transformed by their node's world matrix
         for (const auto &node : model.m_nodes)
         {
                 if (node.meshIndex == INVALID_INDEX)
@@ -547,11 +558,7 @@ bool Model::Load(const char *filepath)
         if (!AssetCache::CacheAsset(AssetType::ASSET_TYPE_MODEL, GetID(), this))
                 IC_CORE_WARN("Model::load -> failed to write cache for '{}'", filepath);
 
-        IC_CORE_INFO("Model::load -> '{}' ready ({} meshes, {} materials, {} nodes)",
-                     filepath,
-                     m_meshes.size(),
-                     m_materials.size(),
-                     m_nodes.size());
+        IC_CORE_INFO("Model::load -> '{}' ready ({} meshes, {} nodes)", filepath, m_meshes.size(), m_nodes.size());
         return true;
 }
 
@@ -569,17 +576,7 @@ bool Model::Release()
                 }
         }
 
-        // Free CPU image data
-        for (auto &img : m_images)
-        {
-                img.pixels.clear();
-                img.pixels.shrink_to_fit();
-        }
-
         m_meshes.clear();
-        m_materials.clear();
-        m_images.clear();
-        m_samplers.clear();
         m_nodes.clear();
         m_cameras.clear();
         m_skins.clear();
@@ -610,11 +607,8 @@ void Model::FreeCPU()
                 }
         }
 
-        for (auto &img : m_images)
-        {
-                img.pixels.clear();
-                img.pixels.shrink_to_fit();
-        }
+        // Texture pixels live in their own Texture assets now; freeing them is the
+        // AssetManager's concern, not the model's.
 
         // State stays GPUReady -> the data is on the GPU, not gone.
 }
@@ -640,96 +634,127 @@ bool Model::SerializedSave(ic::Serializer *s) const
 #endif
 
         // -----------------------------------------------------------------------
-        // Images
+        // Gather referenced materials (and their textures) from the AssetManager.
+        // Materials/textures are not owned by the Model -> they live as assets and
+        // are referenced by handle from primitives. We embed them in the cache file
+        // (glTF-style) keyed by UUID so a warm load can reconstruct the assets.
+        // -----------------------------------------------------------------------
+        AssetManager &mgr = AssetManager::Get();
+
+        std::vector<MaterialHandle>  matHandles;
+        std::unordered_set<uint64_t> matSeen;
+        for (const auto &mesh : m_meshes)
+                for (const auto &prim : mesh.primitives)
+                        if (prim.materialHandle != INVALID_ID && matSeen.insert(prim.materialHandle).second)
+                                matHandles.push_back(prim.materialHandle);
+
+        std::vector<const Material *> mats;
+        mats.reserve(matHandles.size());
+        std::vector<TextureHandle>   texHandles;
+        std::unordered_set<uint64_t> texSeen;
+        auto                         addTex = [&](TextureHandle h)
+        {
+                if (h != INVALID_ID && texSeen.insert(h).second)
+                        texHandles.push_back(h);
+        };
+        for (MaterialHandle h : matHandles)
+        {
+                MaterialAsset  *ma = mgr.GetAsset<MaterialAsset>(h);
+                const Material *m  = ma ? &ma->GetMaterial() : nullptr;
+                mats.push_back(m);
+                if (!m)
+                {
+                        IC_CORE_WARN("serializedSave: material {} not resident, writing default",
+                                     static_cast<uint64_t>(h));
+                        continue;
+                }
+                addTex(m->pbr.baseColorTexture);
+                addTex(m->pbr.metallicRoughnessTexture);
+                addTex(m->normalTexture.ref);
+                addTex(m->occlusionTexture.ref);
+                addTex(m->emissiveTexture.emissiveTexture);
+        }
+
+        // -----------------------------------------------------------------------
+        // Textures (each = uuid + image pixels + sampler)
         // -----------------------------------------------------------------------
         {
 #ifndef NDEBUG
-                IC_CORE_TRACE("  [images]  start @ {}", s->tell());
+                IC_CORE_TRACE("  [textures] start @ {}", s->tell());
 #endif
-                uint32_t count = static_cast<uint32_t>(m_images.size());
-                s->writePOD(count);
+                s->writePOD(static_cast<uint32_t>(texHandles.size()));
 
-                for (const auto &img : m_images)
+                for (TextureHandle h : texHandles)
                 {
+                        Texture       *tex = mgr.GetAsset<Texture>(h);
+                        Image          empty;
+                        Sampler        emptySampler;
+                        const Image   &img  = tex ? *tex->GetImageTexture() : empty;
+                        const Sampler &samp = tex ? tex->GetImageSampler() : emptySampler;
+
+                        s->writePOD(h);
                         s->writePOD(img.width);
                         s->writePOD(img.height);
                         s->writePOD(img.channels);
                         s->writePOD(img.srgb);
-#if defined(IC_ASSET_NAMES)
-                        s->writeString(img.name);
-#else
-                        s->writeString("");  // placeholder - must always be written and read
-#endif
+                        s->writePOD(img.fromGLTF);
+                        s->writeString(img.name.c_str());
+                        s->writeString(img.uri.c_str());
+
                         uint64_t pixelBytes = static_cast<uint64_t>(img.pixels.size());
                         s->writePOD(pixelBytes);
                         if (pixelBytes > 0)
                                 s->write(img.pixels.data(), static_cast<size_t>(pixelBytes));
+
+                        s->writePOD(samp);
                 }
 #ifndef NDEBUG
-                IC_CORE_TRACE("  [images]  end   @ {} ({} images)", s->tell(), count);
+                IC_CORE_TRACE("  [textures] end   @ {} ({} textures)", s->tell(), texHandles.size());
 #endif
         }
 
         // -----------------------------------------------------------------------
-        // Samplers
-        // -----------------------------------------------------------------------
-        {
-#ifndef NDEBUG
-                IC_CORE_TRACE("  [samplers] start @ {}", s->tell());
-#endif
-                uint32_t count = static_cast<uint32_t>(m_samplers.size());
-                s->writePOD(count);
-
-                for (const auto &samp : m_samplers)
-                {
-                        s->writePOD(samp.magFilter);
-                        s->writePOD(samp.minFilter);
-                        s->writePOD(samp.wrapS);
-                        s->writePOD(samp.wrapT);
-                }
-#ifndef NDEBUG
-                IC_CORE_TRACE("  [samplers] end   @ {} ({} samplers)", s->tell(), count);
-#endif
-        }
-
-        // -----------------------------------------------------------------------
-        // Materials
+        // Materials (each = uuid + material data; texture refs are UUID handles)
         // -----------------------------------------------------------------------
         {
 #ifndef NDEBUG
                 IC_CORE_TRACE("  [materials] start @ {}", s->tell());
 #endif
-                auto writeTextureRef = [&](const TextureRef &ref)
-                {
-                        s->writePOD(ref.image);
-                        s->writePOD(ref.sampler);
-                        s->writePOD(ref.texCoord);
-                };
+                s->writePOD(static_cast<uint32_t>(matHandles.size()));
 
-                uint32_t count = static_cast<uint32_t>(m_materials.size());
-                s->writePOD(count);
-
-                for (const auto &mat : m_materials)
+                for (size_t i = 0; i < matHandles.size(); ++i)
                 {
+                        Material        def;
+                        const Material &mat = mats[i] ? *mats[i] : def;
+
+                        s->writePOD(matHandles[i]);
                         s->writeString(mat.name.c_str());
-                        s->writePOD(mat.pbr.baseColorFactor);
-                        s->writePOD(mat.pbr.metallicFactor);
-                        s->writePOD(mat.pbr.roughnessFactor);
-                        writeTextureRef(mat.pbr.baseColorTexture);
-                        writeTextureRef(mat.pbr.metallicRoughnessTexture);
-                        writeTextureRef(mat.normalTexture.ref);
-                        s->writePOD(mat.normalTexture.scale);
-                        writeTextureRef(mat.occlusionTexture.ref);
-                        s->writePOD(mat.occlusionTexture.strength);
-                        writeTextureRef(mat.emissiveTexture);
-                        s->writePOD(mat.emissiveFactor);
-                        s->writePOD(mat.emissiveStrength);
+                        s->writePOD(mat.pbr);               // PBRMetallicRoughness
+                        s->writePOD(mat.normalTexture);     // NormalTexture
+                        s->writePOD(mat.occlusionTexture);  // OcclusionTexture
+                        s->writePOD(mat.emissiveTexture);   // EmissiveTexture
                         s->writePOD(mat.alphaMode);
                         s->writePOD(mat.alphaCutoff);
                         s->writePOD(mat.doubleSided);
+                        s->writePOD(mat.unlit);
+                        s->writePOD(mat.ior);
+                        s->writePOD(mat.dispersion);
+
+                        auto writeOpt = [&](const auto &opt)
+                        {
+                                bool has = opt.has_value();
+                                s->writePOD(has);
+                                if (has)
+                                        s->writePOD(*opt);
+                        };
+                        writeOpt(mat.anisotropy);
+                        writeOpt(mat.specular);
+                        writeOpt(mat.iridescence);
+                        writeOpt(mat.diffuseTransmission);
+                        writeOpt(mat.transmission);
                 }
 #ifndef NDEBUG
-                IC_CORE_TRACE("  [materials] end   @ {} ({} materials)", s->tell(), count);
+                IC_CORE_TRACE("  [materials] end   @ {} ({} materials)", s->tell(), matHandles.size());
 #endif
         }
 
@@ -912,7 +937,7 @@ bool Model::SerializedSave(ic::Serializer *s) const
                         for (const auto &prim : mesh.primitives)
                         {
                                 s->writePOD(prim.mode);
-                                s->writePOD(prim.materialIndex);
+                                s->writePOD(prim.materialHandle);
                                 s->writePOD(prim.attributeFlags);
                                 s->writePOD(prim.vertexStride);
                                 s->writePOD(prim.vertexCount);
@@ -994,95 +1019,104 @@ bool Model::SerializedLoad(ic::Serializer *s)
         IC_CORE_TRACE("  [header]  magic=0x{:08X} version={} @ {}", magic, version, s->tell());
 #endif
 
+        AssetManager &mgr = AssetManager::Get();
+
         // -----------------------------------------------------------------------
-        // Images
+        // Textures
         // -----------------------------------------------------------------------
         {
 #ifndef NDEBUG
-                IC_CORE_TRACE("  [images]  start @ {}", s->tell());
+                IC_CORE_TRACE("  [textures] start @ {}", s->tell());
 #endif
                 uint32_t count = 0;
                 s->readPOD(count);
-                m_images.resize(count);
 
-                for (auto &img : m_images)
+                for (uint32_t i = 0; i < count; ++i)
                 {
+                        TextureHandle id;
+                        s->readPOD(id);
+
+                        Image img;
                         s->readPOD(img.width);
                         s->readPOD(img.height);
                         s->readPOD(img.channels);
                         s->readPOD(img.srgb);
-                        s->readString(img.name);  // ALWAYS read - save always writes it
+                        s->readPOD(img.fromGLTF);
+                        s->readString(img.name);
+                        s->readString(img.uri);
 
                         uint64_t pixelBytes = 0;
                         s->readPOD(pixelBytes);
                         img.pixels.resize(static_cast<size_t>(pixelBytes));
                         if (pixelBytes > 0)
                                 s->read(img.pixels.data(), static_cast<size_t>(pixelBytes));
+
+                        Sampler samp;
+                        s->readPOD(samp);
+
+                        Texture *tex = mgr.CreateAsset<Texture>(id, false);
+                        if (tex)
+                        {
+                                tex->SetImage(std::move(img));
+                                tex->SetSampler(samp);
+                        }
                 }
 #ifndef NDEBUG
-                IC_CORE_TRACE("  [images]  end   @ {} ({} images)", s->tell(), count);
+                IC_CORE_TRACE("  [textures] end   @ {} ({} textures)", s->tell(), count);
 #endif
         }
 
         // -----------------------------------------------------------------------
-        // Samplers
-        // -----------------------------------------------------------------------
-        {
-#ifndef NDEBUG
-                IC_CORE_TRACE("  [samplers] start @ {}", s->tell());
-#endif
-                uint32_t count = 0;
-                s->readPOD(count);
-                m_samplers.resize(count);
-
-                for (auto &samp : m_samplers)
-                {
-                        s->readPOD(samp.magFilter);
-                        s->readPOD(samp.minFilter);
-                        s->readPOD(samp.wrapS);
-                        s->readPOD(samp.wrapT);
-                }
-#ifndef NDEBUG
-                IC_CORE_TRACE("  [samplers] end   @ {} ({} samplers)", s->tell(), count);
-#endif
-        }
-
-        // -----------------------------------------------------------------------
-        // Materials
+        // Materials -> reconstructed as MaterialAsset assets in the AssetManager
         // -----------------------------------------------------------------------
         {
 #ifndef NDEBUG
                 IC_CORE_TRACE("  [materials] start @ {}", s->tell());
 #endif
-                auto readTextureRef = [&](TextureRef &ref)
-                {
-                        s->readPOD(ref.image);
-                        s->readPOD(ref.sampler);
-                        s->readPOD(ref.texCoord);
-                };
-
                 uint32_t count = 0;
                 s->readPOD(count);
-                m_materials.resize(count);
 
-                for (auto &mat : m_materials)
+                for (uint32_t i = 0; i < count; ++i)
                 {
+                        MaterialHandle id;
+                        s->readPOD(id);
+
+                        Material mat;
                         s->readString(mat.name);
-                        s->readPOD(mat.pbr.baseColorFactor);
-                        s->readPOD(mat.pbr.metallicFactor);
-                        s->readPOD(mat.pbr.roughnessFactor);
-                        readTextureRef(mat.pbr.baseColorTexture);
-                        readTextureRef(mat.pbr.metallicRoughnessTexture);
-                        readTextureRef(mat.normalTexture.ref);
-                        s->readPOD(mat.normalTexture.scale);
-                        readTextureRef(mat.occlusionTexture.ref);
-                        s->readPOD(mat.occlusionTexture.strength);
-                        readTextureRef(mat.emissiveTexture);
-                        s->readPOD(mat.emissiveFactor);
-                        s->readPOD(mat.emissiveStrength);
+                        s->readPOD(mat.pbr);
+                        s->readPOD(mat.normalTexture);
+                        s->readPOD(mat.occlusionTexture);
+                        s->readPOD(mat.emissiveTexture);
                         s->readPOD(mat.alphaMode);
                         s->readPOD(mat.alphaCutoff);
                         s->readPOD(mat.doubleSided);
+                        s->readPOD(mat.unlit);
+                        s->readPOD(mat.ior);
+                        s->readPOD(mat.dispersion);
+
+                        auto readOpt = [&](auto &opt)
+                        {
+                                bool has = false;
+                                s->readPOD(has);
+                                if (has)
+                                {
+                                        typename std::decay_t<decltype(opt)>::value_type val;
+                                        s->readPOD(val);
+                                        opt = val;
+                                }
+                        };
+                        readOpt(mat.anisotropy);
+                        readOpt(mat.specular);
+                        readOpt(mat.iridescence);
+                        readOpt(mat.diffuseTransmission);
+                        readOpt(mat.transmission);
+
+                        MaterialAsset *ma = mgr.CreateAsset<MaterialAsset>(id, false);
+                        if (ma)
+                        {
+                                ma->SetName(mat.name.c_str());
+                                ma->SetMaterial(mat);
+                        }
                 }
 #ifndef NDEBUG
                 IC_CORE_TRACE("  [materials] end   @ {} ({} materials)", s->tell(), count);
@@ -1285,7 +1319,7 @@ bool Model::SerializedLoad(ic::Serializer *s)
                         for (auto &prim : mesh.primitives)
                         {
                                 s->readPOD(prim.mode);
-                                s->readPOD(prim.materialIndex);
+                                s->readPOD(prim.materialHandle);
                                 s->readPOD(prim.attributeFlags);
                                 s->readPOD(prim.vertexStride);
                                 s->readPOD(prim.vertexCount);
@@ -1325,11 +1359,7 @@ bool Model::SerializedLoad(ic::Serializer *s)
         m_state = State::CPUReady;
 
 #ifndef NDEBUG
-        IC_CORE_TRACE("serializedLoad END @ {} bytes - {} meshes {} images {} materials",
-                      s->tell(),
-                      m_meshes.size(),
-                      m_images.size(),
-                      m_materials.size());
+        IC_CORE_TRACE("serializedLoad END @ {} bytes - {} meshes {} nodes", s->tell(), m_meshes.size(), m_nodes.size());
 #endif
 
         return true;

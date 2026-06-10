@@ -1,6 +1,8 @@
 #include "core/assets/asset_manager.h"
 #include "core/assets/types/model.h"
 #include "core/assets/types/skybox.h"
+#include "core/assets/types/material.h"
+#include "core/assets/types/texture.h"
 
 #include "core/allocators.h"
 #include "core/filesystem.h"
@@ -202,9 +204,10 @@ IAsset *AssetManager::CreateAsset(AssetType type, IC_GUID id)
         case ASSET_TYPE_SKYBOX:
                 return new (mem) Skybox(id);
 
-                // Uncomment as new asset types are added:
-                // case ASSET_TYPE_TEXTURE:  return new (mem) Texture(id);
-                // case ASSET_TYPE_MATERIAL: return new (mem) Material(id);
+        case ASSET_TYPE_TEXTURE:
+                return new (mem) Texture(id);
+        case ASSET_TYPE_MATERIAL:
+                return new (mem) MaterialAsset(id);
                 // case ASSET_TYPE_SHADER:   return new (mem) Shader(id);
 
         default:

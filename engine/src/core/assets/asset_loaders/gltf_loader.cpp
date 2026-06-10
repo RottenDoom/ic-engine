@@ -469,6 +469,20 @@ void GLTFLoader::loadMaterial(const fastgltf::Material *src, ModelImportData *ou
         MaterialImportData mat;
         mat.name = src->name;
 
+        // A glTF textureInfo references a texture, which in turn references an
+        // (image, sampler) pair. Textures/images/samplers are already loaded by
+        // this point, so resolve straight into the import ref's image/sampler indices.
+        auto resolveRef = [&](size_t texIndex, size_t texCoord, TextureRefImportData &dst)
+        {
+                Index ti = toIdx(texIndex);
+                if (ti != INVALID_INDEX && ti < out->textures.size())
+                {
+                        dst.imageIdx   = out->textures[ti].image;
+                        dst.samplerIdx = out->textures[ti].sampler;
+                }
+                dst.texCoord = static_cast<uint8_t>(texCoord);
+        };
+
         // PBR metallic-roughness
         {
                 const auto &pbr         = src->pbrData;
@@ -478,39 +492,34 @@ void GLTFLoader::loadMaterial(const fastgltf::Material *src, ModelImportData *ou
                 mat.pbr.roughnessFactor = pbr.roughnessFactor;
 
                 if (pbr.baseColorTexture.has_value())
-                {
-                        mat.pbr.baseColorTexture.idx      = toIdx(pbr.baseColorTexture->textureIndex);
-                        mat.pbr.baseColorTexture.texCoord = toIdx(pbr.baseColorTexture->texCoordIndex);
-                }
+                        resolveRef(pbr.baseColorTexture->textureIndex,
+                                   pbr.baseColorTexture->texCoordIndex,
+                                   mat.pbr.baseColorTexture);
                 if (pbr.metallicRoughnessTexture.has_value())
-                {
-                        mat.pbr.metallicRoughnessTexture.idx      = toIdx(pbr.metallicRoughnessTexture->textureIndex);
-                        mat.pbr.metallicRoughnessTexture.texCoord = toIdx(pbr.metallicRoughnessTexture->texCoordIndex);
-                }
+                        resolveRef(pbr.metallicRoughnessTexture->textureIndex,
+                                   pbr.metallicRoughnessTexture->texCoordIndex,
+                                   mat.pbr.metallicRoughnessTexture);
         }
 
         // Normal texture
         if (src->normalTexture.has_value())
         {
-                mat.normalTexture.ref.idx      = toIdx(src->normalTexture->textureIndex);
-                mat.normalTexture.ref.texCoord = toIdx(src->normalTexture->texCoordIndex);
-                mat.normalTexture.scale        = src->normalTexture->scale;
+                resolveRef(src->normalTexture->textureIndex, src->normalTexture->texCoordIndex, mat.normalTexture.ref);
+                mat.normalTexture.scale = src->normalTexture->scale;
         }
 
         // Occlusion texture
         if (src->occlusionTexture.has_value())
         {
-                mat.occlusionTexture.ref.idx      = toIdx(src->occlusionTexture->textureIndex);
-                mat.occlusionTexture.ref.texCoord = toIdx(src->occlusionTexture->texCoordIndex);
-                mat.occlusionTexture.strength     = src->occlusionTexture->strength;
+                resolveRef(src->occlusionTexture->textureIndex,
+                           src->occlusionTexture->texCoordIndex,
+                           mat.occlusionTexture.ref);
+                mat.occlusionTexture.strength = src->occlusionTexture->strength;
         }
 
         // Emissive
         if (src->emissiveTexture.has_value())
-        {
-                mat.emissiveTexture.idx      = toIdx(src->emissiveTexture->textureIndex);
-                mat.emissiveTexture.texCoord = toIdx(src->emissiveTexture->texCoordIndex);
-        }
+                resolveRef(src->emissiveTexture->textureIndex, src->emissiveTexture->texCoordIndex, mat.emissiveTexture);
         const auto &emm    = src->emissiveFactor;
         mat.emissiveFactor = glm::vec3(emm[0], emm[1], emm[2]);
 

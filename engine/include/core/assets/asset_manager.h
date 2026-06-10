@@ -42,7 +42,7 @@ public:
                 IAsset *asset = Load(id);
                 if (!asset)
                         return nullptr;
-                if (asset->getAssetType() != T::getStaticType())
+                if (asset->GetAssetType() != T::GetStaticType())
                 {
                         IC_CORE_ERROR("AssetManager::LoadAs - type mismatch for {}", id);
                         Unload(id);  // undo the addRef from load()
@@ -55,10 +55,10 @@ public:
         template <typename T>
         T *LoadAs(IC_GUID id, const char *path)
         {
-                IAsset *asset = Load(id, path, T::getStaticType());
+                IAsset *asset = Load(id, path, T::GetStaticType());
                 if (!asset)
                         return nullptr;
-                if (asset->getAssetType() != T::getStaticType())
+                if (asset->GetAssetType() != T::GetStaticType())
                 {
                         IC_CORE_ERROR("AssetManager::LoadAs - type mismatch for {}", id);
                         Unload(id);
@@ -75,10 +75,10 @@ public:
                 const char *path = m_registry.GetFilePath(id);
                 if (id != INVALID_ID && path)
                 {
-                        IAsset *asset = Load(id, path, T::getStaticType());
+                        IAsset *asset = Load(id, path, T::GetStaticType());
                         if (!asset)
                                 return nullptr;
-                        if (asset->getAssetType() != T::getStaticType())
+                        if (asset->GetAssetType() != T::GetStaticType())
                         {
                                 IC_CORE_ERROR("AssetManager::LoadAs - type mismatch for {}", id);
                                 Unload(id);
@@ -100,12 +100,38 @@ public:
                 IAsset *asset = GetAsset(id);
                 if (!asset)
                         return nullptr;
-                if (asset->getAssetType() != T::getStaticType())
+                if (asset->GetAssetType() != T::GetStaticType())
                         return nullptr;
                 return static_cast<T *>(asset);
         }
 
-        /** Unloads the asset with the given destroys the asset if its ref count is zero*/
+        /**
+         * Creates an asset with an id and a type. Takes in the option to save the newly created asset or just load it
+         * as just a runtime asset
+         */
+        template <typename T>
+        T *CreateAsset(IC_GUID id, bool save)
+        {
+                if (m_registry.Contains(id) || Contains(id))
+                {
+                        IC_CORE_WARN("ID already in the registry or runtime assets. It is recommended to load the "
+                                     "model instead of re-creating it");
+                        IAsset *asset = GetAsset(id);
+                        return static_cast<T *>(asset);
+                }
+                IAsset *asset = CreateAsset(T::GetStaticType(), id);
+                asset->AddRef();
+                m_assets[id] = asset;
+                if (save)
+                {
+                        /** TODO: make a register asset without requiring file path maybe? */
+                        m_registry.RegisterAsset(id, nullptr, T::GetStaticType());
+                }
+                IC_CORE_ASSERT(asset, "Could not create new asset!");
+                return static_cast<T *>(asset);
+        }
+
+        /** Unloads the asset with the given id. Destroys the asset if its ref count is zero*/
         void Unload(IC_GUID id);
 
         using InternalIterator = std::unordered_map<IC_GUID, IAsset *>::iterator;
@@ -113,6 +139,7 @@ public:
 
         Iterator begin() { return Iterator(m_assets.begin()); }
         Iterator end() { return Iterator(m_assets.end()); }
+        bool     Contains(const IC_GUID id) { return m_assets.find(id) != m_assets.end(); }
 
         bool           IsLoaded(IC_GUID id) const;
         AssetRegistry *GetRegistry() { return &m_registry; }

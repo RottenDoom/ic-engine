@@ -117,8 +117,8 @@ struct MeshPrimitive
                 TriangleFan   = 6,
         } mode = Mode::Triangles;
 
-        MaterialHandle     materialHandle;
-        Index __deprecated materialIndex;  // TODO: This index is only here because the serialization will break
+        // Material this primitive draws with. Resolves to a MaterialAsset in the AssetManager.
+        MaterialHandle materialHandle{};
 
         // Packed, interleaved vertex data.
         // Layout: [pos][normal?][tangent?][uv0?][uv1?][uv2?][color?][joints?][weights?]
@@ -133,9 +133,6 @@ struct MeshPrimitive
         std::vector<float> morphWeights;
 
         AABB bounds;
-
-        // set the material of the particular material
-        void SetMaterial(Material *material);
 };
 
 // ---------------------------------------------------------------------------
@@ -222,10 +219,6 @@ struct Image
         bool     fromGLTF = false;
 
         std::vector<uint8_t> pixels;  // always RGBA8: width * height * 4 bytes
-
-#if defined(IC_ASSET_NAMES)
-        std::string name;
-#endif
 };
 
 // ---------------------------------------------------------------------------
@@ -400,9 +393,6 @@ public:
         // -----------------------------------------------------------------------
 
         std::vector<Mesh>        &meshes() { return m_meshes; }
-        std::vector<Material>    &materials() { return m_materials; }
-        std::vector<Image>       &images() { return m_images; }
-        std::vector<Sampler>     &samplers() { return m_samplers; }
         std::vector<Node>        &nodes() { return m_nodes; }
         std::vector<ModelCamera> &cameras() { return m_cameras; }
         std::vector<Skin>        &skins() { return m_skins; }
@@ -415,23 +405,16 @@ public:
 
         size_t GetMeshCount() const { return m_meshes.size(); }
         size_t GetNodeCount() const { return m_nodes.size(); }
-        size_t GetMaterialCount() const { return m_materials.size(); }
         size_t GetAnimationCount() const { return m_animations.size(); }
 
         /** TODO: remove dependecies on these function */
         Mesh      *GetMesh(Index i) { return i < m_meshes.size() ? &m_meshes[i] : nullptr; }
         Node      *GetNode(Index i) { return i < m_nodes.size() ? &m_nodes[i] : nullptr; }
-        Material  *GetMaterial(Index i) { return i < m_materials.size() ? &m_materials[i] : nullptr; }
         Animation *GetAnimation(Index i) { return i < m_animations.size() ? &m_animations[i] : nullptr; }
         Scene     *GetScene(Index i) { return i < m_scenes.size() ? &m_scenes[i] : nullptr; }
-        Image     *GetImage(Index i) { return i < m_images.size() ? &m_images[i] : nullptr; }
-        Sampler   *GetSampler(Index i) { return i < m_samplers.size() ? &m_samplers[i] : nullptr; }
 
 private:
         std::vector<Mesh>        m_meshes;
-        std::vector<Material>    m_materials;
-        std::vector<Image>       m_images;
-        std::vector<Sampler>     m_samplers;
         std::vector<Node>        m_nodes;
         std::vector<ModelCamera> m_cameras;
         std::vector<Skin>        m_skins;
