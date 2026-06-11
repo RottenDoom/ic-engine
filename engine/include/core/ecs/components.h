@@ -6,6 +6,7 @@
 #include "core/assets/asset_manager.h"
 #include "core/assets/types/asset_base.h"
 #include "core/assets/types/model.h"
+#include "core/assets/types/material.h"
 #include "core/uuid.h"
 #include "renderer/light_types.h"
 
@@ -99,7 +100,7 @@ struct MeshComponent
 
         std::vector<Mesh> &GetMeshes()
         {
-                Model *model = (Model *)AssetManager::Get().GetAsset(modelID);
+                Model *model = AssetManager::Get().GetAsset<Model>(modelID);
                 return model->meshes();
         }
 };
