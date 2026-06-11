@@ -13,13 +13,13 @@
  * gl_model.h -> OpenGL GPU representation of a runtime Model.
  *
  * Ownership:
- *   GLModel  owns GLMesh[]  owns GLPrimitive[]  owns VAO/VBO/EBO handles
- *   GLModel  owns GLTexture[] indexed by Model::Image index (not texture-list index)
- *   GLModel  holds a NON-OWNING pointer to its source Model
- *            (Model lifetime must exceed GLModel lifetime)
+ *   GLModel     owns GLMesh[]  owns GLPrimitive[]  owns VAO/VBO/EBO handles
+ *   GLPrimitive owns GLTexture[] for loading material and samplers for each mesh component
+ *   GLModel     holds a reference to its source Model
+ *               (Model lifetime must exceed GLModel lifetime)
  *
  * Drawing is NOT done by GLModel. Callers collect DrawItems via
- * collectDrawItems(), build RenderCommands, and dispatch via render passes.
+ * CollectDrawItems(), build RenderCommands, and dispatch via render passes.
  *
  * Attribute slot order (must match model_builder.cpp::packVertices):
  *   0  POSITION   vec3
@@ -68,6 +68,8 @@ struct GLPrimitive
         uint32_t vertexStride   = 0;
 
         IndirectDrawCommand draw;
+        GLTexture           texture;
+        GLSampler           sampler;
 
         /**
          * Upload vertex and index data to the GPU.
@@ -90,7 +92,7 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// GLMesh -> one GLPrimitive per MeshPrimitive
+// GLMesh
 // ---------------------------------------------------------------------------
 
 struct GLMesh
@@ -99,7 +101,7 @@ struct GLMesh
 };
 
 // ---------------------------------------------------------------------------
-// GLModel -> GPU mirror of a runtime Model
+// GLModel - v1.0.1 - this version is same as Model class
 // ---------------------------------------------------------------------------
 
 struct GLModel
@@ -113,19 +115,19 @@ struct GLModel
 
         /**
          * One primitive in the model's scene graph, ready for submission.
-         * Produced by collectDrawItems(); consumed by render passes.
+         * Produced by CollectDrawItems(); consumed by render passes.
          */
         struct DrawItem
         {
-                GLPrimitive *primitive;      // non-owning
-                Index        materialIndex;  // into Model::materials(); may be INVALID_INDEX
-                glm::mat4    worldTransform;
+                GLPrimitive   *primitive;       // non-owning
+                MaterialHandle materialHandle;  // AssetManager material id; may be INVALID_ID
+                glm::mat4      worldTransform;
         };
 
         /**
          * Upload all meshes and textures from model to the GPU.
          * model must remain alive for the lifetime of this GLModel.
-         * Calling upload() a second time without clearGPUMemory() first leaks GPU resources.
+         * Calling Upload() a second time without ClearGPUMemory() first leaks GPU resources.
          */
         void Upload(Model &model);
 
@@ -136,18 +138,13 @@ struct GLModel
         void ClearGPUMemory();
 
         /**
-         * Traverse the model's default scene and collect one DrawItem per primitive.
-         * No GL calls — pure transform accumulation and pointer collection.
+         * Traverse the model's default scene and collect one DrawItem per primitive
          * baseTransform is the entity's world-space transform matrix.
          */
         void CollectDrawItems(const glm::mat4 &baseTransform, std::vector<DrawItem> &out) const;
 
         /** Returns true if upload() has been called and clearGPUMemory() has not. */
         bool IsUploaded() const { return m_model != nullptr; }
-
-        /** Non-owning view of uploaded textures (indexed by Model::images() index). */
-        const std::vector<Texture>   &textures() const { return m_textures; }
-        const std::vector<GLSampler> &samplers() const { return m_samplers; }
 
         /** Non-owning pointer to the source Model. Null after clearGPUMemory(). */
         Model *Get() const { return m_model; }
@@ -156,14 +153,11 @@ private:
         // Non-owning. Set by upload(), cleared by clearGPUMemory().
         Model *m_model = nullptr;
 
-        // m_textures[i] contains gl textures and nothing else these are indexed by texture handle indices.
-        std::vector<Texture>   m_textures;
-        std::vector<GLSampler> m_samplers;
-
         // m_meshes[i] corresponds to Model::meshes()[i].
         std::vector<GLMesh> m_meshes;
 
-        void UploadTextures();
+        /** I know deprecated is not used like this but this is just for me to get reminded whenever I see this file */
+        void UploadTextures() __deprecated;
         void UploadMeshes();
 
         void CollectNode(Index nodeIndex, const glm::mat4 &parentWorld, std::vector<DrawItem> &out) const;

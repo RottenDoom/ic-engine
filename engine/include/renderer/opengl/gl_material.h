@@ -6,6 +6,8 @@
 #include "core/assets/types/material.h"
 #include "core/assets/types/texture.h"
 
+#include "renderer/opengl/gl_sampler.h"
+
 #include <glad/glad.h>
 #include <vector>
 
@@ -13,28 +15,21 @@ namespace ic
 {
 
 class Shader;
-struct GLSampler;
 
 // ---------------------------------------------------------------------------
 // GLTexture -> one OpenGL texture object (owns the GL handle)
-//
-// Ownership: GLModel::m_textures[]
-// Indexed by Model::images() index, NOT the GLTF texture-list index.
+// Holds GL handles, asset handle and a copy of a sampler. the asset texture should contain
 // ---------------------------------------------------------------------------
 
 struct GLTexture
 {
-        GLuint   textureHandle = 0;
-        Texture *assetHandle   = nullptr;
+        GLuint        textureHandle = 0;
+        TextureHandle assetHandle;  // sampler are inside texture asset
+        GLSampler     sampler;      // copy of the texture asset sampler as its not a big deal to hold it for now
 
         void Reload();
-        void Load(Texture *texture);
-
-        void Upload(const Image &img);
-        void ApplySampler(const GLSampler &sampler,
-                          GLuint           textureUnit,
-                          Index            samplerIdx,
-                          size_t           totalSamplers) const;  // const: modifies GL state only
+        void Upload(const Image *img);
+        void ApplySampler(const GLuint textureUnit) const;  // const: modifies GL state only
         void Destroy();
 
         bool IsValid() const { return textureHandle != 0; }
@@ -59,13 +54,6 @@ struct GLMaterial
         GLTexture occlusion;
         GLTexture emissive;
 
-        // Sampler indices into Model::samplers()
-        Index baseColorSampler     = INVALID_INDEX;
-        Index metallicRoughSampler = INVALID_INDEX;
-        Index normalSampler        = INVALID_INDEX;
-        Index occlusionSampler     = INVALID_INDEX;
-        Index emissiveSampler      = INVALID_INDEX;
-
         // Render state flags
         Material::AlphaMode alphaMode   = Material::AlphaMode::Opaque;
         bool                doubleSided = false;
@@ -78,14 +66,14 @@ struct GLMaterial
          * Bake all scalar fields and texture slot indices from a CPU Material.
          * Does not touch any GL objects.
          */
-        void Build(const Material &mat, const std::vector<Image> &textures);
+        void Build(const Material &mat);
 
         /**
          * Set all shader uniforms and bind texture units.
          * textures[] must be the owning GLModel's m_textures array.
          * samplers[] must be the source Model's samplers() array.
          */
-        void Bind(Shader *shader, const std::vector<GLSampler> &samplers) const;
+        void Bind(Shader *shader) const;
 
         /**
          * Apply blend and cull-face GL state for this material.

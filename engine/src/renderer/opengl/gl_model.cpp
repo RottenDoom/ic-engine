@@ -9,37 +9,16 @@ void GLModel::Upload(Model &model)
 {
         m_model = &model;
 
-        /** Check if the textures exist first or not */
-        UploadTextures();
+        // UploadTextures();
 
         UploadMeshes();
 }
 
-/** Load the model textures from GLmodel to the GPU for each texture
- * This just uploads the data to the gpu.
- * TODO: make a function that uploads a single image to the GLmodel data goes out of scope as soon as model loading
- * completes.
+/** Uploads texture assets to gpu.
+ * TODO: make so that this function uploads textures loaded by users or maybe reloads textures. For now this function
+ * does nothing
  */
-void GLModel::UploadTextures()
-{
-        const auto &samplers = m_model->samplers();
-
-        m_samplers.resize(samplers.size());
-
-        // This code should be for per texture instead of here
-        for (size_t i = 0; i < samplers.size(); ++i)
-        {
-                const Sampler s = samplers[i];
-                GLSampler     gl_s;
-                gl_s.Build(s);
-                if (!gl_s.handle)
-                {
-                        IC_CORE_WARN("OpenGL sampler did not upload resorting to fallbacks");
-                        continue;
-                }
-                m_samplers.push_back(gl_s);
-        }
-}
+void GLModel::UploadTextures() {}
 
 void GLModel::UploadMeshes()
 {
@@ -70,7 +49,6 @@ void GLModel::ClearGPUMemory()
                         prim.Destroy();
 
         m_meshes.clear();
-        m_textures.clear();
         m_model = nullptr;
 }
 
@@ -107,7 +85,7 @@ void GLModel::CollectNode(Index nodeIdx, const glm::mat4 &parentWorld, std::vect
                                 if (i >= mesh->primitives.size())
                                         break;
                                 out.push_back({const_cast<GLPrimitive *>(&glMesh.primitives[i]),
-                                               mesh->primitives[i].materialIndex,
+                                               mesh->primitives[i].materialHandle,
                                                world});
                         }
                 }

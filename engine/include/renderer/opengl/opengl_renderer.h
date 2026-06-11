@@ -74,6 +74,7 @@ private:
         bool         m_isMinimized   = false;
         Camera      *m_pEditorCamera = nullptr;
 
+        /** TODO: make shader asset */
         Shader *m_shader        = nullptr;
         Shader *m_cubemapShader = nullptr;
 

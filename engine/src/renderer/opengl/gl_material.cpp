@@ -1,15 +1,29 @@
 #include "renderer/opengl/gl_material.h"
 #include "renderer/opengl/gl_shader.h"
-#include "renderer/opengl/gl_sampler.h"
+
+#include "core/assets/asset_manager.h"
 
 namespace ic
 {
 
-void GLTexture::Upload(const Image &img)
+static void build_texture(GLTexture &glTexture, const TextureHandle handle, AssetManager &mgr)
 {
-        if (img.pixels.empty() || img.width == 0 || img.height == 0)
+        if (handle == INVALID_ID)
+                return;
+        Texture *asset = mgr.GetAsset<Texture>(handle);
+        Image   *img   = asset->GetImageTexture();
+        glTexture.Upload(img);
+        glTexture.assetHandle = handle;
+        Sampler s             = asset->GetImageSampler();
+        glTexture.sampler.Build(s);
+}
+
+void GLTexture::Upload(const Image *img)
+{
+
+        if (img->pixels.empty() || img->width == 0 || img->height == 0)
         {
-                IC_CORE_WARN("GLTexture::upload -> empty or zero-size image, skipping");
+                IC_CORE_WARN("GLTexture::Upload -> empty or zero-size image, skipping");
                 return;
         }
 
@@ -19,24 +33,24 @@ void GLTexture::Upload(const Image &img)
         glCreateTextures(GL_TEXTURE_2D, 1, &textureHandle);
 
         // Allocate immutable storage -> RGBA8 always, full mip chain
-        const GLsizei mipLevels = 1 + static_cast<GLsizei>(std::floor(std::log2(std::max(img.width, img.height))));
+        const GLsizei mipLevels = 1 + static_cast<GLsizei>(std::floor(std::log2(std::max(img->width, img->height))));
 
         glTextureStorage2D(textureHandle,
                            mipLevels,
-                           img.srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8,
-                           static_cast<GLsizei>(img.width),
-                           static_cast<GLsizei>(img.height));
+                           img->srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8,
+                           static_cast<GLsizei>(img->width),
+                           static_cast<GLsizei>(img->height));
 
         // Upload base mip level
         glTextureSubImage2D(textureHandle,
                             0,  // mip level
                             0,
                             0,  // x, y offset
-                            static_cast<GLsizei>(img.width),
-                            static_cast<GLsizei>(img.height),
+                            static_cast<GLsizei>(img->width),
+                            static_cast<GLsizei>(img->height),
                             GL_RGBA,
                             GL_UNSIGNED_BYTE,
-                            img.pixels.data());
+                            img->pixels.data());
 
         glGenerateTextureMipmap(textureHandle);
 
@@ -47,18 +61,15 @@ void GLTexture::Upload(const Image &img)
         glTextureParameteri(textureHandle, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
         IC_CORE_TRACE("GLTexture: uploaded {}x{} {} handle={}",
-                      img.width,
-                      img.height,
-                      img.srgb ? "sRGB" : "linear",
+                      img->width,
+                      img->height,
+                      img->srgb ? "sRGB" : "linear",
                       textureHandle);
 }
 
-void GLTexture::ApplySampler(const GLSampler &sampler, GLuint textureUnit, Index samplerIdx, size_t totalSamplers) const
+void GLTexture::ApplySampler(const GLuint textureUnit) const
 {
-        if (samplerIdx != INVALID_INDEX && samplerIdx < totalSamplers)
-                glBindSampler(textureUnit, sampler.handle);
-        else
-                glBindSampler(textureUnit, 0);
+        glBindSampler(textureUnit, sampler.handle);
 }
 
 void GLTexture::Destroy()
@@ -68,55 +79,41 @@ void GLTexture::Destroy()
                 glDeleteTextures(1, &textureHandle);
                 textureHandle = 0;
         }
+        if (sampler.handle != 0)
+        {
+                glDeleteSamplers(1, &sampler.handle);
+                sampler.handle = 0;
+        }
 }
 
 // ---------------------------------------------------------------------------
 // GLMaterial
 // ---------------------------------------------------------------------------
 
-void GLMaterial::Build(const Material &mat, const std::vector<Image> &textures)
+void GLMaterial::Build(const Material &mat)
 {
         baseColorFactor   = mat.pbr.baseColorFactor;
         metallicFactor    = mat.pbr.metallicFactor;
         roughnessFactor   = mat.pbr.roughnessFactor;
         normalScale       = mat.normalTexture.scale;
         occlusionStrength = mat.occlusionTexture.strength;
-        emissiveFactor    = mat.emissiveFactor;
+        emissiveFactor    = mat.emissiveTexture.emissiveFactor;
         alphaCutoff       = mat.alphaCutoff;
         alphaMode         = mat.alphaMode;
         doubleSided       = mat.doubleSided;
 
-        if (mat.pbr.baseColorTexture.isValid())
-        {
-                baseColor.Upload(textures[mat.pbr.baseColorTexture.image]);
-                baseColorSampler = mat.pbr.baseColorTexture.sampler;
-        }
-        if (mat.pbr.metallicRoughnessTexture.isValid())
-        {
-                metallicRoughness.Upload(textures[mat.pbr.metallicRoughnessTexture.image]);
-                metallicRoughSampler = mat.pbr.metallicRoughnessTexture.sampler;
-        }
-        if (mat.normalTexture.isValid())
-        {
-                normal.Upload(textures[mat.normalTexture.ref.image]);
-                normalSampler = mat.normalTexture.ref.sampler;
-        }
-        if (mat.occlusionTexture.isValid())
-        {
-                occlusion.Upload(textures[mat.occlusionTexture.ref.image]);
-                occlusionSampler = mat.occlusionTexture.ref.sampler;
-        }
-        if (mat.emissiveTexture.isValid())
-        {
-                emissive.Upload(textures[mat.emissiveTexture.image]);
-                emissiveSampler = mat.emissiveTexture.sampler;
-        }
+        auto &mgr = ic::AssetManager::Get();
+        build_texture(baseColor, mat.pbr.baseColorTexture, mgr);
+        build_texture(metallicRoughness, mat.pbr.metallicRoughnessTexture, mgr);
+        build_texture(normal, mat.normalTexture.ref, mgr);
+        build_texture(occlusion, mat.occlusionTexture.ref, mgr);
+        build_texture(emissive, mat.emissiveTexture.emissiveTexture, mgr);
 
-        isInvertedHull = !mat.pbr.baseColorTexture.isValid() && !mat.pbr.metallicRoughnessTexture.isValid() &&
-                         !mat.doubleSided;
+        isInvertedHull = !baseColor.IsValid() && !metallicRoughness.IsValid() && !mat.doubleSided;
 }
 
-void GLMaterial::Bind(Shader *shader, const std::vector<GLSampler> &samplers) const
+/** TODO: what if a texture does not have a sampler */
+void GLMaterial::Bind(Shader *shader) const
 {
         shader->setBool("u_useDefaultMaterial", false);
 
@@ -125,7 +122,7 @@ void GLMaterial::Bind(Shader *shader, const std::vector<GLSampler> &samplers) co
         if (baseColor.IsValid())
         {
                 shader->setTexture("u_BaseColorTexture", 0, baseColor.textureHandle);
-                baseColor.ApplySampler(samplers[baseColorSampler], 0, baseColorSampler, samplers.size());
+                baseColor.ApplySampler(0);
                 shader->setBool("u_HasBaseColorTexture", true);
         }
         else
@@ -139,7 +136,7 @@ void GLMaterial::Bind(Shader *shader, const std::vector<GLSampler> &samplers) co
         if (metallicRoughness.IsValid())
         {
                 shader->setTexture("u_MetallicRoughnessTexture", 1, metallicRoughness.textureHandle);
-                metallicRoughness.ApplySampler(samplers[metallicRoughSampler], 1, metallicRoughSampler, samplers.size());
+                metallicRoughness.ApplySampler(1);
                 shader->setBool("u_HasMetallicRoughnessTexture", true);
         }
         else
@@ -151,7 +148,7 @@ void GLMaterial::Bind(Shader *shader, const std::vector<GLSampler> &samplers) co
         if (normal.IsValid())
         {
                 shader->setTexture("u_NormalTexture", 2, normal.textureHandle);
-                normal.ApplySampler(samplers[normalSampler], 2, normalSampler, samplers.size());
+                normal.ApplySampler(2);
                 shader->setFloat("u_NormalScale", normalScale);
                 shader->setBool("u_HasNormalTexture", true);
         }
@@ -164,7 +161,7 @@ void GLMaterial::Bind(Shader *shader, const std::vector<GLSampler> &samplers) co
         if (occlusion.IsValid())
         {
                 shader->setTexture("u_OcclusionTexture", 3, occlusion.textureHandle);
-                occlusion.ApplySampler(samplers[occlusionSampler], 3, occlusionSampler, samplers.size());
+                occlusion.ApplySampler(3);
                 ;
                 shader->setFloat("u_OcclusionStrength", occlusionStrength);
                 shader->setBool("u_HasOcclusionTexture", true);
@@ -179,7 +176,7 @@ void GLMaterial::Bind(Shader *shader, const std::vector<GLSampler> &samplers) co
         if (emissive.IsValid())
         {
                 shader->setTexture("u_EmissiveTexture", 4, emissive.textureHandle);
-                emissive.ApplySampler(samplers[emissiveSampler], 4, emissiveSampler, samplers.size());
+                emissive.ApplySampler(4);
                 ;
                 shader->setBool("u_HasEmissiveTexture", true);
         }

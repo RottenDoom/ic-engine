@@ -15,7 +15,7 @@ GPUResourceCache::~GPUResourceCache()
         m_materials.clear();
 }
 
-GLModel *GPUResourceCache::GetOrUpload(IC_GUID id, AssetManager &mgr)
+GLModel *GPUResourceCache::GetOrUpload(const IC_GUID id, AssetManager &mgr)
 {
         auto it = m_models.find(id);
         if (it != m_models.end())
@@ -25,13 +25,13 @@ GLModel *GPUResourceCache::GetOrUpload(IC_GUID id, AssetManager &mgr)
         Model *model = mgr.LoadAs<Model>(id);
         if (!model)
         {
-                IC_CORE_WARN("GPUResourceCache::getOrUpload -> model {} not found in AssetManager", id);
+                IC_CORE_WARN("GPUResourceCache::GetOrUpload -> model {} not found in AssetManager", id);
                 return nullptr;
         }
 
         if (!model->isCPUReady())
         {
-                IC_CORE_WARN("GPUResourceCache::getOrUpload -> model {} not CPU-ready (state={})",
+                IC_CORE_WARN("GPUResourceCache::GetOrUpload -> model {} not CPU-ready (state={})",
                              id,
                              static_cast<int>(model->getState()));
                 return nullptr;
@@ -47,25 +47,23 @@ GLModel *GPUResourceCache::GetOrUpload(IC_GUID id, AssetManager &mgr)
         return ptr;
 }
 
-GLMaterial *GPUResourceCache::GetMaterial(IC_GUID modelId, Index materialIdx, Model &model)
+GLMaterial *GPUResourceCache::GetCachedMaterial(const IC_GUID modelId, const MaterialHandle handle, AssetManager &mgr)
 {
-        MaterialKey key{modelId, materialIdx};
+        MaterialKey key{modelId, handle};
 
         auto it = m_materials.find(key);
         if (it != m_materials.end())
                 return &it->second;
 
-        Material *mat = model.GetMaterial(materialIdx);
-        if (!mat)
+        MaterialAsset *asset = mgr.GetAsset<MaterialAsset>(handle);
+        if (!asset)  // TODO: validation on material completeness
         {
-                IC_CORE_WARN("GPUResourceCache::getMaterial -> material {} not found in model {}",
-                             materialIdx,
-                             modelId);
+                IC_CORE_WARN("GPUResourceCache::GetMaterial -> material {} not found in model {}", handle, modelId);
                 return nullptr;
         }
 
         GLMaterial &glMat = m_materials[key];
-        glMat.Build(*mat, model.images());
+        glMat.Build(asset->GetMaterial());
         return &glMat;
 }
 

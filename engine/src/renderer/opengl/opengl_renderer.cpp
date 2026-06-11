@@ -88,7 +88,7 @@ void OpenGLRenderer::EnableFeatures()
         // TODO: These features needs to be in the pipeline asset
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
+        glCullFace(GL_FRONT);
 }
 
 void OpenGLRenderer::CreateShader()
@@ -109,13 +109,14 @@ void OpenGLRenderer::SetupBuffers()
         if (!m_scene)
                 return;
 
+        // Upload all the vertices and materials of each entities with vertices to gpu
         for (auto &e : m_scene->GetEntitiesWith<MeshComponent>())
         {
                 MeshComponent &c = e.GetComponent<MeshComponent>();
                 m_cache.GetOrUpload(c.modelID, AssetManager::Get());
         }
 
-        // Light volumes pass?
+        // If the scene consists of lights upload there caches if they have model
         for (auto &e : m_scene->GetEntitiesWith<LightComponent>())
         {
                 LightComponent &lc = e.GetComponent<LightComponent>();
@@ -125,13 +126,14 @@ void OpenGLRenderer::SetupBuffers()
                 }
         }
 
+        // Upload the skybox vertices and textures to gpu
         Skybox *skyboxAsset = m_scene->GetSkybox();
         if (!skyboxAsset || !skyboxAsset->IsLoaded())
         {
                 IC_CORE_WARN("Skybox asset is not loaded!");
                 return;
         }
-        m_Skybox.Destroy();
+        m_Skybox.Destroy();  // destory if the skybox was already uploaded
         bool uploaded = m_Skybox.Upload(*skyboxAsset);
         if (!uploaded)
         {
@@ -157,24 +159,30 @@ void OpenGLRenderer::Update(float dt)
 
 void OpenGLRenderer::RenderCubeMap(Shader *cubeMapShader, GLSkybox *skybox)
 {
-        glDepthFunc(GL_LEQUAL);
-        glDisable(GL_CULL_FACE);
+        glDepthFunc(GL_LEQUAL);   // enable less than equal z-test for rendering everything in front
+        glDisable(GL_CULL_FACE);  // disable culling the face so that all faces are visible when drawing
 
         cubeMapShader->use();
 
         GLint skyboxLoc = glGetUniformLocation(cubeMapShader->ID, "u_Skybox");
         glUniform1i(skyboxLoc, 0);
 
+        // Unbind any texture before hand (this is temporary)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, 0);        // unbind any 2D texture on unit 0
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);  // unbind any cubemap on unit 0
+        glBindSampler(0, 0);                    // drop any sampler object the material pass left on unit 0
+                                                // (else its mip/wrap params override the cubemap -> black)
 
+        // bind texture cube map to texture unit 0
         skybox->Bind(0);
 
-        GLint boundCubemap = 0;
-        glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &boundCubemap);
-        // IC_CORE_INFO("RenderCubeMap -> bound cubemap on unit 0: {}", boundCubemap);
+        // (Debug)
+        // GLint boundCubemap = 0;
+        // glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &boundCubemap);
+        // IC_CORE_INFO("OpenGLRenderer::RenderCubeMap -> bound cubemap on unit 0: {}", boundCubemap);
 
+        // Bind the skybox vertex array for rendering the cubemap
         glBindVertexArray(skybox->GetVAO());
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -207,54 +215,61 @@ void OpenGLRenderer::Draw(float dt)
         m_queue.Clear();
 
         const glm::vec3 camPos = m_pEditorCamera->position;
+        AssetManager   &mgr    = AssetManager::Get();
 
         for (Entity &e : m_scene->GetEntitiesWith<MeshComponent, TransformComponent>())
         {
                 auto &mesh      = e.GetComponent<MeshComponent>();
                 auto &transform = e.GetComponent<TransformComponent>();
 
-                GLModel *glModel = m_cache.GetOrUpload(mesh.modelID, AssetManager::Get());
-                if (!glModel)
+                // Get the GPU handle for the model and upload if not initialized yet
+                GLModel *model = m_cache.GetOrUpload(mesh.modelID, mgr);
+                if (!model)
                         continue;
 
+                // Get the draw items for the model (primitives, material, transforms and depth info)
                 std::vector<GLModel::DrawItem> items;
-                glModel->CollectDrawItems(transform.GetTransformMatrix(), items);
+                model->CollectDrawItems(transform.GetTransformMatrix(), items);
 
                 for (auto &item : items)
                 {
-                        GLMaterial *mat = nullptr;
-                        if (item.materialIndex != INVALID_INDEX && glModel->Get())
-                                mat = m_cache.GetMaterial(mesh.modelID, item.materialIndex, *glModel->Get());
+                        GLMaterial *material = nullptr;
+                        if (item.materialHandle != INVALID_ID && model->Get())
+                                material = m_cache.GetCachedMaterial(mesh.modelID, item.materialHandle, mgr);
 
                         const glm::vec3 center = glm::vec3(item.worldTransform[3]);
                         const float     depth  = glm::length(center - camPos);
 
-                        m_queue.Submit({item.primitive, mat, glModel, item.worldTransform, depth});
+                        m_queue.Submit({item.primitive, material, model, item.worldTransform, depth});
                 }
         }
 
         for (Entity &e : m_scene->GetEntitiesWith<LightComponent, TransformComponent>())
         {
-                LightComponent     &lc        = e.GetComponent<LightComponent>();
-                TransformComponent &transform = e.GetComponent<TransformComponent>();
-                if (lc.visible)
+                LightComponent     &lightComponent = e.GetComponent<LightComponent>();
+                TransformComponent &transform      = e.GetComponent<TransformComponent>();
+
+                // if the particular light is set to be visible we draw it.
+                if (lightComponent.visible)
                 {
-                        GLModel *glModel = m_cache.GetOrUpload(lc.modelID, AssetManager::Get());
-                        if (!glModel)
+                        GLModel *model = m_cache.GetOrUpload(lightComponent.modelID, mgr);
+                        if (!model)
                                 continue;
                         std::vector<GLModel::DrawItem> items;
-                        glModel->CollectDrawItems(transform.GetTransformMatrix(), items);
+                        model->CollectDrawItems(transform.GetTransformMatrix(), items);
 
                         for (auto &item : items)
                         {
-                                GLMaterial *mat = nullptr;
-                                if (item.materialIndex != INVALID_INDEX && glModel->Get())
-                                        mat = m_cache.GetMaterial(lc.modelID, item.materialIndex, *glModel->Get());
+                                GLMaterial *material = nullptr;
+                                if (item.materialHandle != INVALID_ID && model->Get())
+                                        material = m_cache.GetCachedMaterial(lightComponent.modelID,
+                                                                             item.materialHandle,
+                                                                             mgr);
 
                                 const glm::vec3 center = glm::vec3(item.worldTransform[3]);
                                 const float     depth  = glm::length(center - camPos);
 
-                                m_queue.Submit({item.primitive, mat, glModel, item.worldTransform, depth});
+                                m_queue.Submit({item.primitive, material, model, item.worldTransform, depth});
                         }
                 }
         }

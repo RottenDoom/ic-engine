@@ -29,17 +29,17 @@ class Model;
 // TODO: this needs to change
 struct MaterialKey
 {
-        IC_GUID modelId;
-        Index   materialIdx;
-        bool    operator==(const MaterialKey &o) const = default;
+        IC_GUID        modelId;
+        MaterialHandle handle;
+        bool           operator==(const MaterialKey &o) const = default;
 };
 
 struct MaterialKeyHash
 {
         size_t operator()(const MaterialKey &k) const noexcept
         {
-                size_t h = std::hash<IC_GUID>{}(k.modelId);
-                h ^= std::hash<uint32_t>{}(static_cast<uint32_t>(k.materialIdx)) + 0x9e3779b9u + (h << 6) + (h >> 2);
+                size_t h  = std::hash<IC_GUID>{}(k.modelId);
+                h        ^= std::hash<uint32_t>{}(static_cast<uint32_t>(k.handle)) + 0x9e3779b9u + (h << 6) + (h >> 2);
                 return h;
         }
 };
@@ -53,14 +53,14 @@ public:
          * Return the cached GLModel for id, or upload it from AssetManager if missing.
          * Returns nullptr if the asset is not found or not CPU-ready.
          */
-        GLModel *GetOrUpload(IC_GUID id, AssetManager &mgr);
+        GLModel *GetOrUpload(const IC_GUID id, AssetManager &mgr);
 
         /**
-         * Return the cached GLMaterial for (modelId, materialIdx).
+         * Return the cached GLMaterial for (modelId, handle).
          * Builds and caches on first access.
-         * Returns nullptr if materialIdx is out of range.
+         * Returns nullptr if materialHandle does not exist in assetmanager.
          */
-        GLMaterial *GetMaterial(IC_GUID modelId, Index materialIdx, Model &model);
+        GLMaterial *GetCachedMaterial(const IC_GUID modelId, const MaterialHandle materialHandle, AssetManager &mgr);
 
         /** Delete all GPU resources. Must be called with an active OpenGL context. */
         void Clear();

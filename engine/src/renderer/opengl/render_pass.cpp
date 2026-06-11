@@ -18,7 +18,7 @@ static void DispatchCommand(const RenderCommand &cmd, Shader *shader)
 
         if (cmd.material && cmd.model && cmd.model->Get())
         {
-                cmd.material->Bind(shader, cmd.model->samplers());
+                cmd.material->Bind(shader);
                 cmd.material->ApplyRenderState();
         }
         else
