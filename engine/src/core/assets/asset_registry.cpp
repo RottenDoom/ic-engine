@@ -2,10 +2,9 @@
 #include "core/filesystem.h"
 #include "core/allocators.h"
 #include "core/assets/types/asset_base.h"
+#include "core/uuid.h"
 
 #include <yaml-cpp/yaml.h>
-
-constexpr uint64_t INVALID_ID = 0;
 
 /** TODO:
  * 1. Asset name fallback

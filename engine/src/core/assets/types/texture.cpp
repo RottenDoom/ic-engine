@@ -70,8 +70,11 @@ void Texture::LoadFromImageData(ImageImportData &data)
         m_image.height   = data.height;
         m_image.channels = data.channels;
         m_image.srgb     = data.srgb;
-        m_image.pixels   = std::move(data.pixels);  // moving the pixels instead of creating a copy
-        m_image.uri      = data.uri;
+
+        if (data.pixels.empty())
+                IC_CORE_WARN("Image pixels are empty");
+        m_image.pixels = std::move(data.pixels);  // moving the pixels instead of creating a copy
+        m_image.uri    = data.uri;
 }
 
 void Texture::SetSampler(SamplerImportData &sampler)

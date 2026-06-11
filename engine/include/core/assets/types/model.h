@@ -7,7 +7,6 @@
 
 #include "core/assets/types/asset_base.h"
 #include "core/assets/types/material.h"
-#include "material.h"
 
 #include <vector>
 
@@ -118,7 +117,7 @@ struct MeshPrimitive
         } mode = Mode::Triangles;
 
         // Material this primitive draws with. Resolves to a MaterialAsset in the AssetManager.
-        MaterialHandle materialHandle{};
+        MaterialHandle materialHandle = INVALID_ID;
 
         // Packed, interleaved vertex data.
         // Layout: [pos][normal?][tangent?][uv0?][uv1?][uv2?][color?][joints?][weights?]

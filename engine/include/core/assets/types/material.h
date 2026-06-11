@@ -3,7 +3,6 @@
 
 #include "defines.h"
 #include "core/assets/types/asset_base.h"
-#include "core/assets/types/model.h"
 #include "core/math.h"
 #include "core/uuid.h"
 
@@ -15,8 +14,8 @@ namespace ic
 
 /** TextureHandle and MaterialHandle resolves to assetmanager asset handles */
 
-using MaterialHandle = UUID;
-using TextureHandle  = UUID;
+using MaterialHandle = uint64_t;
+using TextureHandle  = uint64_t;
 
 struct NormalTexture
 {

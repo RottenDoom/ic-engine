@@ -187,17 +187,18 @@ static TextureHandle resolve_texture_ref(const TextureRefImportData             
 {
         if (ref.imageIdx == INVALID_INDEX || ref.imageIdx >= modelData->images.size())
                 return INVALID_ID;
-
-        // Dedup on image index: one Texture asset per source image.
-        // TODO: key on (image, sampler) once a texture owns its sampler identity.
         auto it = textureCache.find(ref.imageIdx);
         if (it != textureCache.end())
+        {
+                IC_CORE_WARN("Texture cache hit for {}", it->second);
                 return it->second;
+        }
 
         TextureHandle id  = UUIDGenerator::Generate();
         Texture      *tex = AssetManager::Get().CreateAsset<Texture>(id, false);
         if (tex)
         {
+                IC_CORE_INFO("Loading texture with texture id: {}", id);
                 tex->LoadFromImageData(modelData->images[ref.imageIdx]);
                 if (ref.samplerIdx != INVALID_INDEX && ref.samplerIdx < modelData->samplers.size())
                         tex->SetSampler(modelData->samplers[ref.samplerIdx]);

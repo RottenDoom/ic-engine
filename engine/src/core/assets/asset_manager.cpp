@@ -20,8 +20,10 @@ static size_t assetSize(AssetType type)
                 return sizeof(Model);
         case ASSET_TYPE_SKYBOX:
                 return sizeof(Skybox);
-        // case ASSET_TYPE_TEXTURE:  return sizeof(Texture);
-        // case ASSET_TYPE_MATERIAL: return sizeof(Material);
+        case ASSET_TYPE_TEXTURE:
+                return sizeof(Texture);
+        case ASSET_TYPE_MATERIAL:
+                return sizeof(MaterialAsset);
         // case ASSET_TYPE_SHADER:   return sizeof(ShaderAsset);
         default:
                 IC_CORE_ERROR("assetSize: unknown AssetType {}", static_cast<int>(type));
@@ -203,7 +205,6 @@ IAsset *AssetManager::CreateAsset(AssetType type, IC_GUID id)
                 return new (mem) Model(id);
         case ASSET_TYPE_SKYBOX:
                 return new (mem) Skybox(id);
-
         case ASSET_TYPE_TEXTURE:
                 return new (mem) Texture(id);
         case ASSET_TYPE_MATERIAL:

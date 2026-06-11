@@ -9,8 +9,8 @@ namespace ic
 class UUID
 {
 public:
-        UUID() = default;
-        explicit UUID(uint64_t value) : m_Value(value) {}
+        UUID();
+        UUID(uint64_t uuid);
 
         uint64_t Value() const { return m_Value; }
 

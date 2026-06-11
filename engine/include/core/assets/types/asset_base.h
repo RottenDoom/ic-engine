@@ -28,8 +28,8 @@ constexpr Index INVALID_INDEX = ~0u;
                 return #type;                                                                                          \
         }
 
-using IC_GUID = ic::UUID;
-extern const IC_GUID INVALID_ID;
+using IC_GUID                 = uint64_t;
+constexpr uint64_t INVALID_ID = 0;
 
 enum AssetType : uint8_t
 {
@@ -103,8 +103,8 @@ private:
         bool loaded = false;
 
         // Identifiable
-        IC_GUID _id    = INVALID_ID;
-        string  m_name = nullptr;
+        IC_GUID _id = INVALID_ID;
+        string  m_name;
 
         // Refcountable - Not every object is refcountable so maybe add refcountable object but we are not worried right
         // now until we get an asset like that. Probably Shader would be like that.
