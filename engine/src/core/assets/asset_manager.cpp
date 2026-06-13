@@ -146,10 +146,8 @@ IAsset *AssetManager::GetAsset(IC_GUID id)
 {
         auto it = m_assets.find(id);
         if (it == m_assets.end())
-        {
-                IC_CORE_WARN("AssetManager::GetAsset - {} not loaded", id);
                 return nullptr;
-        }
+
         return it->second;
 }
 

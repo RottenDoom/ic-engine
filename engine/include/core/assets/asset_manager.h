@@ -98,10 +98,15 @@ public:
         T *GetAsset(IC_GUID id)
         {
                 IAsset *asset = GetAsset(id);
+
+                // These should be handled by the user
                 if (!asset)
                         return nullptr;
                 if (asset->GetAssetType() != T::GetStaticType())
+                {
+                        IC_CORE_WARN("AssetManager::GetAsset - Wrong asset type for the asset requested");
                         return nullptr;
+                }
                 return static_cast<T *>(asset);
         }
 
