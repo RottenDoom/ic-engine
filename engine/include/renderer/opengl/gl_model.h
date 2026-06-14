@@ -68,8 +68,6 @@ struct GLPrimitive
         uint32_t vertexStride   = 0;
 
         IndirectDrawCommand draw;
-        GLTexture           texture;
-        GLSampler           sampler;
 
         /**
          * Upload vertex and index data to the GPU.

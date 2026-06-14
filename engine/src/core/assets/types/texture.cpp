@@ -1,6 +1,7 @@
 #include "core/assets/types/texture.h"
 #include "core/filesystem.h"
 #include "core/assets/asset_loaders/model_data.h"
+#include "renderer/opengl/gl_material.h"
 
 #include <stb_image.h>
 
@@ -60,6 +61,15 @@ bool Texture::Release()
         m_image.channels = 0;
         m_image.srgb     = false;
         return true;
+}
+
+uint32_t Texture::GetGPUHandle() const
+{
+        return m_gpu->textureHandle;
+}
+void Texture::SetGPUHandle(GLTexture *gpuHandle)
+{
+        m_gpu = gpuHandle;
 }
 
 void Texture::LoadFromImageData(ImageImportData &data)

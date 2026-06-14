@@ -47,24 +47,38 @@ GLModel *GPUResourceCache::GetOrUpload(const IC_GUID id, AssetManager &mgr)
         return ptr;
 }
 
+// If GLMaterial is not initialized it initializes it
 GLMaterial *GPUResourceCache::GetCachedMaterial(const IC_GUID modelId, const MaterialHandle handle, AssetManager &mgr)
 {
-        MaterialKey key{modelId, handle};
+        // MaterialKey key{modelId, handle};
 
-        auto it = m_materials.find(key);
-        if (it != m_materials.end())
-                return &it->second;
+        // auto it = m_materials.find(key);
+        // if (it != m_materials.end())
+        //         return &it->second;
 
-        MaterialAsset *asset = mgr.GetAsset<MaterialAsset>(handle);
-        if (!asset)  // TODO: validation on material completeness
+        // MaterialAsset *asset = mgr.GetAsset<MaterialAsset>(handle);
+        // if (!asset)  // TODO: validation on material completeness
+        // {
+        //         IC_CORE_WARN("GPUResourceCache::GetMaterial -> material {} not found in model {}", handle, modelId);
+        //         return nullptr;
+        // }
+
+        // GLMaterial &glMat = m_materials[key];
+        // glMat.Build(asset->GetMaterial());
+        // return &glMat;
+
+        MaterialAsset *asset = mgr.GetAsset<MaterialAsset>(handle);  // contains GLmaterial* and Material
+
+        if (!asset)
         {
                 IC_CORE_WARN("GPUResourceCache::GetMaterial -> material {} not found in model {}", handle, modelId);
                 return nullptr;
         }
 
-        GLMaterial &glMat = m_materials[key];
-        glMat.Build(asset->GetMaterial());
-        return &glMat;
+        if (!asset->GetGPUHandle() || asset->IsDirty())
+                asset->Rebake();
+
+        return asset->GetGPUHandle();
 }
 
 void GPUResourceCache::Clear()

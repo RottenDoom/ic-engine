@@ -11,6 +11,7 @@
 
 namespace ic
 {
+struct GLMaterial;
 
 /** TextureHandle and MaterialHandle resolves to assetmanager asset handles */
 
@@ -156,19 +157,27 @@ class MaterialAsset : public IAsset
 public:
         ASSET_CLASS_TYPE(ASSET_TYPE_MATERIAL);
         MaterialAsset(MaterialHandle id) : IAsset(id) {}
+        ~MaterialAsset() override { Release(); }
 
         // TODO: Loading and serializing materials from .mtl files etc.
         bool Load(const char *path) override { return false; }
         bool SerializedLoad(ic::Serializer *serializer) override { return false; }
         bool SerializedSave(ic::Serializer *serializer) const override { return false; }
-        bool Release() override { return false; }
+        bool Release() override;
 
-        void      SetMaterial(Material &material) { m_material = material; }
-        Material &GetMaterial() { return m_material; }
+        void        SetMaterial(Material &material) { m_material = material; }
+        Material   &GetMaterial() { return m_material; }
+        GLMaterial *GetGPUHandle() { return m_gpu; }
+        void        SetGPUHandle(GLMaterial *handle);
+        void        Rebake();
+        bool        IsDirty() const { return m_dirty; }
+        void        MarkDirty() { m_dirty = true; }
 
 private:
-        Material m_material;
-        string   name;
+        Material    m_material;
+        GLMaterial *m_gpu = nullptr;
+        string      name;
+        bool        m_dirty = false;
 };
 
 }  // namespace ic

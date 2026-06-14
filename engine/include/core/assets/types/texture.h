@@ -8,6 +8,8 @@
 namespace ic
 {
 
+struct GLTexture;
+
 class Texture : public IAsset
 {
 public:
@@ -41,9 +43,16 @@ public:
         // checks if the texture holds valid pixel data
         bool IsValid() const;
 
+        // GL_SPECIFIC
+        uint32_t GetGPUHandle() const;
+        void     SetGPUHandle(GLTexture *gpuHandle);
+
 private:
         Image   m_image;    // Texture pixels
         Sampler m_sampler;  // Sampler data this is not an asset for now
+
+        /** NOTE: THIS IS GL_SPECIFIC ONLY FOR NOW */
+        GLTexture *m_gpu = nullptr;
 };
 
 }  // namespace ic

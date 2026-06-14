@@ -95,7 +95,7 @@ void EditorSystem::DrawMaterialEditor(Entity &e)
         bool changed = EditMaterial(&matAsset->GetMaterial());
 
         if (changed)
-                matAsset->Rebake();
+                matAsset->MarkDirty();
 
         // if e.hascomponent<materialcomponent> e.getcomponent<materialcomponent>().editmaterial(mat) -> sends this to
         // graphics api and adds it to the gpu reloads the texture and shader and changes the model and removes any

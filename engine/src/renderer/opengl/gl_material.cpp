@@ -2,6 +2,7 @@
 #include "renderer/opengl/gl_shader.h"
 
 #include "core/assets/asset_manager.h"
+#include <glm/glm.hpp>
 
 namespace ic
 {
@@ -12,10 +13,14 @@ static void build_texture(GLTexture &glTexture, const TextureHandle handle, Asse
                 return;
         Texture *asset = mgr.GetAsset<Texture>(handle);
         Image   *img   = asset->GetImageTexture();
+
         glTexture.Upload(img);
         glTexture.assetHandle = handle;
         Sampler s             = asset->GetImageSampler();
         glTexture.sampler.Build(s);
+
+        // Set gpu handle for handling texture accesses (GL_SPECIFIC)
+        asset->SetGPUHandle(&glTexture);
 }
 
 void GLTexture::Upload(const Image *img)
