@@ -18,7 +18,7 @@ bool DrawTextureSlot(const char *label, TextureHandle &handle, AssetManager &ass
 
         Texture *tex = assets.GetAsset<Texture>(handle);
 
-        // get gl handle here or something
+        // TODO: clicking the image should openn texture picker
         if (tex)
         {
                 ImGui::Image((ImTextureID)(uintptr_t)tex->GetGPUHandle(), ImVec2(64, 64));
@@ -83,7 +83,8 @@ void EditorSystem::DrawMaterialEditor(Entity &e)
 
         MeshPrimitive &prim = mesh->primitives[m_State.selectedSubmesh];
 
-        // TODO: give option to edit only this material or every primitive sharing this handle
+        /** TODO: Give option to edit the global material or just for this primitive. Or to apply this to the whole body
+         * (not the other objects)*/
         MaterialAsset *matAsset = AssetManager::Get().GetAsset<MaterialAsset>(prim.materialHandle);
 
         if (!matAsset)
@@ -96,10 +97,6 @@ void EditorSystem::DrawMaterialEditor(Entity &e)
 
         if (changed)
                 matAsset->MarkDirty();
-
-        // if e.hascomponent<materialcomponent> e.getcomponent<materialcomponent>().editmaterial(mat) -> sends this to
-        // graphics api and adds it to the gpu reloads the texture and shader and changes the model and removes any
-        // texture that is not needed later. Lifetime of texture needs to be studied tho.
 
         ImGui::End();
 }

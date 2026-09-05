@@ -36,7 +36,7 @@ assets:
 
         - id: 0x1000000000000005
           name: point_model
-          filepath: models/sphere.glb
+          filepath: models/lights/point/sphere.gltf
           cache: models/light.icmodel
           type: model
 

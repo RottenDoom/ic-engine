@@ -23,7 +23,7 @@ void light_panel_draw(LightComponent &lc)
 
 #ifndef NDEBUG
 
-        // TODO: connect these to the lgith transform components
+        // TODO: these models do not show a material.
         if (lc.type == LightType::Point && !lc.visible)
         {
                 lc.modelID = AssetManager::Get().GetRegistry()->GetAssetId("point_model");

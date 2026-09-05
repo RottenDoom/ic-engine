@@ -24,6 +24,7 @@ public:
 private:
         LightUBO *m_ubo = nullptr;
 
+	// pack the light components into GPU info for sending to GPU
         GPULight PackLight(const LightComponent &lc, const TransformComponent &tc) const;
 };
 

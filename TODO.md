@@ -31,6 +31,7 @@
 ### ISSUES
 - [ ] [CURR] Multiple ref counts for just loaded models
 - [ ] [CURR] Loading multiple scenes causes to ref count to increase does not unloads the model.
+- [ ] Shaders should show better logs. instead of just compilation failed.
 - [ ] When save as just example.scene we get an error.
 - [ ] Exception handling.
 - [ ] Finding bugs everywhere needs testing.

@@ -7,6 +7,9 @@
 namespace ic
 {
 
+/**
+ * Buffers for editor Imediate mode state.
+ */
 struct EditorState
 {
         Entity selected;
@@ -77,8 +80,8 @@ private:
         bool DrawRenameField();                                             // shared focus+input+commit widget
 
         // Material Editor
-        void DrawMaterialEditor(Entity &e);  // Draws material editor for a submesh of an entity
-        bool EditMaterial(Material *mat);    // Edits the material,
+        void DrawMaterialEditor(ic::Entity &e);  // Draws material editor for a submesh of an entity
+        bool EditMaterial(Material *mat);        // Edits the material,
         void ChangeTexture(Texture &e,
                            Mesh    &mesh);  // Changes the texture asset for the given submesh for the given entity
 
